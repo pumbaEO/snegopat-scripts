@@ -1,24 +1,24 @@
-$engine JScript
+п»ї$engine JScript
 $uname autosave
-$dname Автосохранение
+$dname РђРІС‚РѕСЃРѕС…СЂР°РЅРµРЅРёРµ
 
-// Подключим скрипт с стандартными командами
+// РџРѕРґРєР»СЋС‡РёРј СЃРєСЂРёРїС‚ СЃ СЃС‚Р°РЅРґР°СЂС‚РЅС‹РјРё РєРѕРјР°РЅРґР°РјРё
 SelfScript.addNamedItem("stdcommands", addins.byUniqueName('stdcommands').object)
 
-// Восстановим настройки
-var pflAutoSaveEnable = "Autosave/Enable"		// Зададим путь в профайле
+// Р’РѕСЃСЃС‚Р°РЅРѕРІРёРј РЅР°СЃС‚СЂРѕР№РєРё
+var pflAutoSaveEnable = "Autosave/Enable"		// Р—Р°РґР°РґРёРј РїСѓС‚СЊ РІ РїСЂРѕС„Р°Р№Р»Рµ
 var pflAutoSaveInterval = "Autosave/Interval"
-// Для начала надо создать ключи в настройках, указав их дефолтные значения, а также
-// в каком хранилище их сохранять, иначе setValue не будет работать.
-// Будем сохранять в хранилище снегопата.
+// Р”Р»СЏ РЅР°С‡Р°Р»Р° РЅР°РґРѕ СЃРѕР·РґР°С‚СЊ РєР»СЋС‡Рё РІ РЅР°СЃС‚СЂРѕР№РєР°С…, СѓРєР°Р·Р°РІ РёС… РґРµС„РѕР»С‚РЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ, Р° С‚Р°РєР¶Рµ
+// РІ РєР°РєРѕРј С…СЂР°РЅРёР»РёС‰Рµ РёС… СЃРѕС…СЂР°РЅСЏС‚СЊ, РёРЅР°С‡Рµ setValue РЅРµ Р±СѓРґРµС‚ СЂР°Р±РѕС‚Р°С‚СЊ.
+// Р‘СѓРґРµРј СЃРѕС…СЂР°РЅСЏС‚СЊ РІ С…СЂР°РЅРёР»РёС‰Рµ СЃРЅРµРіРѕРїР°С‚Р°.
 profileRoot.createValue(pflAutoSaveEnable, false, pflSnegopat)
 profileRoot.createValue(pflAutoSaveInterval, 60, pflSnegopat)
-// Теперь прочитаем актуальные значения из профайла
+// РўРµРїРµСЂСЊ РїСЂРѕС‡РёС‚Р°РµРј Р°РєС‚СѓР°Р»СЊРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РёР· РїСЂРѕС„Р°Р№Р»Р°
 var enabled = profileRoot.getValue(pflAutoSaveEnable)
 var interval = profileRoot.getValue(pflAutoSaveInterval)
 var lastSaveTime = new Date().getTime() / 1000
 
-// Всю работу будем делать во время простоя программы
+// Р’СЃСЋ СЂР°Р±РѕС‚Сѓ Р±СѓРґРµРј РґРµР»Р°С‚СЊ РІРѕ РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ РїСЂРѕРіСЂР°РјРјС‹
 function Designer::onIdle()
 {
 	if(!enabled)
@@ -26,44 +26,44 @@ function Designer::onIdle()
 	var dt = new Date().getTime() / 1000
 	if(dt - lastSaveTime > interval)
 	{
-		// Сохраним конфигурацию
+		// РЎРѕС…СЂР°РЅРёРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ
 		stdcommands.Config.Save.send()
-		// Сохраним текущий файл
+		// РЎРѕС…СЂР°РЅРёРј С‚РµРєСѓС‰РёР№ С„Р°Р№Р»
 		stdcommands.Frame.FileSave.send()
 		lastSaveTime = dt
 	}
 }
 
-// Макрос для вызова окна настройки
-function macrosНастройкаАвтоСохранения()
+// РњР°РєСЂРѕСЃ РґР»СЏ РІС‹Р·РѕРІР° РѕРєРЅР° РЅР°СЃС‚СЂРѕР№РєРё
+function macrosРќР°СЃС‚СЂРѕР№РєР°РђРІС‚РѕРЎРѕС…СЂР°РЅРµРЅРёСЏ()
 {
 	var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
-	// Обработку событий формы привяжем к самому скрипту
+	// РћР±СЂР°Р±РѕС‚РєСѓ СЃРѕР±С‹С‚РёР№ С„РѕСЂРјС‹ РїСЂРёРІСЏР¶РµРј Рє СЃР°РјРѕРјСѓ СЃРєСЂРёРїС‚Сѓ
 	form = loadScriptForm(pathToForm, SelfScript.self)
-	form.Включить = enabled
-	form.Интервал = interval
-	form.ОткрытьМодально()
+	form.Р’РєР»СЋС‡РёС‚СЊ = enabled
+	form.РРЅС‚РµСЂРІР°Р» = interval
+	form.РћС‚РєСЂС‹С‚СЊРњРѕРґР°Р»СЊРЅРѕ()
 	form = null
 }
 
-// Обработчики нажатий кнопок в форме
-function ОкНажатие(Элемент)
+// РћР±СЂР°Р±РѕС‚С‡РёРєРё РЅР°Р¶Р°С‚РёР№ РєРЅРѕРїРѕРє РІ С„РѕСЂРјРµ
+function РћРєРќР°Р¶Р°С‚РёРµ(Р­Р»РµРјРµРЅС‚)
 {
-	// Прочитаем значения из формы и если они изменились, сохраним их
-	if(form.Включить != enabled)
+	// РџСЂРѕС‡РёС‚Р°РµРј Р·РЅР°С‡РµРЅРёСЏ РёР· С„РѕСЂРјС‹ Рё РµСЃР»Рё РѕРЅРё РёР·РјРµРЅРёР»РёСЃСЊ, СЃРѕС…СЂР°РЅРёРј РёС…
+	if(form.Р’РєР»СЋС‡РёС‚СЊ != enabled)
 	{
-		enabled = form.Включить
+		enabled = form.Р’РєР»СЋС‡РёС‚СЊ
 		profileRoot.setValue(pflAutoSaveEnable, enabled)
 	}
-	if(form.Интервал != interval)
+	if(form.РРЅС‚РµСЂРІР°Р» != interval)
 	{
-		interval = form.Интервал
+		interval = form.РРЅС‚РµСЂРІР°Р»
 		profileRoot.setValue(pflAutoSaveInterval, interval)
 	}
-	form.Закрыть()
+	form.Р—Р°РєСЂС‹С‚СЊ()
 }
 
-function ОтменаНажатие(Элемент)
+function РћС‚РјРµРЅР°РќР°Р¶Р°С‚РёРµ(Р­Р»РµРјРµРЅС‚)
 {
-	form.Закрыть()
+	form.Р—Р°РєСЂС‹С‚СЊ()
 }
