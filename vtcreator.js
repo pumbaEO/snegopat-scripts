@@ -51,7 +51,7 @@ function macrosСоздатьТаблицуЗначений()
 		text = text.replace(/\s+$/m, '')			// СокрП
 		// Вставим текст
 		txtWnd.selectedText = text
-		txtWnd.setCaretPos(sel.beginRow, sel.beginCol)
+		//txtWnd.setCaretPos(sel.beginRow, sel.beginCol)
 	}
 }
 
@@ -68,6 +68,9 @@ function ОКНажатие(Элемент)
 function СоставКолонокТипНачалоВыбора(Элемент, СтандартнаяОбработка)
 {
 	var input = snegopat.parseTemplateString('<?"Укажите тип", КонструкторОписанияТипов>')
-	input = input.replace(/\n|;$/g, '')
-	form.ЭлементыФормы.СоставКолонок.ТекущаяСтрока.Тип = input
+	if(input.length)
+	{
+		input = input.replace(/\n|;$/g, '')
+		form.ЭлементыФормы.СоставКолонок.ТекущаяСтрока.Тип = input
+	}
 }
