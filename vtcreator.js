@@ -2,6 +2,13 @@
 $uname vtcreator
 $dname Конструктор ТЗ
 
+// Александр Орефков
+// Это небольшой скрипт с формой для генерации текста создания ТаблицыЗначений.
+// Позволяет ввести имя переменной, а также состав колонок с указанием имени,
+// описания типа, заголовка, ширины.
+// Для ввода описания типа используется штатный "Конструктор описания типов".
+// Надо бы наверное сделать еще ввод индексов, может кто-то доделает?
+
 addins.byUniqueName("global").object.connectGlobals(SelfScript)
 form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, "ssf"), SelfScript.self)
 
@@ -39,6 +46,7 @@ function macrosСоздатьТаблицуЗначений()
 		var m = textLine.match(/^\s+/)
 		if(m)	// Есть пробельные символы в начале строки
 			text = text.replace(/\n/g, '\n' + m[0])	// Заменим переводы строк на перевод строк + отступ
+		text = text.replace(/\s+$/m, '')			// СокрП
 		// Вставим текст
 		txtWnd.selectedText = text
 		txtWnd.setCaretPos(sel.beginRow, sel.beginCol)
