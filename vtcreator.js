@@ -11,6 +11,7 @@ $dname Конструктор ТЗ
 
 addins.byUniqueName("global").object.connectGlobals(SelfScript)
 form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, "ssf"), SelfScript.self)
+form.КлючСохраненияПоложенияОкна = "vtcreator"
 
 function macrosСоздатьТаблицуЗначений()
 {
