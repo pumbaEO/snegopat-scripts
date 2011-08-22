@@ -2,6 +2,8 @@
 $uname autosave
 $dname Автосохранение
 
+// (c) Александр Орефков
+
 // Подключим скрипт с стандартными командами
 SelfScript.addNamedItem("stdcommands", addins.byUniqueName('stdcommands').object)
 
@@ -26,11 +28,18 @@ function Designer::onIdle()
 	var dt = new Date().getTime() / 1000
 	if(dt - lastSaveTime > interval)
 	{
+		// Временно отключим настройку "Проверять автоматически"
+		var isAutoCheck = profileRoot.getValue("ModuleTextEditor/CheckAutomatically")
+		if(isAutoCheck)
+			profileRoot.setValue("ModuleTextEditor/CheckAutomatically", false)
 		// Сохраним конфигурацию
 		stdcommands.Config.Save.send()
 		// Сохраним текущий файл
 		stdcommands.Frame.FileSave.send()
 		lastSaveTime = dt
+		// Восстановим настройку "Проверять автоматически"
+		if(isAutoCheck)
+			profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
 	}
 }
 

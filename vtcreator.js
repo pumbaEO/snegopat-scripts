@@ -52,7 +52,7 @@ function macrosСоздатьТаблицуЗначений()
 		text = text.replace(/\s+$/m, '')			// СокрП
 		// Вставим текст
 		txtWnd.selectedText = text
-		txtWnd.setCaretPos(sel.beginRow, sel.beginCol)
+		//txtWnd.setCaretPos(sel.beginRow, sel.beginCol)
 	}
 }
 
