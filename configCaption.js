@@ -59,24 +59,24 @@ function ПолучитьНаименованиеБазы1CИзФайлаЗап�
 
     if(!file.Существует() || file.ЭтоКаталог())
     {
-    	Message("Файл <"+Path1C + "> не существует.")
-    	return
+        Message("Файл <"+Path1C + "> не существует.")
+        return
     }
-	var textDoc = v8New("ТекстовыйДокумент")
-	textDoc.Прочитать(Path1C)
+    var textDoc = v8New("ТекстовыйДокумент")
+    textDoc.Прочитать(Path1C)
 
     re_baseName = /^\s*\[\s*(.+)\s*\]\s*$/ig // имя базы без учета начальных и конечных пробелов
     re_connectString = /Connect=.*/ig // строка соединения
     
-	var lineCount = textDoc.КоличествоСтрок()
-	var currName = ""
-	for(var lineNum = 1; lineNum <= lineCount; lineNum++)
-	{
-		var line = textDoc.ПолучитьСтроку(lineNum);
+    var lineCount = textDoc.КоличествоСтрок()
+    var currName = ""
+    for(var lineNum = 1; lineNum <= lineCount; lineNum++)
+    {
+        var line = textDoc.ПолучитьСтроку(lineNum);
         if(line.match(re_baseName))
             currName = RegExp.$1.replace(/^\s*|\s*$/g, '')
         else if(line.match(re_connectString) && -1 != line.indexOf(строкаСоединения))
-			return currName
+            return currName
     }
     return null
 }

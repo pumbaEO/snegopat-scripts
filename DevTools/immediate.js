@@ -25,10 +25,10 @@ function macrosОткрытьОкно()	{	form.Открыть()	}
 function macrosЗакрытьОкно()	{	form.Закрыть()	}
 function macrosПереключитьОкно()
 {
-	if(form.Открыта())
-		form.Закрыть()
-	else
-		form.Открыть()
+    if(form.Открыта())
+        form.Закрыть()
+    else
+        form.Открыть()
 }
 
 /*
@@ -36,48 +36,48 @@ function macrosПереключитьОкно()
  */
 function ОбновлениеОтображения()
 {
-	// Если надо восстановить положение курсора, сделаем это
-	if(needMoveCaret)
-	{
-		form.ЭлементыФормы.Код.УстановитьГраницыВыделения(needMoveCaret.br, needMoveCaret.bc, needMoveCaret.er, needMoveCaret.ec)
-		needMoveCaret = null
-	}
+    // Если надо восстановить положение курсора, сделаем это
+    if(needMoveCaret)
+    {
+        form.ЭлементыФормы.Код.УстановитьГраницыВыделения(needMoveCaret.br, needMoveCaret.bc, needMoveCaret.er, needMoveCaret.ec)
+        needMoveCaret = null
+    }
 }
 
 function ПриЗакрытии()
 {
-	// Сохраним положение курсора. Так как ПолучитьГраницыВыделения возвращает результат через
-	// параметры, придется задействовать VBScript
-	needMoveCaret = {br:0, bc:0, er:0, ec:0}
-	var vbs = addins.byUniqueName("vbs").object
-	vbs.result = needMoveCaret
-	vbs.var1 = form.ЭлементыФормы.Код
-	vbs.DoExecute("br=0:bc=0:er=0:ec=0:var1.GetTextSelectionBounds br, bc, er, ec:result.br=br:result.bc=bc:result.er=er:result.ec=ec")
+    // Сохраним положение курсора. Так как ПолучитьГраницыВыделения возвращает результат через
+    // параметры, придется задействовать VBScript
+    needMoveCaret = {br:0, bc:0, er:0, ec:0}
+    var vbs = addins.byUniqueName("vbs").object
+    vbs.result = needMoveCaret
+    vbs.var1 = form.ЭлементыФормы.Код
+    vbs.DoExecute("br=0:bc=0:er=0:ec=0:var1.GetTextSelectionBounds br, bc, er, ec:result.br=br:result.bc=bc:result.er=er:result.ec=ec")
 }
 
 // Собственно, само выполнение кода
 function КоманднаяПанельВыполнить(Кнопка)
 {
-	var codeText
-	// Получим код для выполнения и заменим маркер начала кода на маркер старого кода
-	var text = form.ЭлементыФормы.Код.ПолучитьТекст()
-	var pos = text.indexOf(codeMarker)
-	if(pos >= 0)
-	{
-		codeText = text.substr(pos + codeMarker.length)
-		text = text.replace(codeMarker, oldCodeMarker)
-	}
-	else
-	{
-		codeText = text
-		text = oldCodeMarker + "\n" + text
-	}
-	// Добавим к тексту результат и маркер кода
-	text += "\nРезультат: " + eval(codeText) + "\n" + codeMarker + "\n"
-	form.ЭлементыФормы.Код.УстановитьТекст(text)
-	// Поставим курсор в конце текста
-	var linesCount = form.ЭлементыФормы.Код.КоличествоСтрок()
-	form.ЭлементыФормы.Код.УстановитьГраницыВыделения(linesCount + 1, 1, linesCount + 1, 1)
-	// Вернем фокус в окно
-	form.ТекущийЭлемент = form.ЭлементыФормы.Код
+    var codeText
+    // Получим код для выполнения и заменим маркер начала кода на маркер старого кода
+    var text = form.ЭлементыФормы.Код.ПолучитьТекст()
+    var pos = text.indexOf(codeMarker)
+    if(pos >= 0)
+    {
+        codeText = text.substr(pos + codeMarker.length)
+        text = text.replace(codeMarker, oldCodeMarker)
+    }
+    else
+    {
+        codeText = text
+        text = oldCodeMarker + "\n" + text
+    }
+    // Добавим к тексту результат и маркер кода
+    text += "\nРезультат: " + eval(codeText) + "\n" + codeMarker + "\n"
+    form.ЭлементыФормы.Код.УстановитьТекст(text)
+    // Поставим курсор в конце текста
+    var linesCount = form.ЭлементыФормы.Код.КоличествоСтрок()
+    form.ЭлементыФормы.Код.УстановитьГраницыВыделения(linesCount + 1, 1, linesCount + 1, 1)
+    // Вернем фокус в окно
+    form.ТекущийЭлемент = form.ЭлементыФормы.Код
 }

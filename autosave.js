@@ -23,51 +23,51 @@ var lastSaveTime = new Date().getTime() / 1000
 // Всю работу будем делать во время простоя программы
 function Designer::onIdle()
 {
-	if(!enabled)
-		return
-	var dt = new Date().getTime() / 1000
-	if(dt - lastSaveTime > interval)
-	{
-		// Временно отключим настройку "Проверять автоматически"
-		var isAutoCheck = profileRoot.getValue("ModuleTextEditor/CheckAutomatically")
-		if(isAutoCheck)
-			profileRoot.setValue("ModuleTextEditor/CheckAutomatically", false)
-		// Сохраним конфигурацию
-		stdcommands.Config.Save.send()
-		// Сохраним текущий файл
-		stdcommands.Frame.FileSave.send()
-		lastSaveTime = dt
-		// Восстановим настройку "Проверять автоматически"
-		if(isAutoCheck)
-			profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
-	}
+    if(!enabled)
+        return
+    var dt = new Date().getTime() / 1000
+    if(dt - lastSaveTime > interval)
+    {
+        // Временно отключим настройку "Проверять автоматически"
+        var isAutoCheck = profileRoot.getValue("ModuleTextEditor/CheckAutomatically")
+        if(isAutoCheck)
+            profileRoot.setValue("ModuleTextEditor/CheckAutomatically", false)
+        // Сохраним конфигурацию
+        stdcommands.Config.Save.send()
+        // Сохраним текущий файл
+        stdcommands.Frame.FileSave.send()
+        lastSaveTime = dt
+        // Восстановим настройку "Проверять автоматически"
+        if(isAutoCheck)
+            profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
+    }
 }
 
 // Макрос для вызова окна настройки
 function macrosНастройкаАвтоСохранения()
 {
-	var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
-	// Обработку событий формы привяжем к самому скрипту
-	form = loadScriptForm(pathToForm, SelfScript.self)
-	form.Включить = enabled
-	form.Интервал = interval
-	form.ОткрытьМодально()
-	form = null
+    var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
+    // Обработку событий формы привяжем к самому скрипту
+    form = loadScriptForm(pathToForm, SelfScript.self)
+    form.Включить = enabled
+    form.Интервал = interval
+    form.ОткрытьМодально()
+    form = null
 }
 
 // Обработчики нажатий кнопок в форме
 function ОкНажатие(Элемент)
 {
-	// Прочитаем значения из формы и если они изменились, сохраним их
-	if(form.Включить != enabled)
-	{
-		enabled = form.Включить
-		profileRoot.setValue(pflAutoSaveEnable, enabled)
-	}
-	if(form.Интервал != interval)
-	{
-		interval = form.Интервал
-		profileRoot.setValue(pflAutoSaveInterval, interval)
-	}
-	form.Закрыть()
+    // Прочитаем значения из формы и если они изменились, сохраним их
+    if(form.Включить != enabled)
+    {
+        enabled = form.Включить
+        profileRoot.setValue(pflAutoSaveEnable, enabled)
+    }
+    if(form.Интервал != interval)
+    {
+        interval = form.Интервал
+        profileRoot.setValue(pflAutoSaveInterval, interval)
+    }
+    form.Закрыть()
 }

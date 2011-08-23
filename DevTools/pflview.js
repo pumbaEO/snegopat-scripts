@@ -38,48 +38,48 @@ function walkProfile(pflFolder, parentRow)
 {
     //form.ЭлементыФормы.ProfileTree.НачальноеОтображениеДерева = v8New("ПеречислениеНачальноеОтображениеДерева").РаскрыватьВсеУровни
     
-	var myRow = parentRow.Строки.Добавить()
-	myRow.Key = pflFolder.name
-	for(var i = 0, c= pflFolder.foldersCount; i < c; i++)
-		walkProfile(pflFolder.getFolderAt(i), myRow)
-	for(var i = 0, c = pflFolder.valuesCount; i < c; i++)
-	{
-		var row = myRow.Строки.Добавить()
-		row.Key = pflFolder.valueName(i)
-		var val = pflFolder.getValueAt(i)
-		row.Value = val
-		row.ValueInternal = ЗначениеВСтрокуВнутр(val)
-	}
+    var myRow = parentRow.Строки.Добавить()
+    myRow.Key = pflFolder.name
+    for(var i = 0, c= pflFolder.foldersCount; i < c; i++)
+        walkProfile(pflFolder.getFolderAt(i), myRow)
+    for(var i = 0, c = pflFolder.valuesCount; i < c; i++)
+    {
+        var row = myRow.Строки.Добавить()
+        row.Key = pflFolder.valueName(i)
+        var val = pflFolder.getValueAt(i)
+        row.Value = val
+        row.ValueInternal = ЗначениеВСтрокуВнутр(val)
+    }
 }
 
 function macrosПоказатьПрофайл()
 {
-	if(!form)
-	{
-		form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, 'ssf'), SelfScript.self)
-		walkProfile(profileRoot, form.ProfileTree)
-	}
-	form.Открыть()
+    if(!form)
+    {
+        form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, 'ssf'), SelfScript.self)
+        walkProfile(profileRoot, form.ProfileTree)
+    }
+    form.Открыть()
 }
 
 function КоманднаяПанельРазвернутьВсеГруппы(Кнопка)
 {
-	for(var rowsArray = new Enumerator(form.ProfileTree.Строки);
-		!rowsArray.atEnd(); rowsArray.moveNext())
-	{
-		var row = rowsArray.item();
-		form.ЭлементыФормы.ProfileTree.Развернуть(row, true)
-	}
+    for(var rowsArray = new Enumerator(form.ProfileTree.Строки);
+        !rowsArray.atEnd(); rowsArray.moveNext())
+    {
+        var row = rowsArray.item();
+        form.ЭлементыФормы.ProfileTree.Развернуть(row, true)
+    }
 }
 
 function КоманднаяПанельСвернутьВсеГруппы(Кнопка)
 {
     // первый уровень всегда оставляем открытым
     row0 = form.ProfileTree.Строки.Получить(0)
-	for(var rowsArray = new Enumerator(row0.Строки);
-		!rowsArray.atEnd(); rowsArray.moveNext())
-	{
-		var row = rowsArray.item();
-		form.ЭлементыФормы.ProfileTree.Свернуть(row)
-	}
+    for(var rowsArray = new Enumerator(row0.Строки);
+        !rowsArray.atEnd(); rowsArray.moveNext())
+    {
+        var row = rowsArray.item();
+        form.ЭлементыФормы.ProfileTree.Свернуть(row)
+    }
 }
