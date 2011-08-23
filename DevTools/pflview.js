@@ -36,6 +36,8 @@ var form
 
 function walkProfele(pflFolder, parentRow)
 {
+    //form.ЭлементыФормы.ProfileTree.НачальноеОтображениеДерева = v8New("ПеречислениеНачальноеОтображениеДерева").РаскрыватьВсеУровни
+    
 	var myRow = parentRow.Строки.Добавить()
 	myRow.Key = pflFolder.name
 	for(var i = 0, c= pflFolder.foldersCount; i < c; i++)
@@ -58,4 +60,26 @@ function macrosПоказатьПрофайл()
 		walkProfele(profileRoot, form.ProfileTree)
 	}
 	form.Открыть()
+}
+
+function КоманднаяПанельРазвернутьВсеГруппы(Кнопка)
+{
+	for(var rowsArray = new Enumerator(form.ProfileTree.Строки);
+		!rowsArray.atEnd(); rowsArray.moveNext())
+	{
+		var row = rowsArray.item();
+		form.ЭлементыФормы.ProfileTree.Развернуть(row, true)
+	}
+}
+
+function КоманднаяПанельСвернутьВсеГруппы(Кнопка)
+{
+    // первый уровень всегда оставляем открытым
+    row0 = form.ProfileTree.Строки.Получить(0)
+	for(var rowsArray = new Enumerator(row0.Строки);
+		!rowsArray.atEnd(); rowsArray.moveNext())
+	{
+		var row = rowsArray.item();
+		form.ЭлементыФормы.ProfileTree.Свернуть(row)
+	}
 }
