@@ -34,14 +34,14 @@ addins.byUniqueName("global").object.connectGlobals(SelfScript)
 
 var form
 
-function walkProfele(pflFolder, parentRow)
+function walkProfile(pflFolder, parentRow)
 {
     //form.ЭлементыФормы.ProfileTree.НачальноеОтображениеДерева = v8New("ПеречислениеНачальноеОтображениеДерева").РаскрыватьВсеУровни
     
 	var myRow = parentRow.Строки.Добавить()
 	myRow.Key = pflFolder.name
 	for(var i = 0, c= pflFolder.foldersCount; i < c; i++)
-		walkProfele(pflFolder.getFolderAt(i), myRow)
+		walkProfile(pflFolder.getFolderAt(i), myRow)
 	for(var i = 0, c = pflFolder.valuesCount; i < c; i++)
 	{
 		var row = myRow.Строки.Добавить()
@@ -57,7 +57,7 @@ function macrosПоказатьПрофайл()
 	if(!form)
 	{
 		form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, 'ssf'), SelfScript.self)
-		walkProfele(profileRoot, form.ProfileTree)
+		walkProfile(profileRoot, form.ProfileTree)
 	}
 	form.Открыть()
 }
