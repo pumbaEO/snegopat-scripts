@@ -34,7 +34,14 @@ function macrosTestOpenFile()
 function OpenFile(filepath)
 {
     // Подготовим наше значение для MRU - списка
-    var docKind = '00000000-0000-0000-0000-000000000000'
+    var docKind = '00000000-0000-0000-0000-000000000000' // простой текст
+    var docOemKind = '74d75a51-58b7-46b0-931a-f3bac20e596e' // простой текст - кодировка Dos/Oem
+    var epfKind = '0e0e54cf-253b-4fc9-a895-26897e1a51f7' // обработки
+    var erfKind = '6d01520c-23c6-4301-86f7-e81268f07ee3' // отчеты
+    var mxlKind = 'e555a6fe-768f-476a-bf4b-1d945aa56099' // табличный документ
+    var mxlKind = 'c64ce8a4-a74d-40e9-996e-feadca885e11' // файл конфигурации
+    var stKind = '03ad782c-900b-4594-bdb7-66ed05992b8b' // файл шаблонов
+    
     var mruItem = ЗначениеИзСтрокиВнутр('{"#",36973550-6bbb-11d5-bf72-0050bae2bc79,\n' +
     '{1,\n' +
     '{"file://' + filepath + '",0},' + docKind + '}\n' +
