@@ -9,15 +9,18 @@ $addin stdcommands
  * Дата создания: 24.08.2011
  * Описание		: Добавляет окно из которого можно открывать внешние файлы
  */
-var мВерсияСкрипта = 1.1
+var мВерсияСкрипта = 1.2
 
 // Восстановим настройки
-var pflExtFilesPath = "ExtFiles/Path"			// Зададим путь в профайле
-var pflExtFilesPathBase = "ExtFiles/PathBase"	// Зададим путь в профайле
+var pflExtFilesOpenOnStart = "ExtFiles/OpenOnStart"	// Зададим путь в профайле
+var pflExtFilesPath = "ExtFiles/Path"				// Зададим путь в профайле
+var pflExtFilesPathBase = "ExtFiles/PathBase"		// Зададим путь в профайле
 
+profileRoot.createValue(pflExtFilesOpenOnStart, false, pflSnegopat)
 profileRoot.createValue(pflExtFilesPath, false, pflSnegopat)
 profileRoot.createValue(pflExtFilesPathBase, false, pflBase)
 
+var мОткрыватьПриСтарте = profileRoot.getValue(pflExtFilesOpenOnStart)
 var мМассивКаталоговОбщий = profileRoot.getValue(pflExtFilesPath)
 var мМассивКаталоговБазы = profileRoot.getValue(pflExtFilesPathBase)
 
@@ -38,6 +41,9 @@ catch(e){
 
 мФормаСкрипта=null
 мФормаНастройки=null
+
+if(мОткрыватьПриСтарте==true)
+	macrosОткрытьОкноВнешнихФайлов()
 
 // Макрос для вызова окна
 function macrosОткрытьОкноВнешнихФайлов()
@@ -61,7 +67,9 @@ function мЗаписатьНастройки()
 {
 	мМассивКаталоговОбщий=мФормаНастройки.КаталогиОбщие.ВыгрузитьКолонку("ИмяКаталога")
 	мМассивКаталоговБазы=мФормаНастройки.КаталогиБазы.ВыгрузитьКолонку("ИмяКаталога")
+	мОткрыватьПриСтарте=мФормаНастройки.ОткрыватьФормуПриЗагрузке
 	
+	profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
 	profileRoot.setValue(pflExtFilesPath, ValueToStringInternal(мМассивКаталоговОбщий))
 	profileRoot.setValue(pflExtFilesPathBase, ValueToStringInternal(мМассивКаталоговБазы))
 	
@@ -79,14 +87,15 @@ function мЗагрузитьНастройку(пМассивКаталогов
 
 function НастройкиПриОткрытии()
 {
+	мФормаНастройки.ОткрыватьФормуПриЗагрузке=мОткрыватьПриСтарте
 	мЗагрузитьНастройку(мМассивКаталоговОбщий, мФормаНастройки.КаталогиОбщие);
 	мЗагрузитьНастройку(мМассивКаталоговБазы, мФормаНастройки.КаталогиБазы);
 }
 
 function КпШапкаЗаписатьИЗакрыть(Кнопка)
 {
-	мФормаНастройки.Закрыть()
 	мЗаписатьНастройки()
+	мФормаНастройки.Закрыть()
 }
 
 function КпШапкаЗаписать(Кнопка)
