@@ -1,6 +1,6 @@
-$engine VBScript
+п»ї$engine VBScript
 $uname ClrAddinLoader
-$dname Загрузчик CLR-addon-ов
+$dname Р—Р°РіСЂСѓР·С‡РёРє CLR-addon-РѕРІ
 
 sub CreateDll (p)
 dlldata="TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"&_
@@ -359,7 +359,7 @@ End If
 LoaderRegistered = True
 On Error Resume Next
 set clrloader = CreateObject("SnegopatLib.ClrAddinLoader")
-If Err.Number <> 0 Then 'не зарегистрирован :(
+If Err.Number <> 0 Then 'РЅРµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅ :(
     LoaderRegistered = False
     Err.Clear
 End If
@@ -391,7 +391,7 @@ If Not LoaderRegistered Then
         objFile.WriteLine strNewText
         objFile.Close
 '        WshShell.Run windir & "\regedit.exe /s " & regFilePath,0,True 
-'        не получилось :( все равно требует Elevation и не вносит CLSID
+'        РЅРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ :( РІСЃРµ СЂР°РІРЅРѕ С‚СЂРµР±СѓРµС‚ Elevation Рё РЅРµ РІРЅРѕСЃРёС‚ CLSID
         Set objTextFile = fso.OpenTextFile(regFilePath, 1)
         currBranch = ""
 'stop
