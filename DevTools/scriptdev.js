@@ -1,7 +1,9 @@
 ﻿$engine JScript
 $uname scriptdev
 $dname Разработка скриптов
-                 
+$addin global
+$addin snegopatwnd
+
 /* Скрипт-помощник для разработчиков скриптов для Снегопата.
  * Автор        : Александр Кунташов, kuntashov@compaud.ru
  * Дата создания: 18.08.2011
@@ -22,6 +24,9 @@ $dname Разработка скриптов
 // Интервал проверки редактируемых файлов.
 var checkInterval = 2; 
 
+// Спрашивать перед перезагрузкой.
+var askBeforeReload = true;
+
 // Команда для запуска редактора скрипта.
 var runEditorCmd = "notepad.exe \"%1\"";
 
@@ -35,6 +40,7 @@ var runEditorCmd = "notepad.exe \"%1\"";
     // Обработку событий формы привяжем к самому скрипту
     form = loadScriptForm(pathToForm, SelfScript.self);
     form.checkInterval = checkInterval;
+    form.askBeforeReload = askBeforeReload;
     form.runEditorCmd = runEditorCmd;
     form.ОткрытьМодально();
     form = null;
@@ -47,16 +53,18 @@ var runEditorCmd = "notepad.exe \"%1\"";
 // Пути хранения настроек скрипта в профайле.
 var pflPaths = {
     checkInterval : 'scriptdev/checkInterval',
-    runEditorCmd: 'scriptdev/runCmdEditor'
+    runEditorCmd: 'scriptdev/runCmdEditor',
+    askBeforeReload: 'scriptdev/askBeforeReload'
 };
   
 // Список редактируемых файлов скриптов.
-var devFiles = new Array();
+var devFiles = v8New("Структура");
 
 // Время последней проверки
 var lastCheckTime = new Date().getTime() / 1000;
 
 // Подключаем глобальные контексты.
+//global.connectGlobals(SelfScript);
 addins.byUniqueName("global").object.connectGlobals(SelfScript);
 
 function Designer::onIdle()
@@ -68,12 +76,77 @@ function Designer::onIdle()
     }
 }
 
+function Designer::onLoadAddin(addin)
+{
+    Message("scriptdev::Designer::onLoadAddin");
+//    with (snegopatwnd.getSnegopatWnd())
+//        onLoadAddin(addin)
+}
+
+function Designer::onUnLoadAddin(addin)
+{
+    Message("scriptdev::Designer::onUnLoadAddin");
+//    with (snegopatwnd.getSnegopatWnd())
+//        onUnLoadAddin(addin)
+}
+
+var DialogCodes = {
+    'Yes'       : 'Да',
+    'YesToAll'  : 'Да для всех',
+    'No'        : 'Нет',
+    'NoToAll'   : 'Нет для всех'
+};
+
+function AskUser(question, needYesNoToAll)
+{
+    // Кнопки диалога Вопрос.
+    var buttons = v8New("СписокЗначений");
+    
+    buttons.Добавить(DialogCodes.Yes);
+    buttons.Добавить(DialogCodes.No);
+    
+    if (needYesNoToAll)
+    {
+        buttons.Вставить(2, DialogCodes.YesToAll);
+        buttons.Добавить(DialogCodes.NoToAll);                
+    }
+    
+    return Вопрос(question, buttons);      
+}
+
 function CheckFiles() 
 {
-    for(var i=0; i<devFiles.length; i++) 
+    var scriptsToReload = new Array();
+    
+    for(var addins=new Enumerator(devFiles); !addins.atEnd(); addins.moveNext()) 
     {
-        if (devFiles[i].CheckIfModified())
-            devFiles[i].Reload();
+        var aInfo = addins.item().Значение;
+        if (aInfo.CheckIfModified())
+            scriptsToReload.push(aInfo);
+    }
+    
+    var needToAsk = askBeforeReload;
+    var doReload = !askBeforeReload;
+    var needYesNoToAll = (scriptsToReload.length > 1);
+    
+    for(var i=0; i<scriptsToReload.length; i++)
+    {
+        var s = scriptsToReload[i];
+        
+        if (needToAsk)
+        {
+            var msg = "Скрипт \"" + s.object.displayName 
+                    + "\" (" + s.object.uniqueName + ") был изменен.\n"
+                    + "Перезагрузить скрипт?";
+                    
+            var answer = AskUser(msg, needYesNoToAll);
+            
+            doReload = (answer == DialogCodes.Yes || answer == DialogCodes.YesToAll);
+            needToAsk = (answer == DialogCodes.YesToAll || answer == DialogCodes.NoToAll);
+        }
+        
+        if (doReload)
+            s.Reload();
     }
 }
 
@@ -93,17 +166,25 @@ function OnSnegopatWndEditScriptMenuItem(currentRow)
     
     if (!isAddin) 
         return;
-
+    
     var addinObject = currentRow.object;
     if (0 != addinObject.fullPath.indexOf("script:"))
     {
         MessageBox("Это не скрипт");
-        return
+        return;
     }
+    
+    if (addinObject.uniqueName == SelfScript.uniqueName) 
+    {
+        MessageBox("Скрипт \"Разработка скриптов\" нельзя использовать для отладки самого себя!");
+        return;
+    }
+    
     var fullPath = GetAddinFilePath(addinObject);
     var command = runEditorCmd.replace(/%1/, fullPath);
-    
-    devFiles.push(new AddinInfo(addinObject));
+        
+    if (!devFiles.Свойство(addinObject.uniqueName))
+        devFiles.Вставить(addinObject.uniqueName, new AddinInfo(addinObject));
     
     ЗапуститьПриложение(command);
 }
@@ -113,13 +194,17 @@ function InitScriptAndRun()
     // Проинициализируем настройки скрипта...
     profileRoot.createValue(pflPaths.checkInterval, checkInterval, pflSnegopat)
     profileRoot.createValue(pflPaths.runEditorCmd, runEditorCmd, pflSnegopat)    
+    profileRoot.createValue(pflPaths.askBeforeReload, askBeforeReload, pflSnegopat)    
+    
     // ...и прочитаем их:
     checkInterval = profileRoot.getValue(pflPaths.checkInterval);
     runEditorCmd = profileRoot.getValue(pflPaths.runEditorCmd);
+    askBeforeReload = profileRoot.getValue(pflPaths.askBeforeReload);
     
     // Внедряемся в контекстное меню окна Снегопата.
-    var snegopatWnd = addins.byUniqueName("snegopatwnd").object.getSnegopatWnd();
-    snegopatWnd.AddContextMenuItem("Редактировать скрипт...", OnSnegopatWndEditScriptMenuItem, "Редактировать файл скрипта в заданном редакторе, с авто-перезагрузкой");
+    with (snegopatwnd.getSnegopatWnd())
+        AddContextMenuItem("Редактировать скрипт...", OnSnegopatWndEditScriptMenuItem, 
+            "Редактировать файл скрипта в заданном редакторе, с авто-перезагрузкой");
 }
 
 function GetAddinFilePath(addinObject)
@@ -140,25 +225,27 @@ function AddinInfo(addinObject)
 
 AddinInfo.prototype.Reload = function()
 {
-    var uniqueName = this.object.uniqueName;
-    var displayName = this.object.displayName;
-    var loadString = this.object.fullPath;
-    var addinGroup = this.object.group;
+    var oldInstance = this.object;
+    
+    var uniqueName = oldInstance.uniqueName;
+    var displayName = oldInstance.displayName;
+    var loadString = oldInstance.fullPath;
+    var addinGroup = oldInstance.group;
 
     try
     {
-        addins.unloadAddin(this.object);
+        addins.unloadAddin(oldInstance);
     }
     catch(e)
     {
         Message("Ошибка при выгрузке аддина " + displayName + ": " + e.description);
     }
     
-    if(!this.object.uniqueName.length)  // аддин реально выгрузился
+    if(!oldInstance.uniqueName.length)  // аддин реально выгрузился
     {
         try
         {
-            addins.loadAddin(loadString, addinGroup);
+            this.object = addins.loadAddin(loadString, addinGroup);
         }
         catch(e)
         {
@@ -166,10 +253,10 @@ AddinInfo.prototype.Reload = function()
         }
     }
     
-    delete this.object;
+    delete oldInstance;
 
     // Надо найти новый объект аддина по его имени и запомнить:
-    this.object = addins.byUniqueName(uniqueName);
+    //this.object = addins.byUniqueName(uniqueName);
 }
 
 AddinInfo.prototype.CheckIfModified = function()
@@ -201,7 +288,14 @@ function ОКНажатие(Элемент)
         runEditorCmd = form.runEditorCmd;
         profileRoot.setValue(pflPaths.runEditorCmd, runEditorCmd);           
     }
+
+    if (askBeforeReload != form.askBeforeReload)
+    {
+        askBeforeReload = form.askBeforeReload;
+        profileRoot.setValue(pflPaths.askBeforeReload, askBeforeReload);           
+    }
     
+
     form.Закрыть();
  }
  
@@ -221,6 +315,11 @@ function runEditorCmdНачалоВыбора(Элемент, Стандартн
         if (form.runEditorCmd.match(/exe$/)) 
             form.runEditorCmd += ' "%1"';
     }    
+}
+
+function lbScriptAboutНажатие()
+{
+    ЗапуститьПриложение("http://snegopat.ru/scripts/wiki?name=DevTools/scriptdev.js");
 }
 
 /* **********************************************************
