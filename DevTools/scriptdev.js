@@ -76,42 +76,34 @@ function Designer::onIdle()
     }
 }
 
-function Designer::onLoadAddin(addin)
-{
-    Message("scriptdev::Designer::onLoadAddin");
-//    with (snegopatwnd.getSnegopatWnd())
-//        onLoadAddin(addin)
+function QueryDialogEx(question, needYesNoToAll) 
+{ 
+    this.question = question;
+    this.needYesNoToAll = needYesNoToAll;
 }
-
-function Designer::onUnLoadAddin(addin)
-{
-    Message("scriptdev::Designer::onUnLoadAddin");
-//    with (snegopatwnd.getSnegopatWnd())
-//        onUnLoadAddin(addin)
-}
-
-var DialogCodes = {
+  
+QueryDialogEx.ReturnCodes = {
     'Yes'       : 'Да',
     'YesToAll'  : 'Да для всех',
     'No'        : 'Нет',
     'NoToAll'   : 'Нет для всех'
-};
+}
 
-function AskUser(question, needYesNoToAll)
+QueryDialogEx.prototype.Show = function()
 {
     // Кнопки диалога Вопрос.
     var buttons = v8New("СписокЗначений");
     
-    buttons.Добавить(DialogCodes.Yes);
-    buttons.Добавить(DialogCodes.No);
+    buttons.Добавить(QueryDialogEx.ReturnCodes.Yes);
+    buttons.Добавить(QueryDialogEx.ReturnCodes.No);
     
-    if (needYesNoToAll)
+    if (this.needYesNoToAll)
     {
-        buttons.Вставить(2, DialogCodes.YesToAll);
-        buttons.Добавить(DialogCodes.NoToAll);                
+        buttons.Вставить(2, QueryDialogEx.ReturnCodes.YesToAll);
+        buttons.Добавить(QueryDialogEx.ReturnCodes.NoToAll);                
     }
     
-    return Вопрос(question, buttons);      
+    return Вопрос(this.question, buttons);      
 }
 
 function CheckFiles() 
@@ -139,10 +131,10 @@ function CheckFiles()
                     + "\" (" + s.object.uniqueName + ") был изменен.\n"
                     + "Перезагрузить скрипт?";
                     
-            var answer = AskUser(msg, needYesNoToAll);
+            var answer = (new QueryDialogEx(msg, needYesNoToAll)).Show();
             
-            doReload = (answer == DialogCodes.Yes || answer == DialogCodes.YesToAll);
-            needToAsk = (answer == DialogCodes.YesToAll || answer == DialogCodes.NoToAll);
+            doReload = (answer == QueryDialogEx.ReturnCodes.Yes || answer == QueryDialogEx.ReturnCodes.YesToAll);
+            needToAsk = (answer == QueryDialogEx.ReturnCodes.Yes || answer == QueryDialogEx.ReturnCodes.No);
         }
         
         if (doReload)
