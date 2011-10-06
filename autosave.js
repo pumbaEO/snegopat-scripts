@@ -1,11 +1,8 @@
 ﻿$engine JScript
 $uname autosave
 $dname Автосохранение
-
+$addin stdcommands
 // (c) Александр Орефков
-
-// Подключим скрипт с стандартными командами
-SelfScript.addNamedItem("stdcommands", addins.byUniqueName('stdcommands').object)
 
 // Восстановим настройки
 var pflAutoSaveEnable = "Autosave/Enable"		// Зададим путь в профайле
@@ -18,29 +15,30 @@ profileRoot.createValue(pflAutoSaveInterval, 60, pflSnegopat)
 // Теперь прочитаем актуальные значения из профайла
 var enabled = profileRoot.getValue(pflAutoSaveEnable)
 var interval = profileRoot.getValue(pflAutoSaveInterval)
-var lastSaveTime = new Date().getTime() / 1000
+var myTimerID = 0
+
+initTimer()
+
+function initTimer()
+{
+    if(enabled)
+        myTimerID = createTimer(interval * 1000, SelfScript.self, "onTimer")
+}
 
 // Всю работу будем делать во время простоя программы
-function Designer::onIdle()
+function onTimer(timerID)
 {
-    if(!enabled)
-        return
-    var dt = new Date().getTime() / 1000
-    if(dt - lastSaveTime > interval)
-    {
-        // Временно отключим настройку "Проверять автоматически"
-        var isAutoCheck = profileRoot.getValue("ModuleTextEditor/CheckAutomatically")
-        if(isAutoCheck)
-            profileRoot.setValue("ModuleTextEditor/CheckAutomatically", false)
-        // Сохраним конфигурацию
-        stdcommands.Config.Save.send()
-        // Сохраним текущий файл
-        stdcommands.Frame.FileSave.send()
-        lastSaveTime = dt
-        // Восстановим настройку "Проверять автоматически"
-        if(isAutoCheck)
-            profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
-    }
+    // Временно отключим настройку "Проверять автоматически"
+    var isAutoCheck = profileRoot.getValue("ModuleTextEditor/CheckAutomatically")
+    if(isAutoCheck)
+        profileRoot.setValue("ModuleTextEditor/CheckAutomatically", false)
+    // Сохраним конфигурацию
+    stdcommands.Config.Save.send()
+    // Сохраним текущий файл
+    stdcommands.Frame.FileSave.send()
+    // Восстановим настройку "Проверять автоматически"
+    if(isAutoCheck)
+        profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
 }
 
 // Макрос для вызова окна настройки
@@ -70,4 +68,10 @@ function ОкНажатие(Элемент)
         profileRoot.setValue(pflAutoSaveInterval, interval)
     }
     form.Закрыть()
+    if(myTimerID)
+    {
+        killTimer(myTimerID)
+        myTimerID = 0
+    }
+    initTimer()
 }

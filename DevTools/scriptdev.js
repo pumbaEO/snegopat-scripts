@@ -67,7 +67,8 @@ var lastCheckTime = new Date().getTime() / 1000;
 //global.connectGlobals(SelfScript);
 addins.byUniqueName("global").object.connectGlobals(SelfScript);
 
-function Designer::onIdle()
+events.connect(Designer, "onIdle", SelfScript.self)
+function onIdle()
 {
     var curTime = new Date().getTime() / 1000;
     if (curTime - lastCheckTime > checkInterval) 

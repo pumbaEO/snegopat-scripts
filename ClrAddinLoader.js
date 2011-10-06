@@ -699,8 +699,9 @@ function unloadGroup(group)
     }
 }
 
-function Designer::beforeExitApp()
+events.connect(Designer, "beforeExitApp", SelfScript.self)
+function beforeExitApp()
 {
-  unloadGroup(addins.root);
+    unloadGroup(addins.root);
 }
 

@@ -22,36 +22,70 @@ global.connectGlobals(SelfScript)
         всегда открывать такие файлы без вопроса или всегда задавать вопрос,
         расширения открываемых файлов - по умолчанию erf, epf 
  */
-var _версияСкрипта = 0.3
+var _версияСкрипта = 0.4
 
-var _DefaultExts = "*.epf,*.erf,"; // обязательно указание запятой после расширения !
+var selectedFileName
 
-function Designer::onSelectFile(selectFileData) //As ISelectFileData
+// Подпишемся на перехват команды сохранения во внешний файл
+// Также можно бы еще подписаться на "Файл-Сохранить как", но пока оставим это Артуру
+events.addCommandHandler("{55C7732C-0C33-4394-ADCA-9D15082552B6}", 32, SelfScript.self, "hookSaveToExternalFileCommand")
+
+// Перехват команды. Метод вызывается сначала перед выполнением команды, потом после выполнения (если не отменили)
+function hookSaveToExternalFileCommand(cmd)
 {
-    if(selectFileData.mode != sfSave) return;
-
-	var selDlg = v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Открытие);
-	selDlg.Заголовок = selectFileData.title;
-	selDlg.ПолноеИмяФайла = selectFileData.initialFileName ;
-
-    Фильтр = "";
-    фильтрПодходит = false;
-    for (var i = 0 ; i < selectFileData.filtersCount; i++) {
-        filterVal = selectFileData.filterVal(i);
-        if (-1 != _DefaultExts.indexOf(filterVal+","))
-            фильтрПодходит = true;
-        Фильтр += selectFileData.filterDescr(i)+" ("+filterVal+")|"+filterVal + "|";
+    if(cmd.isBefore)
+    {
+        selectedFileName = ""
+        // Подпишемся на событие открытия диалога выбора файла
+        events.connect(Designer, "onSelectFile", SelfScript.self)
     }
-    if(!фильтрПодходит) return;
+    else
+    {
+        // Отпишемся от события открытия диалога выбора файла
+        events.disconnect(Designer, "onSelectFile", SelfScript.self)
+        // И откроем сохраненный файл
+        if(selectedFileName.length)
+            OpenFile(selectedFileName)
+    }
+}
 
-    selDlg.Фильтр += Фильтр;
-
-    selectFileData.result = sfrSelected;
-	if (!selDlg.Выбрать()) return;
-    
-    selectFileData.addSelectedFile(selDlg.ПолноеИмяФайла);
-        //Message(selectFileData.selectedFile(0));
-    OpenFile(selDlg.ПолноеИмяФайла);
+// Обработчик, вызывается когда 1С использует диалог для запроса имени файла.
+// Подключается и отключается в hookSaveToExternalFileCommand
+function onSelectFile(selectFileData) //As ISelectFileData
+{
+    if(selectFileData.result != sfrNormal)
+    {
+        // Значит какой-то другой обработчик до нас уже что-то сделал
+        if(selectFileData.result == sfrSelected && selectFileData.filesCount == 1)
+        {
+            // И при этом он не отменил операцию, и указал один файл
+            // Запомним его, чтобы попытаться потом открыть
+            selectedFileName = selectFileData.selectedFile(0)
+        }
+        return
+    }
+    // Сами получим имя файла для сохранения, чтобы знать, что открывать
+    // ВАЖНО. Событие "onSelectFile" генерится как при системных запросах 1С,
+    // так и при использовании в скриптах метода ДиалогВыбораФайла::Выбрать,
+    // кроме тех случаев, когда ДиалогВыбораФайла::Выбрать используется в обработчиках
+    // события onSelectFile, дабы избежать зацикливания.
+	var selDlg = v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Сохранение);
+	selDlg.Заголовок = selectFileData.title.length ? selectFileData.title : "Сохранить во внешний отчет/обработку"
+	selDlg.ПолноеИмяФайла = selectFileData.initialFileName
+	selDlg.Каталог = selectFileData.folder
+	
+    for (var i = 0 ; i < selectFileData.filtersCount; i++) {
+        filterVal = selectFileData.filterVal(i)
+        selDlg.Фильтр += selectFileData.filterDescr(i)+" ("+filterVal+")|"+filterVal + "|"
+    }
+	if(!selDlg.Выбрать())
+	    selectFileData.result = sfrCanceled
+	else
+	{
+	    selectedFileName = selDlg.ПолноеИмяФайла
+        selectFileData.addSelectedFile(selectedFileName)
+	    selectFileData.result = sfrSelected
+    }
 }
 
 var Text = '00000000-0000-0000-0000-000000000000' // простой текст
