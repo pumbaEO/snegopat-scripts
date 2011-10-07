@@ -3,6 +3,7 @@ $uname extfiles
 $dname Внешние файлы
 $addin global
 $addin stdcommands
+$addin stdlib
 
 /* Скрипт для открытия внешних файлов для Снегопата
  * Автор		: Пушин Владимир, vladnet@gmail.com
@@ -186,47 +187,12 @@ function КпШапкаЗакрыть(Элемент)
 	мФормаСкрипта.Закрыть()
 }
 
-function openfile(ИмяФайлаПолное)
-{
-    if (ИмяФайлаПолное.match(/ssf$/)) 
-    {
-        designScriptForm(ИмяФайлаПолное);
-        return;
-    }
-
-	// Подготовим наше значение для MRU - списка
-	var pathToFile = ИмяФайлаПолное
-	var docKind = '00000000-0000-0000-0000-000000000000'
-	var mruItem = ЗначениеИзСтрокиВнутр('{"#",36973550-6bbb-11d5-bf72-0050bae2bc79,\n' +
-	'{1,\n' +
-	'{"file://' + pathToFile + '",0},' + docKind + '}\n' +
-	'}')
-
-	// Получим текущий список MRU из настроек
-	var mru = profileRoot.getValue("App/MRUFileList")
-	// Если там уже есть наше значение, удалим его
-	var hasInMru = mru.НайтиПоЗначению(mruItem)
-	if(hasInMru)
-	   mru.Удалить(hasInMru)
-	// Если список полон, удалим последний элемент
-	if(mru.Количество() == 8)
-	   mru.Удалить(7)
-	// Вставим значение для нашего файла в начало списка
-	mru.Вставить(0, mruItem)
-	// Сохраним MRU-список обратно в настройки
-	profileRoot.setValue("App/MRUFileList", mru)
-	// И зашлем команду
-	var cmd = addins.byUniqueName("stdcommands").object
-	cmd.Frame.RecentFile.getState()
-	cmd.Frame.RecentFile.send(0)
-}
-
 function ДеревоФайловПередНачаломИзменения(пЭлемент, пОтказ)
 {
 	пОтказ.val = true
 	лТекСтрока=пЭлемент.val.ТекущаяСтрока
 	if(лТекСтрока.ЭтоКаталог) return
-	openfile(лТекСтрока.ИмяФайла)
+	stdlib.openFileIn1C(лТекСтрока.ИмяФайла)
 }
 
 function ДеревоФайловПриВыводеСтроки(пЭлемент, пОформлениеСтроки, пДанныеСтроки)
