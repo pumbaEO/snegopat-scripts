@@ -2,6 +2,9 @@
 $uname queryParamsExtractor
 $dname Query Parameters Extractor
 
+// $addin global
+// global.connectGlobals(SelfScript)
+
 /* ======================================================================
 
 AUTHOR: Василий Фролов aka Палыч, palytsh@mail.ru
@@ -42,11 +45,11 @@ function macrosExtractParameters(){
 	
 	var paramsText = "";
 	for (var i = 0; i < qParams.length; i++){
-		paramsText += '\r\n' + offset + qVarName +
+		paramsText += '\n' + offset + qVarName + //'\r\n'
 			'.УстановитьПараметр("' + qParams[i] + '", );';
 	};
 	
-    selText += paramsText + '\r\n';
+    selText += paramsText + '\n'; //'\r\n';
     w.selectedText = selText;
         //w.document.ВставитьСтроку(sel.endRow, paramsText + '\r\n');
 
@@ -56,16 +59,39 @@ function macrosExtractParameters(){
 function getQueryParams(str){
 	var matches = str.match(/&([^*\s+-/\(\)\{\}]+)/ig);
 	if (!matches) return null;
+
+        if (!Array.prototype.indexOf) {
+          Array.prototype.indexOf = function (obj, fromIndex) {
+            if (fromIndex == null) {
+                fromIndex = 0;
+            } else if (fromIndex < 0) {
+                fromIndex = Math.max(0, this.length + fromIndex);
+            }
+            for (var i = fromIndex, j = this.length; i < j; i++) {
+                if (this[i] === obj)
+                    return i;
+            }
+            return -1;
+          };
+        }
 	
 	var res = new Array();
+    var arrUpperCase = new Array();
 	for (var i = 0; i < matches.length; i++){
-		res.push(matches[i].replace(/^&/ig, ""));
+        param = matches[i].replace(/^&/ig, "");
+        paramU = param.toUpperCase();
+        if(-1 == arrUpperCase.indexOf(paramU)){
+            res.push(param);
+            arrUpperCase.push(paramU);
+        }
+                //res.push(matches[i].replace(/^&/ig, ""));
 	}
 	return res;
 }
 
 function getQueryVarName(str){
-	var matches = str.match(/([^\s]+)\s*=\s*новый\s*запрос/ig);
+	var matches = str.match(/([^\.\s]+)((\.текст\s*=\s*)|(\s*=\s*новый\s*запрос))/ig); // или "Имя.Текст =" или "Имя = Новый Запрос"
+        //var matches = str.match(/([^\s]+)\s*=\s*новый\s*запрос/ig);
 	var res = !matches ? "" : RegExp.$1.replace(/\s*/ig, "");
 	return res;
 }
