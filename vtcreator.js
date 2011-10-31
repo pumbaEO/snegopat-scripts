@@ -40,7 +40,7 @@ function macrosСоздатьТаблицуЗначений()
     {
         // Надо получить отступ
         var sel = txtWnd.getSelection()
-        var textLine = txtWnd.document.ПолучитьСтроку(sel.beginRow)
+        var textLine = txtWnd.line(sel.beginRow)
         // Курсор может быть за концом строки
         while(textLine.length < sel.beginCol - 1)	
             textLine += ' '
