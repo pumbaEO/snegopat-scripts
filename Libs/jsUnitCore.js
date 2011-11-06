@@ -13,12 +13,42 @@ $addin global
  * @author Edward Hieatt, edward@jsunit.net, http://www.jsunit.net
  */
 
+ /**
+ * Порт библиотеки jsUnitCore.js (http://jsunit.net) для проекта "Снегопат" (http://snegopat.ru).
+ * Автор порта: Александр Кунташов, kuntashov@gmail.com 
+ */
+
 var JsUnit = {};
 
-function GetInstance()
+//Snegopat.
+// Обход проблемы перехвата в вызывающем методе исключений, 
+// брошенных в методе другого скрипта.
+var _callerErrorHandler = null;
+
+function SetErrorHandler(errorHandler)
 {
-	return JsUnit;
+    if (_callerErrorHandler && errorHandler && _callerErrorHandler != errorHandler)
+    {
+         /* Пока поддерживаем только одного подписчика на ошибки. 
+         Чтобы исключить случайные выстрелы в ногу, исключим любые  
+         другие попытки установки обработчика. */
+        warn("jsUnitCore.js::GetInsance(): только один скрипт может установить обработчик ошибок!");
+        
+    }
+    else 
+    {        
+        _callerErrorHandler = errorHandler;
+    }
 }
+
+function SnegopatThrowException(exception)
+{
+    if (_callerErrorHandler)
+        _callerErrorHandler.call(null, exception);
+
+    throw exception;
+}
+/////Snegopat.
 
 /**
  * The JsUnit version
@@ -85,9 +115,9 @@ JsUnit._fixTop = function() {
     }
 }
 
-//+kuntashov
+//Snegopat.
 //JsUnit._fixTop();
-//-kuntashov
+/////Snegopat.
 
 /**
  * @param Any object
@@ -220,7 +250,8 @@ JsUnit._checkNotNull = function(aVar) {
  */
 JsUnit._assert = function(comment, booleanValue, failureMessage) {
     if (!booleanValue)
-        throw new JsUnit.Failure(comment, failureMessage);
+        SnegopatThrowException(new JsUnit.Failure(comment, failureMessage));
+        //throw new JsUnit.Failure(comment, failureMessage);
 }
 
 /**
@@ -235,7 +266,8 @@ function assert() {
     var booleanValue = JsUnit._nonCommentArg(1, 1, arguments);
 
     if (typeof(booleanValue) != 'boolean')
-        throw new JsUnit.AssertionArgumentError('Bad argument to assert(boolean)');
+        SnegopatThrowException(new JsUnit.AssertionArgumentError('Bad argument to assert(boolean)'));
+        //throw new JsUnit.AssertionArgumentError('Bad argument to assert(boolean)');
 
     JsUnit._assert(JsUnit._commentArg(1, arguments), booleanValue === true, 'Call to assert(boolean) with false');
 }
@@ -473,8 +505,8 @@ function assertEvaluatesToFalse() {
  */
 function assertHTMLEquals() {
     
-    //+kuntashov
-    JsUnit.fail("Not supported for Snegopat");
+    //Snegopat.
+    JsUnit.error("assertHTMLEquals() не поддерживается в Снегопате.");
     
     //JsUnit._validateArguments(2, arguments);
     //var var1 = JsUnit._nonCommentArg(1, 2, arguments);
@@ -483,7 +515,7 @@ function assertHTMLEquals() {
     //var var2Standardized = JsUnit.Util.standardizeHTML(var2);
 
     //JsUnit._assert(JsUnit._commentArg(2, arguments), var1Standardized === var2Standardized, 'Expected ' + JsUnit._displayStringForValue(var1Standardized) + ' but was ' + JsUnit._displayStringForValue(var2Standardized));
-    //-kuntashov
+    /////Snegopat.
 }
 
 /**
@@ -695,8 +727,9 @@ function setUp() {
 function tearDown() {
 }
 
+//Snegopat.
 // TODO: реализовать полноценный трейсер/логгер.
-function stubTrace(message, value, marker)
+function SnegopatTrace(message, value, marker)
 {
     var text = message;
     
@@ -705,21 +738,22 @@ function stubTrace(message, value, marker)
         
     Message(text, marker);
 }
+/////Snegopat.
 
 function warn() {
-    stubTrace(arguments[0], arguments[1], mExc1);
+    SnegopatTrace(arguments[0], arguments[1], mExc1);
 }
 
 function inform() {
-    stubTrace(arguments[0], arguments[1], mInfo);
+    SnegopatTrace(arguments[0], arguments[1], mInfo);
 }
 
 function info() {
-    inform(arguments[0], arguments[1]);
+    SnegopatTrace(arguments[0], arguments[1]);
 }
 
 function debug() {
-    stubTrace(arguments[0], arguments[1], mNone);
+    SnegopatTrace(arguments[0], arguments[1], mNone);
 }
 
 /**
@@ -800,9 +834,11 @@ JsUnitTestSuite.prototype.clone = function () {
 }
 
 //For legacy support - JsUnitTestSuite used to be called jsUnitTestSuite
-//+kuntashov
+//Snegopat. 
+// По неизвестным мне причинам эта конструкция приводит к тому, что
+// движок Снегопата перестает видеть макросы.
 //var jsUnitTestSuite = JsUnitTestSuite;
-//-kuntashov
+/////Snegopat.
 
 function setJsUnitTracer(aJsUnitTracer) {
     top.tracer = aJsUnitTracer;
@@ -818,9 +854,9 @@ JsUnit._newOnLoadEvent = function() {
 
 JsUnit._setOnLoad = function(windowRef, onloadHandler) {
        
-    //+kuntashov
-    JsUnit.fail("Not Supported for Snegopat");
-    //-kuntashov
+    //Snegopat.
+    JsUnit.fail("_setOnLoad() не поддерживается в Снегопате.");
+    /////Snegopat.
     
     /*
     var isKonqueror = navigator.userAgent.indexOf('Konqueror/') != -1;
@@ -863,12 +899,12 @@ JsUnit.Util = {};
  * @param html
  */
 JsUnit.Util.standardizeHTML = function(html) {
-    //+kuntashov
-    JsUnit.fail("Not supported for Snegopat");
+    //Snegopat.
+    JsUnit.fail("standardizeHTML() не поддерживается в Снегопате.");
     //var translator = document.createElement("DIV");
     //translator.innerHTML = html;
     //return JsUnit.Util.trim(translator.innerHTML);
-    //-kuntashov    
+    /////Snegopat.
 }
 
 /**
@@ -1015,8 +1051,8 @@ JsUnit.Util.inherit = function(superclass, subclass) {
     subclass.prototype = new x();
 }
 
-//+kuntashov
+//Snegopat.
 //JsUnit._setOnLoad(window, JsUnit._newOnLoadEvent);
-//-kuntashov
+/////Snegopat.
 
 

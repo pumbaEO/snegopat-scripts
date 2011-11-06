@@ -1,9 +1,10 @@
 ﻿$engine JScript
 $uname testExampleTestCase
 $dname Пример тест-кейса
+$addin global
 $addin stdlib
 
-var u = stdlib.require('jsUnitCore.js').object.GetInstance();
+var u = stdlib.require('jsUnitCore.js');
  
 function setUp()
 {

@@ -6,22 +6,22 @@ $addin stdlib
 
 global.connectGlobals(SelfScript)
 
-var jsUnit = stdlib.require("jsUnitCore.js").object.GetInstance();
-//var jsUnit = (new ActiveXObject("Snegopat.jsUnitCore")).GetInstance(Designer);
+var jsUnitCore = stdlib.require("jsUnitCore.js");
 
-(new TestRunner());
+/* Анонимный обработчик, который мы передаем, позволяет обойти проблему 
+с отловом исключений, брошенных в контексте скрипта-библиотеки. */
+jsUnitCore.SetErrorHandler(function (exception) { throw exception; });
 
-function Test(addin, testName)
-{
-    this.addin = addin;
-    this.fullTestName = addin.uniqueName + "::" + testName;
-    this.testName = testName;
-    this.exeption = null;
-    this.message = "";
-}
+OpenTestRunner();
+
+////////////////////////////////////////////////////////////////////////////////////////
+//// TestRunner
+////
 
 function TestRunner()
 {
+    TestRunner._instance = this;
+    
     this.form = loadScriptForm("scripts\\DevTools\\testrunner.ssf", this)
     this.form.Открыть();
     
@@ -46,6 +46,8 @@ function TestRunner()
         Red: this.form.ЭлементыФормы.ПолеКартинкиКрасный.Картинка
     }                  
 }
+    
+
 
 TestRunner.prototype.unloadAllTests = function ()
 {
@@ -61,7 +63,7 @@ TestRunner.prototype.unloadAllTests = function ()
         }
         catch (e)
         {
-            jsUnit.warn("Ошибка выгрузки тест-кейса " + fullPath);
+            jsUnitCore.warn("Ошибка выгрузки тест-кейса " + fullPath);
         }
     }
     
@@ -94,43 +96,6 @@ TestRunner.prototype.isAddinFile = function(Файл)
     return true;
 }
 
-function FindFiles(path, mask)
-{
-    // Из snegopat.js.
-    // TODO: Перенести в библиотеку Utils.
-	// На NT-системах порядок выдачи файлов в FindFirstFile/FindNextFile неопределен, те они НЕОБЯЗАТЕЛЬНО
-	// выдаются отсортированными по именам, поэтому на разных машинах могут выдаваться в разном порядке.
-	// Кроме того, каталоги и файлы могут выдаваться вперемешку.
-	// Также в документации к НайтиФайлы нет никакого упоминания о порядке выдачи файлов.
-	// В случае зависимости одного стандартного скрипта от другого (например, snegopatwnd.js при
-	// загрузке сразу обращается к global_context.js) это может привести к проблемам.
-	// Поэтом примем такой порядок загрузки:
-	// Сначала загружаются все подкатологи, отсортированные по имени.
-	// Затем загржаются все файлы, отсортированные по имени.
-    
-    var allFiles = new Array();
-    var files = new Array();
-   
-    var filesArray = new Enumerator(globalContext("{22A21030-E1D6-46A0-9465-F0A5427BE011}").НайтиФайлы(path.replace(/\\/g, '/'), "*", false));   
-    for ( ; !filesArray.atEnd(); filesArray.moveNext())
-    {
-        var file = filesArray.item();
-        (file.ЭтоКаталог() ? allFiles : files).push(file);
-    }
-
-    var sortByNames = function (i1, i2) { 
-        return i1.Имя.toLowerCase().localeCompare(i2.Имя.toLowerCase()) 
-    };
-
-    allFiles.sort(sortByNames);
-    files.sort(sortByNames);
-
-    for (var i=0; i<files.length; i++)
-        allFiles.push(files[i]);
-        
-    return allFiles;
-}
-
 TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
 {
     var files = FindFiles(path, "*", false);
@@ -148,17 +113,61 @@ TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
         {
             try
             {
-                var testAddin = stdlib.require(Файл.ПолноеИмя);
-                this.addTestCase(parentNode, testAddin);
+                var testAddin = this.loadTestAddin(Файл.ПолноеИмя);
+                if (testAddin)
+                    this.addTestCase(parentNode, testAddin);
             }
             catch (e)
             {
-                jsUnit.warn("Ошибка загрузки скрипта: " + Файл.ПолноеИмя);
+                jsUnitCore.warn("Ошибка загрузки скрипта: " + Файл.ПолноеИмя);
                 // TODO: выводить информацию об ошибке подробнее.
             }
         }
             
     }        
+}
+
+TestRunner.prototype.loadTestAddin = function(path)
+{
+    var fullLoadString = "script:" + path;
+    
+    var testAddin = addins.byFullPath(fullLoadString);
+    
+    if (!testAddin)
+    {
+        // Тест-аддины будем подгружать в группу "Подгружаемые библиотеки".
+        
+        var libGroupName = "Подгружаемые библиотеки";        
+        var libGroup = addins.root.child;               
+        var libFound = false;
+        
+        while (libGroup)
+        {
+            if (libGroup.name == libGroupName)
+            {
+                libFound = true;
+                break
+            }
+            
+            libGroup = libGroup.next;
+        }
+        
+        if (!libFound)
+            libGroup = addins.root.addGroup(libGroupName);
+            
+        // Загружаем тестовый аддин.
+        try 
+        {
+           testAddin = addins.loadAddin(fullLoadString, libGroup);
+        }
+        catch(e)
+        {
+            jsUnitCore("TestRunner::loadTestAddin: Тестовый скрипт не загружен: " + path);
+            return null;
+        }
+    }
+    
+    return testAddin;
 }
 
 TestRunner.prototype.addTestGroup = function(parentNode, Файл)
@@ -221,7 +230,7 @@ TestRunner.prototype.runTest = function (СтрокаТестов)
 {   
     var Состояние = this.STATE_SUCCESS;
     
-    if (jsUnit._trueTypeOf(СтрокаТестов.object) == 'Test')
+    if (jsUnitCore.JsUnit._trueTypeOf(СтрокаТестов.object) == 'Test')
     {
         Состояние = this.executeTestFunction(СтрокаТестов);
     }
@@ -273,18 +282,20 @@ TestRunner.prototype.setTestStatus = function(test, excep)
             //this.errorCount++;
             test.status = this.STATE_FAILURE;
             //test.testPage.errorCount++;
-            message += ' провалился';
+            message += ' остановлен из-за ошибки в нем (exception or error)';
         }
         else 
         {
             //this.failureCount++;
             test.status = this.STATE_FAILURE;
             //test.testPage.failureCount++;
-            message += ' остановлен по ошибке';
+            message += ' провалился (assertion failed)';
         }
     }
 
     test.message = message;
+    
+    Message(message);    
     
     return test.status;
 }
@@ -304,11 +315,12 @@ TestRunner.prototype.executeTestFunction = function(СтрокаТеста)
     
     try 
     {
-        if (testAddin.setUp !== jsUnit.JSUNIT_UNDEFINED_VALUE)
+        if (testAddin.setUp !== jsUnitCore.JSUNIT_UNDEFINED_VALUE)
             testAddin.setUp();
             
-       testAddin.invokeMacros(theTest.testName);
-        //eval("testAddin.object." + testFunctionName + "()");        
+       //testAddin.invokeMacros(theTest.testName);
+       //eval("testAddin.object." + testFunctionName + "()");        
+       testAddin.object[testFunctionName].call(null);
     }
     catch (e1) 
     {
@@ -318,7 +330,7 @@ TestRunner.prototype.executeTestFunction = function(СтрокаТеста)
     {
         try 
         {
-            if (testAddin.tearDown !== jsUnit.JSUNIT_UNDEFINED_VALUE)
+            if (testAddin.tearDown !== jsUnitCore.JSUNIT_UNDEFINED_VALUE)
                 testAddin.tearDown();
         }
         catch (e2) 
@@ -348,7 +360,7 @@ TestRunner.prototype.getDefaultTestsDir = function()
 TestRunner.prototype.КнопкаЗагрузитьТестыНажатие = function(Элемент)
 {
 
-debugger;
+//debugger;
 
     var ВыборКаталога = v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.ВыборКаталога)
     ВыборКаталога.ПолноеИмяФайла = ""
@@ -392,7 +404,63 @@ TestRunner.prototype.тпДеревоТестовПриВыводеСтроки 
         
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//// ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
+////
 
+function FindFiles(path, mask)
+{
+    // Из snegopat.js.
+    // TODO: Перенести в библиотеку Utils.
+	// На NT-системах порядок выдачи файлов в FindFirstFile/FindNextFile неопределен, те они НЕОБЯЗАТЕЛЬНО
+	// выдаются отсортированными по именам, поэтому на разных машинах могут выдаваться в разном порядке.
+	// Кроме того, каталоги и файлы могут выдаваться вперемешку.
+	// Также в документации к НайтиФайлы нет никакого упоминания о порядке выдачи файлов.
+	// В случае зависимости одного стандартного скрипта от другого (например, snegopatwnd.js при
+	// загрузке сразу обращается к global_context.js) это может привести к проблемам.
+	// Поэтом примем такой порядок загрузки:
+	// Сначала загружаются все подкатологи, отсортированные по имени.
+	// Затем загржаются все файлы, отсортированные по имени.
+    
+    var allFiles = new Array();
+    var files = new Array();
+   
+    var filesArray = new Enumerator(globalContext("{22A21030-E1D6-46A0-9465-F0A5427BE011}").НайтиФайлы(path.replace(/\\/g, '/'), "*", false));   
+    for ( ; !filesArray.atEnd(); filesArray.moveNext())
+    {
+        var file = filesArray.item();
+        (file.ЭтоКаталог() ? allFiles : files).push(file);
+    }
+
+    var sortByNames = function (i1, i2) { 
+        return i1.Имя.toLowerCase().localeCompare(i2.Имя.toLowerCase()) 
+    };
+
+    allFiles.sort(sortByNames);
+    files.sort(sortByNames);
+
+    for (var i=0; i<files.length; i++)
+        allFiles.push(files[i]);
+        
+    return allFiles;
+}
+
+function Test(addin, testName)
+{
+    this.addin = addin;
+    this.fullTestName = addin.uniqueName + "::" + testName;
+    this.testName = testName;
+    this.exeption = null;
+    this.message = "";
+}
+
+function OpenTestRunner()
+{
+    if (!TestRunner._instance)
+        new TestRunner();
+    
+    return TestRunner._instance;
+}
 
 
 
