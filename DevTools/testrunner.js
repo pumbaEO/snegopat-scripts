@@ -108,22 +108,39 @@ TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
         {
             var newNode = this.addTestGroup(parentNode, Файл);
             this.walkFilesAndLoad(Файл.ПолноеИмя, newNode);
+            
+            // Пустые каталоги не показываем в дереве тестов.
+            if (newNode.Rows.Count() == 0)
+                parentNode.Rows.Delete(newNode);
         }
         else if (this.isAddinFile(Файл))
         {
             try
             {
                 var testAddin = this.loadTestAddin(Файл.ПолноеИмя);
+                
                 if (testAddin)
-                    this.addTestCase(parentNode, testAddin);
+                {
+                    var newNode = this.addTestCase(parentNode, testAddin);
+                                                                                
+                    if (newNode.Rows.Count() == 0)
+                    {
+                        jsUnitCore.warn("Скрипт не содержит макросов и не будет загружен: " + testAddin.fullPath);
+                        parentNode.Rows.Delete(newNode);
+                            
+                        addins.unloadAddin(testAddin);
+                            
+                        if(!testAddin.uniqueName.length) 
+                            delete testAddin;                            
+                    }
+                }
             }
             catch (e)
             {
                 jsUnitCore.warn("Ошибка загрузки скрипта: " + Файл.ПолноеИмя);
                 // TODO: выводить информацию об ошибке подробнее.
             }
-        }
-            
+        }            
     }        
 }
 
@@ -183,7 +200,7 @@ TestRunner.prototype.addTestGroup = function(parentNode, Файл)
 
 TestRunner.prototype.addTestCase = function(parentNode, testAddin)
 {
-    var newNode = parentNode.Строки.Добавить();
+    var newNode = parentNode.Rows.Add();
     newNode.НазваниеТеста = testAddin.uniqueName;
     newNode.ВремяВыполнения = 0;
     newNode.ПолныйПуть = testAddin.fullPath;
@@ -197,7 +214,7 @@ TestRunner.prototype.addTestCase = function(parentNode, testAddin)
     for(var m in macroses)
         if (macroses[m].match(/^Test/))
             this.addTest(newNode, macroses[m], testAddin);
-    
+        
     return newNode;
 }
 
@@ -230,7 +247,7 @@ TestRunner.prototype.runTest = function (СтрокаТестов)
 {   
     var Состояние = this.STATE_SUCCESS;
     
-    if (jsUnitCore.JsUnit._trueTypeOf(СтрокаТестов.object) == 'Test')
+    if (СтрокаТестов.object && jsUnitCore.JsUnit._trueTypeOf(СтрокаТестов.object) == 'Test')
     {
         Состояние = this.executeTestFunction(СтрокаТестов);
     }
