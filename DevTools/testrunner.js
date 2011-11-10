@@ -46,8 +46,6 @@ function TestRunner()
         Red: this.form.ЭлементыФормы.ПолеКартинкиКрасный.Картинка
     }                  
 }
-    
-
 
 TestRunner.prototype.unloadAllTests = function ()
 {
@@ -55,19 +53,10 @@ TestRunner.prototype.unloadAllTests = function ()
     
     for (var i=0; i<this.loadedTestAddins.length; i++)
     {
-        var fullPath = this.loadedTestAddins[i].fullPath;
-        
-        try
-        {
+        if (this.loadedTestAddins[i].uniqueName)
             addins.unloadAddin(this.loadedTestAddins[i]);
-        }
-        catch (e)
-        {
-            jsUnitCore.warn("Ошибка выгрузки тест-кейса " + fullPath);
-        }
     }
     
-   // delete this.loadedTestAddins;
     this.loadedTestAddins = [];
 }
 
@@ -98,7 +87,10 @@ TestRunner.prototype.isAddinFile = function(Файл)
 
 TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
 {
-    var files = FindFiles(path, "*", false);
+
+    var f = v8New("File", path);
+
+    var files = f.IsFile() ? [ f ] : FindFiles(path, "*", false);
     
     for (var i=0; i<files.length; i++)
     {
@@ -132,6 +124,10 @@ TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
                             
                         if(!testAddin.uniqueName.length) 
                             delete testAddin;                            
+                    }
+                    else 
+                    {
+                        this.loadedTestAddins.push(testAddin);
                     }
                 }
             }
@@ -374,17 +370,26 @@ TestRunner.prototype.getDefaultTestsDir = function()
 
 TestRunner.prototype.КнопкаЗагрузитьТестыНажатие = function(Элемент)
 {
-
-//debugger;
-
-    var ВыборКаталога = v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.ВыборКаталога)
-    ВыборКаталога.ПолноеИмяФайла = ""
-    ВыборКаталога.Заголовок = "Выберите каталог c тестами"
+    var ВыборКаталога = v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.ВыборКаталога);
+    ВыборКаталога.ПолноеИмяФайла = "";
+    ВыборКаталога.Заголовок = "Выберите каталог c тестами";
     ВыборКаталога.Каталог = this.getDefaultTestsDir();
         
     if (ВыборКаталога.Выбрать())
     {
         this.loadTests(ВыборКаталога.Каталог);
+    }
+}
+
+TestRunner.prototype.КнопкаЗагрузитьТестыЗагрузитьТестКейс = function (Элемент)
+{
+    var ВыборФайла = v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Открытие);
+    ВыборФайла.Заголовок = "Выберите тестовый скрипт";
+    ВыборФайла.Каталог = this.getDefaultTestsDir();
+        
+    if (ВыборФайла.Выбрать())
+    {
+        this.loadTests(ВыборФайла.ПолноеИмяФайла);
     }
 }
 
