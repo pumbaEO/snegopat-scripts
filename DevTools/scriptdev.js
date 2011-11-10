@@ -320,3 +320,8 @@ function lbScriptAboutНажатие()
  * ********************************************************* */
 
  InitScriptAndRun();
+
+function macrostestThrow()
+{
+	throw "exception"
+}
