@@ -332,11 +332,9 @@ TestRunner.prototype.executeTestFunction = function(СтрокаТеста)
     
     try 
     {
-        if (testAddin.setUp !== jsUnitCore.JSUNIT_UNDEFINED_VALUE)
-            testAddin.setUp();
+       if (testAddin.object.setUp !== jsUnitCore.JSUNIT_UNDEFINED_VALUE)
+            testAddin.object.setUp();
             
-       //testAddin.invokeMacros(theTest.testName);
-       //eval("testAddin.object." + testFunctionName + "()");        
        testAddin.object[testFunctionName].call(null);
     }
     catch (e1) 
@@ -347,8 +345,8 @@ TestRunner.prototype.executeTestFunction = function(СтрокаТеста)
     {
         try 
         {
-            if (testAddin.tearDown !== jsUnitCore.JSUNIT_UNDEFINED_VALUE)
-                testAddin.tearDown();
+            if (testAddin.object.tearDown !== jsUnitCore.JSUNIT_UNDEFINED_VALUE)
+                testAddin.object.tearDown();
         }
         catch (e2) 
         {
