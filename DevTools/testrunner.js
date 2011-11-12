@@ -79,15 +79,21 @@ TestRunner.prototype.loadTests = function(path)
         this.form.ЭлементыФормы.тпДеревоТестов.Развернуть(this.allTests.Строки.Получить(i), true);
 }
 
-TestRunner.prototype.isAddinFile = function(Файл)
+TestRunner.prototype.isTestAddinFile = function(file)
 {
-    // TODO: проверять, аддин ли это по расширению.
+    // Имя тестового скрипта должно начинаться с префикса "test"
+    if (!file.Name.match(/^test/i))
+        return false;
+    
+    // Поддерживаются пока только скрипты.
+    if (!file.Extension.match(/js|vbs/i))
+        return false;
+
     return true;
 }
 
 TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
 {
-
     var f = v8New("File", path);
 
     var files = f.IsFile() ? [ f ] : FindFiles(path, "*", false);
@@ -105,7 +111,7 @@ TestRunner.prototype.walkFilesAndLoad = function(path, parentNode)
             if (newNode.Rows.Count() == 0)
                 parentNode.Rows.Delete(newNode);
         }
-        else if (this.isAddinFile(Файл))
+        else if (this.isTestAddinFile(Файл))
         {
             try
             {
@@ -302,7 +308,7 @@ TestRunner.prototype.setTestStatus = function(test, excep)
             //this.failureCount++;
             test.status = this.STATE_FAILURE;
             //test.testPage.failureCount++;
-            message += ' провалился (assertion failed)';
+            message += " провалился (assertion failed)\n\t" + excep.comment;
         }
     }
 
@@ -361,9 +367,8 @@ TestRunner.prototype.getDefaultTestsDir = function()
 {
     var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
     var f = v8New("Файл", mainFolder + "scripts\\Tests");
-    
     if (f.Существует() && f.ЭтоКаталог())
-        return f.Каталог;
+        return f.ПолноеИмя;
     
     return mainFolder;
 }
