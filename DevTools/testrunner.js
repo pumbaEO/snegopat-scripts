@@ -1,6 +1,7 @@
 ﻿$engine JScript
 $uname TestRunner
 $dname Менеджер юнит-тестов скриптов
+$addin SnegopatMainScript
 $addin global
 $addin stdlib
 
@@ -154,25 +155,8 @@ TestRunner.prototype.loadTestAddin = function(path)
     
     if (!testAddin)
     {
-        // Тест-аддины будем подгружать в группу "Подгружаемые библиотеки".
-        
-        var libGroupName = "Подгружаемые библиотеки";        
-        var libGroup = addins.root.child;               
-        var libFound = false;
-        
-        while (libGroup)
-        {
-            if (libGroup.name == libGroupName)
-            {
-                libFound = true;
-                break
-            }
-            
-            libGroup = libGroup.next;
-        }
-        
-        if (!libFound)
-            libGroup = addins.root.addGroup(libGroupName);
+        // Тест-аддины будем подгружать в группу "Подгружаемые библиотеки".        
+        libGroup = SnegopatMainScript.AddinsTreeGroups.LoadedLibs;
             
         // Загружаем тестовый аддин.
         try 
@@ -305,10 +289,12 @@ TestRunner.prototype.setTestStatus = function(test, excep)
         }
         else 
         {
+            //debugger;
             //this.failureCount++;
             test.status = this.STATE_FAILURE;
             //test.testPage.failureCount++;
-            message += " провалился (assertion failed)\n\t" + excep.comment;
+            message += " провалился (assertion failed)\n\t" + excep.comment 
+                + "\n\t" + excep.jsUnitMessage;
         }
     }
 
