@@ -293,8 +293,9 @@ TestRunner.prototype.setTestStatus = function(test, excep)
             //this.failureCount++;
             test.status = this.STATE_FAILURE;
             //test.testPage.failureCount++;
-            message += " провалился (assertion failed)\n\t" + excep.comment 
-                + "\n\t" + excep.jsUnitMessage;
+            message += " провалился (assertion failed)" 
+                + (excep.comment ? "\n\t" + excep.comment : "") 
+                + (excep.jsUnitMessage ? "\n\t" + excep.jsUnitMessage : "");
         }
     }
 
