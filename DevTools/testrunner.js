@@ -50,7 +50,7 @@ function TestRunner()
 TestRunner.prototype.unloadAllTests = function ()
 {
     this.allTests.Строки.Очистить();
-    
+
     for (var i=0; i<this.loadedTestAddins.length; i++)
     {
         if (this.loadedTestAddins[i].uniqueName)
@@ -429,6 +429,10 @@ TestRunner.prototype.тпДеревоТестовПриВыводеСтроки 
         
 }
 
+TestRunner.prototype.ПриЗакрытии = function ()
+{
+    this.unloadAllTests();    
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 //// ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
 ////
