@@ -1,8 +1,28 @@
 ﻿$engine JScript
 $uname configCaption 
 $dname Заголовок окна Конфигуратора
+$addin global
 
-addins.byUniqueName("global").object.connectGlobals(SelfScript)
+global.connectGlobals(SelfScript)
+
+// Интервал проверки редактируемых файлов.
+var checkInterval = 1; 
+
+// Время последней проверки
+var lastCheckTime = new Date().getTime() / 1000;
+
+events.connect(Designer, "onIdle", SelfScript.self)
+function onIdle()
+{
+    var curTime = new Date().getTime() / 1000;
+    if (curTime - lastCheckTime > checkInterval) 
+    {
+        try{
+            УстановитьЗаголовокКонфигуратораСоСнегопатом()
+        }catch(e){}
+    }
+    return false;
+}
 
 УстановитьЗаголовокКонфигуратораСоСнегопатом()
 
