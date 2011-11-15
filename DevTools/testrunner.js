@@ -22,6 +22,10 @@ OpenTestRunner();
 function TestRunner()
 {
     TestRunner._instance = this;
+
+    this.errorCount = 0;
+    this.successCount = 0;
+    this.failureCount = 0;
     
     this.form = loadScriptForm("scripts\\DevTools\\testrunner.ssf", this)
     this.form.Открыть();
@@ -48,6 +52,47 @@ function TestRunner()
     }                  
 }
 
+TestRunner.prototype.resetCounters = function()
+{
+    this.errorCount = 0;
+    this.successCount = 0;
+    this.failureCount = 0;
+    
+    this.updateTotals();
+}
+
+TestRunner.prototype.updateTotals = function ()
+{
+    this.form.ЭлементыФормы.КоличествоТестовВсего.Значение = this.testsCount;
+    this.form.ЭлементыФормы.КоличествоУспешныхТестов.Значение = this.successCount;
+    this.form.ЭлементыФормы.КоличествоПроваленныхТестов.Значение = this.failureCount;
+}
+
+TestRunner.prototype.initProgressBar = function ()
+{
+    this.switchProgressBar(true);
+    this.form.ЭлементыФормы.ИндикаторВыполнения.МинимальноеЗначение = 0;
+    this.form.ЭлементыФормы.ИндикаторВыполнения.МаксимальноеЗначение = this.testsCount;
+    this.form.ЭлементыФормы.ИндикаторВыполнения.Шаг = 1;
+    this.form.ЭлементыФормы.ИндикаторВыполнения.Значение = 0;    
+}
+
+TestRunner.prototype.progressBarDoStep = function ()
+{
+    this.form.ЭлементыФормы.ИндикаторВыполнения.Значение = this.form.ЭлементыФормы.ИндикаторВыполнения.Значение + 1;
+}
+
+TestRunner.prototype.switchProgressBar = function (progressBarVisible)
+{
+    this.form.ЭлементыФормы.НадписьВсего.Видимость = !progressBarVisible;
+    this.form.ЭлементыФормы.КоличествоТестовВсего.Видимость = !progressBarVisible;
+    this.form.ЭлементыФормы.НадписьУспешно.Видимость = !progressBarVisible;
+    this.form.ЭлементыФормы.КоличествоУспешныхТестов.Видимость = !progressBarVisible;
+    this.form.ЭлементыФормы.НадписьПровалено.Видимость = !progressBarVisible;
+    this.form.ЭлементыФормы.КоличествоПроваленныхТестов.Видимость = !progressBarVisible;
+    this.form.ЭлементыФормы.ИндикаторВыполнения.Видимость = !!progressBarVisible;
+}
+
 TestRunner.prototype.unloadAllTests = function ()
 {
     this.allTests.Строки.Очистить();
@@ -67,6 +112,8 @@ TestRunner.prototype.loadTests = function(path)
     
     this.unloadAllTests();
 
+    this.testsCount = 0;
+    
     this.walkFilesAndLoad(path, this.allTests);
     
     if (this.allTests.Строки.Количество() == 0)
@@ -78,6 +125,8 @@ TestRunner.prototype.loadTests = function(path)
     // Развернем все уровни дерева.
     for(var i=0; i<this.allTests.Строки.Количество(); i++)
         this.form.ЭлементыФормы.тпДеревоТестов.Развернуть(this.allTests.Строки.Получить(i), true);
+        
+    this.updateTotals();
 }
 
 TestRunner.prototype.isTestAddinFile = function(file)
@@ -193,9 +242,7 @@ TestRunner.prototype.addTestCase = function(parentNode, testAddin)
     newNode.Состояние = this.STATE_NOT_RUN;
     newNode.object = testAddin;
 
-    /* Добавим тест-методы.
-     * Тест-метод - это макросы с именами вида macrosTestИмяТеста.
-     */
+    // Добавим тест-методы. Тест-метод - это макросы с именами вида macrosTestИмяТеста.
     var macroses = new VBArray(testAddin.macroses()).toArray();
     for(var m in macroses)
         if (macroses[m].match(/^Test/))
@@ -212,11 +259,14 @@ TestRunner.prototype.addTest = function(parentNode, testName, testAddin)
     newNode.ПолныйПуть = testAddin.fullPath;
     newNode.Состояние = this.STATE_NOT_RUN;
     newNode.object = new Test(testAddin, testName);    
+    
+    this.testsCount++;
+    
     return newNode;
 }
 
 TestRunner.prototype.runAllTests = function()
-{
+{    
     for (var i = 0; i < this.allTests.Строки.Количество(); i++)
     {
         var ТекущаяСтрока = this.allTests.Строки.Получить(i);
@@ -226,7 +276,7 @@ TestRunner.prototype.runAllTests = function()
         ТекущаяСтрока.Состояние = this.runTest(ТекущаяСтрока);
         
         ТекущаяСтрока.ВремяВыполнения = (new Date() - beginTime) / 1000;        
-    }    
+    }     
 }
 
 TestRunner.prototype.runTest = function (СтрокаТестов)
@@ -236,6 +286,7 @@ TestRunner.prototype.runTest = function (СтрокаТестов)
     if (СтрокаТестов.object && jsUnitCore.JsUnit._trueTypeOf(СтрокаТестов.object) == 'Test')
     {
         Состояние = this.executeTestFunction(СтрокаТестов);
+        this.progressBarDoStep();
     }
     else
     {   
@@ -262,10 +313,6 @@ TestRunner.prototype.runTest = function (СтрокаТестов)
     return Состояние;
 }
 
-TestRunner.prototype.setStatus = function(status)
-{
-}
-
 TestRunner.prototype.setTestStatus = function(test, excep)
 {
     var message = 'Тест ' + test.fullTestName + ' ';
@@ -273,7 +320,7 @@ TestRunner.prototype.setTestStatus = function(test, excep)
     if (excep == null) 
     {
         test.status = this.STATE_SUCCESS;
-        //test.testPage.successCount++;
+        this.successCount++;
         message += 'выполнен успешно';
     } 
     else 
@@ -282,21 +329,19 @@ TestRunner.prototype.setTestStatus = function(test, excep)
 
         if (!excep.isJsUnitFailure) 
         {
-            //this.errorCount++;
+            this.errorCount++;
             test.status = this.STATE_FAILURE;
-            //test.testPage.errorCount++;
             message += ' остановлен из-за ошибки в нем (exception or error)';
         }
         else 
         {
             //debugger;
-            //this.failureCount++;
+            this.failureCount++;            
             test.status = this.STATE_FAILURE;
-            //test.testPage.failureCount++;
             message += " провалился (assertion failed)" 
                 + (excep.comment ? "\n\t" + excep.comment : "") 
                 + (excep.jsUnitMessage ? "\n\t" + excep.jsUnitMessage : "");
-        }
+        }        
     }
 
     test.message = message;
@@ -312,10 +357,6 @@ TestRunner.prototype.executeTestFunction = function(СтрокаТеста)
     var testAddin = theTest.addin;
     var testFunctionName = 'macros' + theTest.testName;
      
-//debugger;
-     
-    this.setStatus('Выполняется тест "' + testFunctionName + '"');
-    
     var exception = null;
     var timeBefore = new Date();
     
@@ -387,7 +428,13 @@ TestRunner.prototype.КнопкаЗагрузитьТестыЗагрузить�
 
 TestRunner.prototype.КнопкаВыполнитьВсеТестыНажатие = function (Элемент)
 {
+    this.resetCounters();
+    this.initProgressBar();
+ 
     this.runAllTests();
+    
+    this.updateTotals();
+    this.switchProgressBar(false);    
 }
 
 TestRunner.prototype.КнопкаВыполнитьВыделенный = function (Элемент)
@@ -414,6 +461,12 @@ TestRunner.prototype.тпДеревоТестовПриВыводеСтроки 
     else
         Ячейки.НазваниеТеста.УстановитьКартинку(this.StateIcons.Gray)
         
+}
+                     
+TestRunner.prototype.ПриОткрытии = function ()
+{
+    this.resetCounters();
+    this.switchProgressBar(false);
 }
 
 TestRunner.prototype.ПриЗакрытии = function ()
