@@ -14,7 +14,7 @@ function GetTextWindow() {
     return null;
 }
 
-/** Класс-обертка вокгуг ITextWindow, поддерживающий одновременно 
+/** Класс-обертка вокруг ITextWindow, поддерживающий одновременно 
 интерфейс объектов ITextWindow, так и ТекстовыйДокумент. */
 function _TextWindow(textWindow) {
     this.textWindow = textWindow;
@@ -22,6 +22,10 @@ function _TextWindow(textWindow) {
 
 _TextWindow.prototype.IsActive = function() {
     return (this.textWindow != null);
+}
+
+_TextWindow.prototype.GetHwnd = function () {
+    return this.textWindow.hwnd;
 }
 
 _TextWindow.prototype.GetText = function() {
@@ -257,6 +261,6 @@ _TextWindow.prototype.linesCount = _TextWindow.prototype.LinesCount;
 _TextWindow.prototype.readOnly = _TextWindow.prototype.IsReadOnly;
 _TextWindow.prototype.selectedText = _TextWindow.prototype.GetSelectedText;
 _TextWindow.prototype.text = _TextWindow.prototype.GetText;
-
+_TextWindow.prototype.hwnd = _TextWindow.prototype.GetHwnd;
 
 
