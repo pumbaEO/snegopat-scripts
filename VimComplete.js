@@ -239,7 +239,7 @@ function VimAutoCompletionTool()
 			}
 		} 
 		else {
-            if (curLineIx == CurDoc.LinesCount()) {
+            if (curLineIx > CurDoc.LinesCount()) {
                 curLineIx = 1;
             }
          }
