@@ -9,9 +9,19 @@ global.connectGlobals(SelfScript)
 
 var jsUnitCore = stdlib.require("jsUnitCore.js");
 
-/* Анонимный обработчик, который мы передаем, позволяет обойти проблему 
-с отловом исключений, брошенных в контексте скрипта-библиотеки. */
-jsUnitCore.SetErrorHandler(function (exception) { throw exception; });
+////////////////////////////////////////////////////////////////////////////////////////
+//// Макросы
+////
+
+function macrosПоказать()
+{
+    GetTestRunner().Show();
+}
+
+function macrosСкрыть()
+{
+    GetTestRunner().Close();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //// TestRunner
@@ -26,7 +36,6 @@ function TestRunner()
     this.failureCount = 0;
     
     this.form = loadScriptForm("scripts\\DevTools\\testrunner.ssf", this)
-    this.form.Открыть();
         
     this.allTests = this.form.ЭлементыФормы.тпДеревоТестов.Значение;                     
     this.allTests.Колонки.Добавить("object");
@@ -52,7 +61,18 @@ function TestRunner()
 
     this.settings = new TestRunnerSettingsManager();
     this.settings.LoadSettings();
-    this.settings.ApplyToForm(this.form);
+    this.settings.ApplyToForm(this.form);    
+}
+
+TestRunner.prototype.Show = function ()
+{
+    this.form.Open();
+}
+
+TestRunner.prototype.Close = function ()
+{
+    if (this.form.IsOpen())
+        this.form.Close();
 }
 
 TestRunner.prototype.resetCounters = function()
@@ -270,6 +290,8 @@ TestRunner.prototype.addTest = function(parentNode, testName, testAddin)
 
 TestRunner.prototype.runAllTests = function()
 {    
+    jsUnitCore.SetErrorHandler(function (exception) { throw exception; });
+
     /* Устанавливаем заранее, чтобы флаг был взведен даже если 
     нас остановит какой-нибудь эксепшен. */
     this.testingDone = true;
@@ -283,7 +305,9 @@ TestRunner.prototype.runAllTests = function()
         ТекущаяСтрока.Состояние = this.runTest(ТекущаяСтрока);
         
         ТекущаяСтрока.ВремяВыполнения = (new Date() - beginTime) / 1000;        
-    }   
+    }  
+    
+    jsUnitCore.ResetErrorHandler();
 }
 
 TestRunner.prototype.runTest = function (СтрокаТестов)
@@ -495,7 +519,11 @@ TestRunner.prototype.КнопкаВыполнитьВсеТестыНажати�
 
 TestRunner.prototype.КнопкаВыполнитьВыделенныйНажатие = function (Элемент)
 {
+    jsUnitCore.SetErrorHandler(function(e){ throw e; });
+    
     Message("Не реализовано");
+    
+    jsUnitCore.ResetErrorHandler();
 }
 
 TestRunner.prototype.тпДеревоТестовПриВыводеСтроки = function(Элемент, ОформлениеСтроки, ДанныеСтроки)
@@ -561,7 +589,7 @@ TestRunner.prototype.АвтоматическиПерезагружатьПер�
 }
                      
 TestRunner.prototype.ПриОткрытии = function ()
-{
+{   
     this.resetCounters();
     this.switchProgressBar(false);
     this.form.ЭлементыФормы.КнопкаПрименить.Доступность = false;    
@@ -684,7 +712,7 @@ function Test(addin, testName)
     this.message = "";
 }
 
-function OpenTestRunner()
+function GetTestRunner()
 {
     if (!TestRunner._instance)
         new TestRunner();
@@ -692,7 +720,7 @@ function OpenTestRunner()
     return TestRunner._instance;
 }
 
-OpenTestRunner();
+GetTestRunner().Show();
 
 
 
