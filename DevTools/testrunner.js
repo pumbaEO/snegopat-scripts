@@ -377,7 +377,8 @@ TestRunner.prototype.setTestStatus = function(test, excep)
 
     test.message = message;
     
-    Message(message);    
+    if (test.status != this.STATE_SUCCESS || this.settings.current.LogOnSuccess)
+        Message(message);    
     
     return test.status;
 }
@@ -587,7 +588,13 @@ TestRunner.prototype.АвтоматическиПерезагружатьПер�
     this.form.Модифицированность = true;
     this.form.ЭлементыФормы.КнопкаПрименить.Доступность = true;
 }
-                     
+           
+TestRunner.prototype.LogOnSuccessПриИзменении = function(Элемент)
+{
+    this.form.Модифицированность = true;
+    this.form.ЭлементыФормы.КнопкаПрименить.Доступность = true;
+}
+           
 TestRunner.prototype.ПриОткрытии = function ()
 {   
     this.resetCounters();
@@ -610,7 +617,8 @@ function TestRunnerSettingsManager(rootPath)
     this.rootPath = rootPath || 'TestRunner';
     
     this.DefaultSettings = {
-        ReloadBeforeRunAll : false
+        ReloadBeforeRunAll : false,
+        LogOnSuccess : false
     };    
         
     for(var setting in this.DefaultSettings)
