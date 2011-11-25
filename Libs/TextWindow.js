@@ -14,12 +14,17 @@ function GetTextWindow() {
     return null;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//// TextWindow
+////
+
 /** Класс-обертка вокруг ITextWindow, поддерживающий одновременно 
 интерфейс объектов ITextWindow, так и ТекстовыйДокумент. */
 function _TextWindow(textWindow) {
     this.textWindow = textWindow;
 }
 
+//{ Реализация основных методов
 _TextWindow.prototype.IsActive = function() {
     return (this.textWindow != null);
 }
@@ -237,8 +242,9 @@ _TextWindow.prototype.GetLines = function () {
     
     return this.Range(beginRow, 1, endRow).GetLines();
 }
+//} Реализация основных методов
 
-/** Русскоязычные аналоги основных методов объекта Текстовый документ (TextDocument). */
+//{ Русскоязычные аналоги основных методов объекта Текстовый документ (TextDocument).
 _TextWindow.prototype.КоличествоСтрок = _TextWindow.prototype.LinesCount;
 _TextWindow.prototype.УдалитьСтроку = _TextWindow.prototype.DeleteLine;
 _TextWindow.prototype.ДобавитьСтроку = _TextWindow.prototype.AddLine;
@@ -247,8 +253,9 @@ _TextWindow.prototype.ВставитьСтроку = _TextWindow.prototype.Inser
 _TextWindow.prototype.ЗаменитьСтроку = _TextWindow.prototype.ReplaceLine; 
 _TextWindow.prototype.ПолучитьТекст = _TextWindow.prototype.GetText;
 _TextWindow.prototype.УстановитьТекст = _TextWindow.prototype.SetText;
+//}
 
-/** Для обратной совместимости с интерфейсом ITextWindow Снегопата предыдущих версий. */
+//{ Методы для обратной совместимости с интерфейсом ITextWindow Снегопата предыдущих версий.
 _TextWindow.prototype.document = function () { return this; };
 _TextWindow.prototype.Document = function () { return this; };
 _TextWindow.prototype.extName = _TextWindow.prototype.ExtName;
@@ -262,5 +269,64 @@ _TextWindow.prototype.readOnly = _TextWindow.prototype.IsReadOnly;
 _TextWindow.prototype.selectedText = _TextWindow.prototype.GetSelectedText;
 _TextWindow.prototype.text = _TextWindow.prototype.GetText;
 _TextWindow.prototype.hwnd = _TextWindow.prototype.GetHwnd;
+//}
 
+////////////////////////////////////////////////////////////////////////////////////////
+//// StringUtils
+////
 
+//{ Вспомогательные методы для работы со строками и текстовыми блоками.
+StringUtils = {
+    
+    /* Получить отступ блока текста (по первой строке блока).
+     Возвращает строку - пробельные символы, формирующие отступ. */
+    getIndent: function (code) {
+        var matches = code.match(/(^\s+)/);
+        
+        if (matches)
+            return matches[0];
+            
+        return '';
+    },
+
+    /* Увеличивает отступ у текстового блока, добавляя строку пробельных символов,
+    переданных в качестве значения второго параметра ind. 
+    Возвращает текстовый блок с добавленным отступом. */
+    shiftRight: function(code, ind) {
+        if (ind)
+            return ind + code.replace(/\n/g, "\n" + ind);
+            
+        return code;
+    },
+
+    /* Уменьшает отступ у текстового блока, удаляя строку пробельных символов,
+    совпадающую со строкой, переданной в качестве значения второго параметра ind.
+    Возвращает текстовый блок с уменьшенным отступом. */
+    shiftLeft: function(code, ind) {
+        if (ind)
+        {
+            var re = new RegExp("^" + ind, 'gm');
+            return code.replace(re, "");
+        }
+            
+        return code;
+    },
+
+    /* Проверяет, оканчивается ли строка str подстрокой suffix.
+    Возвращает true, если хвост строки совпадает с suffix, и false в противном случае. */ 
+    endsWith: function(str, suffix)  {
+        return str.indexOf(suffix, str.length - suffix.length) !== -1;
+    },
+    
+    /* Разбивает переданный блок текста на строки и возвращает массив строк. */
+    toLines: function(code, nl) {
+        return code.split(nl ? nl : "\n");
+    },
+    
+    /* Объединяет массив строк в строку - блок текста. */
+    fromLines: function(linesArray, nl) {
+        return linesArray.join(nl ? nl : "\n");
+    }
+
+}
+//} Вспомогательные методы для работы со строками и текстовыми блоками.
