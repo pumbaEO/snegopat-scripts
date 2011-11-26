@@ -38,6 +38,13 @@ function macrosTest_getIndent4()
     var s = "       first line\nsecond line";
     assertEquals("       ", StringUtils.getIndent(s));        
 }
+
+function macrosTest_getIndent5_EmptyLines()
+{
+    var s = "       \n       \n       first line\nsecond line";
+    assertEquals("       ", StringUtils.getIndent(s));        
+}
+
 //}
 
 //{ shiftRight()

@@ -281,10 +281,10 @@ StringUtils = {
     /* Получить отступ блока текста (по первой строке блока).
      Возвращает строку - пробельные символы, формирующие отступ. */
     getIndent: function (code) {
-        var matches = code.match(/(^\s+)/);
+        var matches = code.match(/(^\s+?)(\S|\n|\r)/);
         
         if (matches)
-            return matches[0];
+            return matches[1];
             
         return '';
     },
