@@ -5,23 +5,20 @@ $addin global
 
 global.connectGlobals(SelfScript)
 
-// Интервал проверки редактируемых файлов.
-var checkInterval = 1; 
+events.connect(windows, "onChangeTitles", SelfScript.self)
 
-// Время последней проверки
-var lastCheckTime = new Date().getTime() / 1000;
-
-events.connect(Designer, "onIdle", SelfScript.self)
-function onIdle()
+function setCaption(mainTitle, additionalTitle)
 {
-    var curTime = new Date().getTime() / 1000;
-    if (curTime - lastCheckTime > checkInterval) 
-    {
-        try{
-            УстановитьЗаголовокКонфигуратораСоСнегопатом()
-        }catch(e){}
-    }
-    return false;
+    var newTitle = ПолучитьНаименованиеБазы() +" ("+ Метаданные.Версия +") / Снегопат " + sVersion + mainTitle.replace(/^Конфигуратор - /, " / ")
+    if(additionalTitle.length)
+        newTitle += " - " + additionalTitle
+    windows.caption = newTitle
+}
+
+function onChangeTitles(param)
+{
+    setCaption(param.mainTitle, param.additionalTitle)
+    param.cancel = true
 }
 
 УстановитьЗаголовокКонфигуратораСоСнегопатом()
@@ -34,7 +31,8 @@ function macrosПоказатьНаименованиеБазы()
 // при перезапуске скрипта заголовок будет двоиться - но это будет очень редко, что можно отложить
 function УстановитьЗаголовокКонфигуратораСоСнегопатом()
 {
-    УстановитьЗаголовокСистемы(ПолучитьЗаголовокКонфигуратора()  + " / База: " + ПолучитьНаименованиеБазы() +" ("+ Метаданные.Версия +") / Снегопат " + sVersion)
+    setCaption(windows.mainTitle, windows.additionalTitle)
+    //УстановитьЗаголовокСистемы(ПолучитьЗаголовокКонфигуратора()  + " / База: " + ПолучитьНаименованиеБазы() +" ("+ Метаданные.Версия +") / Снегопат " + sVersion)
 }
 
 function УстановитьЗаголовокКонфигуратораБезСнегопата()
