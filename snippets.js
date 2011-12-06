@@ -216,21 +216,45 @@ Snippet.prototype.hasMacros = function() {
 Возвращает анонимный объект с двумя свойствами row - индекс строки и 
 col - индекс колонки в строке. Нумерация строк и колонок - с 0.
 Возвращает null, если маркер не найден. */
-Snippet.prototype.getCursorCoord = function (tpl, isSelected) {    
+Snippet.prototype.getCursorCoord = function (tpl, selectedRowsCount) {    
+    
     /* Если есть выделенный текст, то позиция курсора может быть указана
     в управляющей конструкции путем добавления символа "|" перед
     первым символом подсказки, например <?"|Введите условие">.
     Если выделенного текста нет, то позиция курсора определяется при
     помощи стандартной управляющей конструкции <?>. */
-    var cursorMarker = isSelected ? '<?"|': '<?>';
+    var stdMarker = '<?>';
+    var altMarker = '<?"|';
+    
+    var curMarker = selectedRowsCount ? altMarker : stdMarker;
     
     var lines = StringUtils.toLines(tpl);    
 
+    // Для определения взаимного расположения стандартного и альтернативного маркера.
+    var stdMarkerRow = -1;
+    var altMarkerRow = -1;
+    
+    var coords = null;
+    
     for (var row=0; row<lines.length; row++)
     {
-        var col = lines[row].indexOf(cursorMarker);
+        if (stdMarkerRow < 0 && lines[row].indexOf(stdMarker) >=0) 
+            stdMarkerRow = row;
+            
+        if (altMarkerRow < 0 && lines[row].indexOf(altMarker) >=0)
+            altMarkerRow = row;
+        
+        var col = lines[row].indexOf(curMarker);
         if (col >= 0)
-            return { 'row': row, 'col': col };
+        {
+            coords = { 'row': row, 'col': col };
+            /* Если маркер альтернативной позиции курсора ниже основного, то при
+            расчете координаты строки надо учесть высоту выделенного блока. */
+            if (curMarker == altMarker && stdMarkerRow > -1 && altMarkerRow > stdMarkerRow)
+                coords.row += selectedRowsCount - 1;
+                
+            return coords;            
+        }
     }
  
     return null;
@@ -275,7 +299,7 @@ Snippet.prototype.insert = function (textWindow) {
         ind = leftPart.match(/^\s*$/) ? leftPart : '';
     }
      
-    var cursorCoords = this.getCursorCoord(code, isSelected);
+    var cursorCoords = this.getCursorCoord(code, isSelected ? StringUtils.toLines(selectedText).length : 0);
      
     // Если был выделен текст, то подставим его вместо <?>.
     if (isSelected)
