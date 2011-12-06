@@ -246,7 +246,7 @@ Snippet.prototype.parseTemplateString = function (tpl) {
 
 /* Выполняет подстановку шаблона в текст */
 Snippet.prototype.insert = function (textWindow) {
-
+//debugger;
     var code = this.template;
     
     // Определить, есть ли выделенный текст, который надо будет подставить вместо <?>.
@@ -284,7 +284,7 @@ Snippet.prototype.insert = function (textWindow) {
         selectedText = StringUtils.shiftLeft(selectedText, ind);
         
         // Отступ, установленный в шаблоне перед <?> надо распространить на весь выделенный текст.
-        var re = /^([ |\t])\<\?\>/m;
+        var re = /^([ |\t]+)\<\?\>/m;
         var matches = code.match(re);
         
         if (matches)
@@ -318,7 +318,7 @@ Snippet.prototype.insert = function (textWindow) {
     текста не выделено, то надо очистить отступ в первой строке вставляемого  
     блока, чтобы он не дублировался. */
     if (!isSelected && ind != '')
-        code = code.replace(/^\s+?/, '');
+        code = code.replace(new RegExp('^' + ind), '');
     
     // Вернем перевод строки в конец вставляемого текста (если он был в конце выделенного блока).
     if (isTrailingNL)
@@ -332,7 +332,7 @@ Snippet.prototype.insert = function (textWindow) {
     if (cursorCoords)
     {
         var row = selection.beginRow + cursorCoords.row;
-        var col = selection.beginCol + cursorCoords.col + ind.length - (isSelected ? 0 : 1);
+        var col = selection.beginCol + cursorCoords.col + ind.length - (isSelected ? 0 : 2);
         textWindow.SetCaretPos(row, col);
     }
 }

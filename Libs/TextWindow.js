@@ -294,7 +294,7 @@ StringUtils = {
     Возвращает текстовый блок с добавленным отступом. */
     shiftRight: function(code, ind) {
         if (ind)
-            return ind + code.replace(/\n/g, "\n" + ind);
+            return ind + code.replace(/\n/gm, "\n" + ind);
             
         return code;
     },
