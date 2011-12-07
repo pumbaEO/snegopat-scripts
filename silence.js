@@ -19,11 +19,20 @@ function onMessageBox(param)
 	// пользователя и в зависимости от него выполнить какие-то действия
 	// param.result = MessageBox(param.text, param.type, param.caption, param.timeout)
 	// param.cancel = true
-	
+
 	if(param.text == "Внимание!!! Месторасположение информационной базы изменилось.\nПродолжить?")
 	{
 	    //Message("Месторасположение информационной базы изменилось.", mInfo)
 	    param.result = mbaYes
 	    param.cancel = true
+        return;
 	}
+    
+    // artbear сообщения типа "Объект Роль.Менеджер заблокирован."
+    reRoleBlock = /Объект\s*Роль\.[\d\wzа-яё]+\s*заблокирован\./ig
+    if(reRoleBlock.test(param.text)){
+	    param.result = mbaYes
+	    param.cancel = true
+        return;
+    }
 }
