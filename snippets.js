@@ -20,22 +20,39 @@ stdlib.require('StreamLib.js', SelfScript);
 ////{ Макросы
 ////
 
+/* Выполняет подстановку шаблона, выбранного из выпадающего списка шаблонов. */
 function macrosВыполнитьПодстановкуШаблона() {
     var sm = GetSnippetsManager();
-    return sm.insertSnippet();
+    sm.insertSnippet();
 }
 
+/* Перезагружает список шаблонов (например, после редактирования шаблона). */
 function macrosПерезагрузитьШаблоны() {
     var sm = GetSnippetsManager();
     sm.reloadTemplates();
-    return true;
 }
 
-function macrosНастройкаСпискаШаблонов() {
+/* Открывает диалог настройки скрипта. */
+function macrosОткрытьНастройкиСкрипта() {
     var sm = GetSnippetsManager();
     var settingsDialog = new SettingsManagerDialog(sm.settings);
     settingsDialog.Open();
-    return true;
+}
+
+/* Позволяет вставлять расширенные управляющие конструкции шаблонов из списка выбора. 
+Предназначен для использования в штатном редакторе шаблонов для вставки расширенных 
+управляющих конструкций. */
+function macrosВставитьРасширеннуюУправляющуюКонструкцию() {
+
+    var w = GetTextWindow();
+    if (!w) return;
+
+    var sm = GetSnippetsManager();
+    var params = sm.paramsManager.getAllParams();
+    
+    var selParam = sm.selectValue(params);
+    if (selParam)
+        w.SetSelectedText('<%' + selParam + '>');    
 }
 
 ////} Макросы
@@ -131,7 +148,7 @@ SnippetsManager.prototype.insertSnippet = function() {
     
     var snippetName = this.selectValue(this._snippetNames);
     if (!snippetName)
-        return false;
+        return;
     
     var snippets = this._snippets[snippetName];
     if (snippets && snippets.length)
@@ -140,7 +157,7 @@ SnippetsManager.prototype.insertSnippet = function() {
         return true;
     }
     
-    return false;
+    return;
 }
 
 SnippetsManager.prototype.selectValue = function(values) {
@@ -157,9 +174,11 @@ SnippetsManager.prototype.selectValue = function(values) {
    return sel.FilterValue(values.join("\r\n"), 1 | 4, '', 0, 0, 350, 250);    
 }
 
-SnippetsManager.prototype.onProcessTemplate = function(params)
-{
-    //Message("Вставляется текст из шаблона '" + params.name + "':\n" + params.text + "\nОтступ '" + params.indent + "'")
+SnippetsManager.prototype.onProcessTemplate = function(params) {
+    /* При вставке шаблона штатными средствами (например, при перетаскивании шаблона из дерева шаблонов)
+    удалим служебные директивы и выполним подстановку наших управляющих конструкций. */
+    var res = this.paramsManager.processAddMacrosDirective(params.text);
+    params.text = this.paramsManager.replaceExtendedParams(res.realTpl);
 }
 ////} SnippetsManager
 
@@ -168,12 +187,103 @@ SnippetsManager.prototype.onProcessTemplate = function(params)
 ////
 
 function SnippetParametersManager() {
-    this._parameters = {};
+
+    // Для использования в замыканиях.
+    var sm = this;
+    
+    this.initExtendedParams();
 }
 
-SnippetParametersManager.prototype.replaceParams = function(template) {
-    // TODO
-    return template;
+SnippetParametersManager.prototype.initExtendedParams = function ()
+{
+    /* Используется для определения управляющих конструкций, значения подстановки 
+    которых могут меняться в результате изменения конфигурации. */
+    function f(c){return function(){try{return eval(c);}catch(e){Message(e.description);return ''}}};
+    
+    this._parameters = {
+        
+        'Конфигурация.Имя'          : f('Метаданные.Имя'),
+        'Конфигурация.Синоним'      : f('Метаданные.Синоним'),
+        'Конфигурация.Комментарий'  : f('Метаданные.Комментарий'),
+        'Конфигурация.Поставщик'    : f('Метаданные.Поставщик'),
+        
+        'Конфигурация.Версия'            : f('Метаданные.Версия'),
+        'Конфигурация.АвторскиеПрава'    : f('Метаданные.АвторскиеПрава'),
+        'Конфигурация.КраткаяИнформация' : f('Метаданные.КраткаяИнформация'),
+        
+        'Конфигурация.ПодробнаяИнформация'           : f('Метаданные.ПодробнаяИнформация'),
+        'Конфигурация.АдресИнформацииОКонфигурации'  : f('Метаданные.АдресИнформацииОКонфигурации'),
+        'Конфигурация.АдресИнформацииОПоставщике'    : f('Метаданные.АдресИнформацииОПоставщике'),
+        
+        'ИмяПользователяОС': f('(new ActiveXObject("WScript.Shell")).ExpandEnvironmentStrings("%USERNAME%")')        
+    };
+}
+
+SnippetParametersManager.prototype.getAllParams = function () {
+    var params = new Array();
+    
+    for (var param in this._parameters)
+        params.push(param);
+        
+    return params;
+}
+
+SnippetParametersManager.prototype.replaceExtendedParams = function(tpl) {
+    var code = tpl;
+    var params = this.getTemplateParams(tpl);
+    
+    for(var param in params)
+        code = code.replace(new RegExp(StringUtils.addSlashes(param), 'g'), params[param]);
+        
+    return code;
+}
+
+SnippetParametersManager.prototype.getTemplateParams = function(tpl)
+{
+    var params = {};
+    // <%Конфигурация.Имя> и т.п.
+    var matches = tpl.match(/\<\%([\wА-я]+|[\wА-я]+\.[\wА-я]+)\>/gi);
+    for (var i=0; matches && i<matches.length; i++)
+    {
+        var key = matches[i];
+        var prm = key.substr(2, key.length - 3);
+        params[key] = this.calcParamValue(prm);
+    }
+        
+    return params;
+}
+
+SnippetParametersManager.prototype.calcParamValue = function(key)
+{
+    var param = this._parameters[key];
+    
+    if (!param)
+        return '';
+        
+    if (typeof param == 'function')
+        return param.call();
+        
+    return param;
+}
+
+/* Обрабатывает служебную директиву шаблона <%Макрос: Имя макроса> */
+SnippetParametersManager.prototype.processAddMacrosDirective = function (tpl) {
+    var lines = StringUtils.toLines(tpl);
+    var result = { 'macrosName':'', 'realTpl':'' };
+    if (lines.length > 1)
+    {
+        // Пример директивы для snippets.js
+        //<%Макрос "Авторский комментарий: Добавление">
+        var matches = lines[0].match(/\<\%Макрос\s+\"(.+?)\"\>/);
+        if (matches)
+        {
+            result.macrosName = matches[1];
+            // Строку с директивой удаляем из шаблона.
+            lines = lines.slice(1);
+        }
+    }
+    result.realTpl = StringUtils.fromLines(lines);
+    return result;
 }
 
 ////} SnippetParametersManager
@@ -195,21 +305,10 @@ function Snippet(stElement) {
 }
 
 Snippet.prototype._initTemplateText = function(tpl) {
-
-    var lines = StringUtils.toLines(tpl);
-    if (lines.length > 1)
-    {
-        // Пример директивы для snippets.js
-        //::addMacros("Авторский комментарий: Добавление")
-        var matches = lines[0].match(/\/\/\:\:addMacros\(\"(.+?)\"\)/);
-        if (matches)
-        {
-            this.macrosName = matches[1] || this.name;
-            // Строку с директивой удаляем из шаблона.
-            lines = lines.slice(1);
-        }
-    }
-    this.template = StringUtils.fromLines(lines);
+   var sm = GetSnippetsManager();        
+   var res = sm.paramsManager.processAddMacrosDirective(tpl);  
+   this.macrosName = res.macrosName;
+   this.template = res.realTpl;
 }
 
 Snippet.prototype.hasMacros = function() {
@@ -266,9 +365,13 @@ Snippet.prototype.getCursorCoord = function (tpl, selectedRowsCount) {
 
 /* Выполняет подстановку значений в шаблон. */
 Snippet.prototype.parseTemplateString = function (tpl) {
-    /* Пока используем штатный интерпретатор шаблонов 1С,
-    доступ к которому нам предоставляет Снегопат. */
-    //tpl = this.paramsManager.replaceParams(tpl);  
+        
+    var sm = GetSnippetsManager();
+        
+    tpl = sm.paramsManager.replaceExtendedParams(tpl);  
+    
+    /* Используем штатный интерпретатор шаблонов 1С,
+    доступ к которому нам предоставляет Снегопат. */    
     return snegopat.parseTemplateString(tpl);
 }
 
@@ -360,7 +463,7 @@ Snippet.prototype.insert = function (textWindow) {
     if (cursorCoords)
     {
         var row = selection.beginRow + cursorCoords.row;
-        var col = selection.beginCol + cursorCoords.col + ind.length - (isSelected ? 0 : 2);
+        var col = selection.beginCol + cursorCoords.col + ind.length - (isSelected ? 0 : 1);
         textWindow.SetCaretPos(row, col);
     }
 }
