@@ -157,6 +157,10 @@ SnippetsManager.prototype.selectValue = function(values) {
    return sel.FilterValue(values.join("\r\n"), 1 | 4, '', 0, 0, 350, 250);    
 }
 
+SnippetsManager.prototype.onProcessTemplate = function(params)
+{
+    //Message("Вставляется текст из шаблона '" + params.name + "':\n" + params.text + "\nОтступ '" + params.indent + "'")
+}
 ////} SnippetsManager
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -527,5 +531,6 @@ function GetSnippetsManager() {
     return SnippetsManager._instance;
 }
 
-GetSnippetsManager();
+events.connect(snegopat, "onProcessTemplate", GetSnippetsManager());
+
 ////} Startup 
