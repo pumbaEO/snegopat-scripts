@@ -326,6 +326,11 @@ StringUtils = {
     /* Объединяет массив строк в строку - блок текста. */
     fromLines: function(linesArray, nl) {
         return linesArray.join(nl ? nl : "\n");
+    },
+    
+    /* Экранирует все символы в строке. */
+    addSlashes: function(str) {
+        return str.replace(/([^\d\w\sА-я])/g, "\\$1");
     }
 
 }

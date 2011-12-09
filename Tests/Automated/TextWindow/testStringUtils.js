@@ -168,9 +168,20 @@ function macrosTest_fromLines4()
 {
     assertEquals("first line\n\nsecond line\n", StringUtils.fromLines(["first line", "", "second line",""]));
 }
-
 //}
 
+
+//{ addSlashes()
+function macrosTest_addSlashes1()
+{
+    assertEquals('\\%\\$2\\$\\>\\<\\>\\\\', StringUtils.addSlashes('%$2$><>\\'));
+}
+
+function macrosTest_addSlashes2()
+{
+    assertEquals('\\<\\?Конфигурация\\.Имя\\>', StringUtils.addSlashes('<?Конфигурация.Имя>'));
+}
+//}
 
 /* 
 function macros()
