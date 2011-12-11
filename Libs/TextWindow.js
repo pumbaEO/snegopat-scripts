@@ -26,7 +26,22 @@ function _TextWindow(textWindow) {
 
 //{ Реализация основных методов
 _TextWindow.prototype.IsActive = function() {
-    return (this.textWindow != null);
+    
+    if (!this.textWindow)
+        return false;
+        
+    try 
+    {
+        /* Окно могло быть закрыто. Тогда при обращении 
+        к его свойствам произойдет ошибка. */
+        var hwnd = this.textWindow.hwnd;
+    }
+    catch (e)
+    {
+        return false;
+    }
+    
+    return true;
 }
 
 _TextWindow.prototype.GetHwnd = function () {
