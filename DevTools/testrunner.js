@@ -5,12 +5,22 @@ $addin SnegopatMainScript
 $addin global
 $addin stdlib
 
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Cкрипт "Менеджер юнит-тестов скриптов" (testrunner.js) для проекта "Снегопат"
+////
+//// Описание: Реализует автоматический запуск юнит-тестов для сриптов проекта "Снегопат".
+//// Автор: Александр Кунташов <kuntashov@gmail.com>, http://compaud.ru/blog
+////}
+////////////////////////////////////////////////////////////////////////////////////////
+
 global.connectGlobals(SelfScript)
+
+stdlib.require("SettingsManagement.js", SelfScript);
 
 var jsUnitCore = stdlib.require("jsUnitCore.js");
 
 ////////////////////////////////////////////////////////////////////////////////////////
-//// Макросы
+////{ Макросы
 ////
 
 function macrosПоказать()
@@ -22,9 +32,10 @@ function macrosСкрыть()
 {
     GetTestRunner().Close();
 }
+//}
 
 ////////////////////////////////////////////////////////////////////////////////////////
-//// TestRunner
+////{ TestRunner
 ////
 
 function TestRunner()
@@ -59,7 +70,12 @@ function TestRunner()
     // Флаг, сигнализирующий, что тесты запускались.
     this.testingDone = false;
 
-    this.settings = new TestRunnerSettingsManager();
+    this.defaultSettings = {
+        ReloadBeforeRunAll : false,
+        LogOnSuccess : false
+    };
+    
+    this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
     this.settings.LoadSettings();
     this.settings.ApplyToForm(this.form);    
 }
@@ -607,71 +623,10 @@ TestRunner.prototype.ПриЗакрытии = function ()
 {
     this.unloadAllTests();    
 }
+////} TestRunner
 
 ////////////////////////////////////////////////////////////////////////////////////////
-//// TestRunnerSettingsManager
-////
-
-function TestRunnerSettingsManager(rootPath)
-{
-    this.rootPath = rootPath || 'TestRunner';
-    
-    this.DefaultSettings = {
-        ReloadBeforeRunAll : false,
-        LogOnSuccess : false
-    };    
-        
-    for(var setting in this.DefaultSettings)
-        profileRoot.createValue(this.GetFullSettingPath(setting), this.DefaultSettings[setting], pflSnegopat);
-                
-    this.current = {};
-    
-    for(var setting in this.DefaultSettings)
-        this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
-}
-
-TestRunnerSettingsManager.prototype.ReadFromForm = function(form)
-{
-    for(var setting in this.current)
-        this.current[setting] = form.ЭлементыФормы[setting].Значение;
-}
-
-TestRunnerSettingsManager.prototype.ApplyToForm = function(form)
-{
-    for(var setting in this.current)
-    {
-        var value = this.current[setting];
-        
-        if (value === undefined || value === null)
-            value = this.DefaultSettings[setting];
-            
-        form.ЭлементыФормы[setting].Значение = value;
-    }
-}
-
-TestRunnerSettingsManager.prototype.GetFullSettingPath = function(settingName)
-{
-    return this.rootPath + "/" + settingName;
-}
-
-TestRunnerSettingsManager.prototype.LoadSettings = function()
-{
-    this.current = {};
-    
-    for(var setting in this.DefaultSettings)
-        this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
-        
-    return this.current;
-}
-
-TestRunnerSettingsManager.prototype.SaveSettings = function()
-{
-    for(var setting in this.current)
-        profileRoot.setValue(this.GetFullSettingPath(setting), this.current[setting]);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-//// ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
+////{ ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
 ////
 
 function FindFiles(path, mask)
@@ -719,7 +674,11 @@ function Test(addin, testName)
     this.exeption = null;
     this.message = "";
 }
+////} ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
 
+////////////////////////////////////////////////////////////////////////////////////////
+////{ StartUp
+////
 function GetTestRunner()
 {
     if (!TestRunner._instance)
@@ -730,5 +689,6 @@ function GetTestRunner()
 
 GetTestRunner().Show();
 
+////}
 
 
