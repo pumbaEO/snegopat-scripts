@@ -1,6 +1,7 @@
 ﻿$engine JScript
 $uname ExtendedSearch
 $dname Расширенный поиск
+$addin global
 $addin stdcommands
 $addin stdlib
 
@@ -14,6 +15,7 @@ $addin stdlib
 
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
+global.connectGlobals(SelfScript);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
@@ -131,6 +133,9 @@ ExtSearch.prototype.runSearch = function () {
     
     // Запомним строку поиска в истории.
     this.addToHistory(this.form.Query);
+    
+    if (this.results.Count() == 0) 
+        DoMessageBox('Совпадений не найдено!');
 }
 
 ExtSearch.prototype.addSearchResult = function (line, lineNo, matches) {
@@ -148,6 +153,14 @@ ExtSearch.prototype.goToLine = function (row) {
 
     if (!this.targetWindow)
         return;
+ 
+    if (!this.targetWindow.IsActive())
+    {
+        DoMessageBox("Окно, для которого выполнялся поиск, было закрыто!\nОкно поиска с результатами стало не актуально и будет закрыто.");
+        this.clearSearchResults();
+        this.Close();
+        return;
+    }
  
     // Переведем фокус в окно текстового редактора.
     this.activateEditor();
@@ -277,7 +290,9 @@ function TextWindowsWatcher() {
 }
 
 TextWindowsWatcher.prototype.getActiveTextWindow = function () {
-    return this.lastActiveTextWindow;
+    if (this.lastActiveTextWindow && this.lastActiveTextWindow.IsActive())
+        return this.lastActiveTextWindow;
+    return null;
 }
 
 TextWindowsWatcher.prototype.startWatch = function () {
@@ -297,7 +312,7 @@ TextWindowsWatcher.prototype.onTimer = function (timerId) {
     var wnd = GetTextWindow();    
     if (wnd)
         this.lastActiveTextWindow = wnd;
-    else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.GetHwnd())
+    else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive())
         this.lastActiveTextWindow = null;
 }
 //} TextWindowsWatcher 
