@@ -15,6 +15,7 @@ $addin stdlib
 global.connectGlobals(SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('StreamLib.js', SelfScript);
+stdlib.require('SettingsManagement.js', SelfScript);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
@@ -65,7 +66,7 @@ function SnippetsManager() {
 
     SnippetsManager._instance = this;
 
-    this.settings = new SettingsManager(SelfScript, {'TemplateFilesList':v8New('ValueList')});
+    this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, {'TemplateFilesList':v8New('ValueList')});
     this.settings.LoadSettings();    
     
     this._snippets = {};
@@ -469,63 +470,6 @@ Snippet.prototype.insert = function (textWindow) {
 }
 
 ////} Snippet
-
-////////////////////////////////////////////////////////////////////////////////////////
-////{ SettingsManager(script, defaults)
-////
-
-function SettingsManager(script, defaults) {
-    this.rootPath = script.uniqueName;
-    
-    var emptySettings = {};
-    this.DefaultSettings = defaults || emptySettings;
-        
-    for(var setting in this.DefaultSettings)
-        profileRoot.createValue(this.GetFullSettingPath(setting), this.DefaultSettings[setting], pflSnegopat);
-                
-    this.current = {};
-    
-    for(var setting in this.DefaultSettings)
-        this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
-}
-
-SettingsManager.prototype.ReadFromForm = function(form) {
-    for(var setting in this.current)
-        this.current[setting] = form.Controls[setting].Value;
-}
-
-SettingsManager.prototype.ApplyToForm = function(form) {
-
-    for(var setting in this.current)
-    {
-        var value = this.current[setting];
-        
-        if (value === undefined || value === null)
-            value = this.DefaultSettings[setting];
-            
-        form.Controls[setting].Value = value;
-    }
-}
-
-SettingsManager.prototype.GetFullSettingPath = function(settingName) {
-    return this.rootPath + "/" + settingName;
-}
-
-SettingsManager.prototype.LoadSettings = function() {
-    this.current = {};
-    
-    for(var setting in this.DefaultSettings)
-        this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
-        
-    return this.current;
-}
-
-SettingsManager.prototype.SaveSettings = function() {
-    for(var setting in this.current)
-        profileRoot.setValue(this.GetFullSettingPath(setting), this.current[setting]);
-}
-
-////} SettingsManager
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ SettingsManagerDialog
