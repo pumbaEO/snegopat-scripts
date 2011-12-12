@@ -266,7 +266,7 @@ ExtSearch.prototype.BtSearchClick = function (control) {
 }
 
 ExtSearch.prototype.CmdBarOptionsBtAbout = function (control) {
-    RunApp('http://snegopat.ru');
+    RunApp('http://snegopat.ru/forum/viewtopic.php?f=3&t=90');
 }
 
 ExtSearch.prototype.SearchResultsSelection = function (control, selectedRow, selectedCol, defaultHandler) {

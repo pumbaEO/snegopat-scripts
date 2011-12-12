@@ -510,7 +510,7 @@ SettingsManagerDialog.prototype.CmdBarClose = function (button) {
 }
 
 SettingsManagerDialog.prototype.CmdBarAbout = function (button) {
-    RunApp('http://snegopat.ru');
+    RunApp('http://snegopat.ru/scripts/wiki?name=snippets.js');
 }
 
 SettingsManagerDialog.prototype.CmdBarStListAddStFile = function (button) {
