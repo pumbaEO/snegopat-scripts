@@ -22,16 +22,20 @@ global.connectGlobals(SelfScript);
 ////
 
 SelfScript.self['macrosНайти текст'] = function() {
+    
     var w = GetTextWindow();
     if (!w) return;
+    
     var es = GetExtSearch();
     var selText = w.GetSelectedText();
+    
     es.setSimpleQuery(selText);    
+    es.Show();
+    
     if (selText == '')
         es.clearSearchResults();
     else
-        es.runSearch();
-    es.Show();
+        es.runSearch();    
 }
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
@@ -44,14 +48,14 @@ SelfScript.self['macrosЗакрыть окно поиска'] = function() {
 
 SelfScript.self['macrosПерейти к следующему совпадению'] = function() {
     var es = GetExtSearch();
-    if (es.IsOpen())
-        es.moveRowCursor(true);
+    es.Show();
+    es.moveRowCursor(true);
 }
 
 SelfScript.self['macrosПерейти к предыдущему совпадению'] = function() {
     var es = GetExtSearch();
-    if (es.IsOpen())
-        es.moveRowCursor(false);
+    es.Show();
+    es.moveRowCursor(false);
 }
 
 ////} Макросы
@@ -97,7 +101,7 @@ ExtSearch.prototype.Close = function () {
     return false;
 }
 
-ExtSearch.prototype.isOpen = function () {
+ExtSearch.prototype.IsOpen = function () {
     return this.form.IsOpen();
 }
 
@@ -136,6 +140,8 @@ ExtSearch.prototype.runSearch = function () {
     
     if (this.results.Count() == 0) 
         DoMessageBox('Совпадений не найдено!');
+    else
+        this.goToLine(this.results.Get(0));
 }
 
 ExtSearch.prototype.addSearchResult = function (line, lineNo, matches) {
@@ -146,7 +152,8 @@ ExtSearch.prototype.addSearchResult = function (line, lineNo, matches) {
 }
 
 ExtSearch.prototype.activateEditor = function () {
-    stdcommands.Frame.GotoBack.send();
+	if (!snegopat.activeTextWindow())
+		stdcommands.Frame.GotoBack.send();
 }
 
 ExtSearch.prototype.goToLine = function (row) {
