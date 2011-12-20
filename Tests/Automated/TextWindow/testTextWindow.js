@@ -268,3 +268,51 @@ function macrosTestClear()
     twnd.Clear();
     assertEquals("", textDoc.GetText());
 }
+
+//{ Тесты метода GetWordUnderCursor()
+
+/*
+первая строка
+вторая строка
+третья строка
+четвертая строка - самая длинная из всех строк
+пятая строка покороче, но тоже ничего
+шестая строка
+седьмая строка";
+*/
+
+function macrosTestGetWordUnderCursor1() {
+    twnd.SetCaretPos(1, 1);
+    assertEquals('первая', twnd.GetWordUnderCursor());
+}
+
+function macrosTestGetWordUnderCursor2() {
+    twnd.SetCaretPos(1, 10);
+    assertEquals('строка', twnd.GetWordUnderCursor());
+}
+
+function macrosTestGetWordUnderCursor3() {
+    twnd.SetCaretPos(4, 24);
+    assertEquals('самая', twnd.GetWordUnderCursor());
+}
+
+function macrosTestGetWordUnderCursor5() {
+    twnd.SetCaretPos(3, 13);
+    assertEquals('строка', twnd.GetWordUnderCursor());
+}
+
+function macrosTestGetWordUnderCursor6() {
+    twnd.SetCaretPos(7, 14);
+    assertEquals('строка', twnd.GetWordUnderCursor());
+}
+
+function macrosTestGetWordUnderCursor7() {
+    twnd.SetCaretPos(3, 7);
+    assertEquals('', twnd.GetWordUnderCursor());
+}
+
+function macrosTestGetWordUnderCursor8() {
+    twnd.SetCaretPos(4, 19);
+    assertEquals('', twnd.GetWordUnderCursor());
+}
+//}

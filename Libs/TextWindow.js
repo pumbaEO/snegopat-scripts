@@ -257,6 +257,41 @@ _TextWindow.prototype.GetLines = function () {
     
     return this.Range(beginRow, 1, endRow).GetLines();
 }
+
+/** Возвращает слово под курсором. */
+_TextWindow.prototype.GetWordUnderCursor = function () {
+
+    /*TODO: Добавить необязательный параметр: регулярное выражение для проверки символов слова. */
+
+    var pos = this.GetCaretPos();
+    var line = this.GetLine(pos.beginRow);
+    var isChar = /[\w\dА-я]/;
+
+    var wordBegPos = pos.beginCol - 1;
+    
+    if (!isChar.test(line.charAt(wordBegPos)))
+        return '';
+        
+    while (wordBegPos > 0)
+    {
+        if (!isChar.test(line.charAt(wordBegPos - 1)))
+            break;
+            
+        wordBegPos--;
+    }
+        
+    var wordEndPos = pos.beginCol - 1;
+    
+    while (wordEndPos < line.length - 1)
+    {
+        if (!isChar.test(line.charAt(wordEndPos + 1)))
+            break;
+            
+        wordEndPos++;    
+    }
+
+    return line.substr(wordBegPos, wordEndPos - wordBegPos + 1);
+}
 //} Реализация основных методов
 
 //{ Русскоязычные аналоги основных методов объекта Текстовый документ (TextDocument).

@@ -28,6 +28,8 @@ SelfScript.self['macrosНайти текст'] = function() {
     
     var es = GetExtSearch();
     var selText = w.GetSelectedText();
+    if (selText == '')
+        selText = w.GetWordUnderCursor();
     
     es.setSimpleQuery(selText);    
     es.Show();
