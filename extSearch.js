@@ -68,6 +68,7 @@ function ExtSearch() {
     ExtSearch._instance = this;
     
     this.form = loadScriptForm("scripts\\extSearch.results.ssf", this);
+    this.form.КлючСохраненияПоложенияОкна = "extSearch.js"
     this.results = this.form.Controls.SearchResults.Value;
     
     this.watcher = new TextWindowsWatcher();
