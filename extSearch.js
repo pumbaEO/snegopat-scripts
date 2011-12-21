@@ -37,7 +37,7 @@ SelfScript.self['macrosНайти текст'] = function() {
     if (selText == '')
         es.clearSearchResults();
     else
-        es.runSearch();    
+        es.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
 }
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
@@ -91,7 +91,7 @@ function ExtSearch() {
 }
 
 ExtSearch.prototype.Show = function () {
-    if (!this.form.IsOpen())
+    //if (!this.form.IsOpen()) // закоментировал потому как эта функция должна если форма не активна, активизировать ее
         this.form.Open();
 }
 
@@ -115,7 +115,7 @@ ExtSearch.prototype.setSimpleQuery = function (query) {
     this.addToHistory(query);
 }
 
-ExtSearch.prototype.runSearch = function () {
+ExtSearch.prototype.runSearch = function (fromHotKey) {
             
     this.targetWindow = this.watcher.getActiveTextWindow();
     if (!this.targetWindow) return;
@@ -144,7 +144,13 @@ ExtSearch.prototype.runSearch = function () {
     if (this.results.Count() == 0) 
         DoMessageBox('Совпадений не найдено!');
     else
-        this.goToLine(this.results.Get(0));
+    	if(fromHotKey == true){ 
+    		// Для того чтобы курсор не прыгал при поиске текущего слова, тут бы еще добавить чтобы активизировалась именно текущая строка
+	    	this.form.Open();
+	    	this.form.CurrentControl=this.form.Controls.SearchResults;
+    	}
+    	else
+		    this.goToLine(this.results.Get(0));
 }
 
 ExtSearch.prototype.addSearchResult = function (line, lineNo, matches) {
@@ -281,6 +287,7 @@ ExtSearch.prototype.CmdBarOptionsBtAbout = function (control) {
 
 ExtSearch.prototype.SearchResultsSelection = function (control, selectedRow, selectedCol, defaultHandler) {
     this.goToLine(selectedRow.val);
+   	defaultHandler.val = false; // Это для того чтобы после нажатия на строку курсор не уходит с табличного поля, и при новой активизации формы можно было курсором посмотреть другие значения
 }
 
 ExtSearch.prototype.beforeExitApp = function () {

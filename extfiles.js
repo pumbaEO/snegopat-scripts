@@ -308,6 +308,11 @@ function КпШапкаРазвернуть(Элемент)
 	macrosРазвернутьДеревоВнешнихФайлов();
 }
 
+function КпШапкаСправка(Кнопка)
+{
+	RunApp('http://snegopat.ru/scripts/wiki?name=extfiles.js');
+}
+
 function КпШапкаСвернуть(Элемент)
 {
 	macrosСвернутьДеревоВнешнихФайлов()
