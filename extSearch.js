@@ -148,6 +148,7 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
     		// Для того чтобы курсор не прыгал при поиске текущего слова, тут бы еще добавить чтобы активизировалась именно текущая строка
 	    	this.form.Open();
 	    	this.form.CurrentControl=this.form.Controls.SearchResults;
+	    	this.form.Controls.SearchResults.CurrentRow=this.form.SearchResults.Найти(this.targetWindow.GetCaretPos().beginRow, "LineNo");
     	}
     	else
 		    this.goToLine(this.results.Get(0));
