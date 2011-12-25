@@ -79,6 +79,7 @@ function ExtSearch() {
     this.defaultSettings = {
         'IsRegExp'      : false, // Поиск регулярными выражениями.
         'CaseSensetive' : false, // Учитывать регистр при поиске.
+        'WholeWords'    : false, // Поиск слова целиком.
         'SearchHistory' : v8New('ValueList'), // История поиска.
         'HistoryDepth'  : 10 // Количество элементов истории поиска.
     };
@@ -123,8 +124,13 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
     this.clearSearchResults();
     
     var pattern = this.form.Query;
-    if (!this.form.IsRegExp)
+    if (!this.form.IsRegExp) 
+    {
         pattern = StringUtils.addSlashes(pattern);
+        
+        if (this.form.WholeWords)
+            pattern = "([^\\w\\dА-я]|^)" + pattern + "([^\\w\\dА-я]|$)";
+    }
     
     var iFlag = !this.form.CaseSensetive;
     
@@ -142,28 +148,37 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
     this.addToHistory(this.form.Query);
     
     if (this.results.Count() == 0) 
+    {
         DoMessageBox('Совпадений не найдено!');
+    }
+    else if(fromHotKey == true)
+    { 
+        // Для того чтобы курсор не прыгал при поиске текущего слова, тут бы еще добавить чтобы активизировалась именно текущая строка
+        this.form.Open();
+        this.form.CurrentControl=this.form.Controls.SearchResults;              
+        var curLineRow = this.form.SearchResults.Find(this.targetWindow.GetCaretPos().beginRow, "LineNo");
+        if (curLineRow)
+            this.form.Controls.SearchResults.CurrentRow = curLineRow;
+    }
     else
-    	if(fromHotKey == true){ 
-    		// Для того чтобы курсор не прыгал при поиске текущего слова, тут бы еще добавить чтобы активизировалась именно текущая строка
-	    	this.form.Open();
-	    	this.form.CurrentControl=this.form.Controls.SearchResults;
-	    	this.form.Controls.SearchResults.CurrentRow=this.form.SearchResults.Найти(this.targetWindow.GetCaretPos().beginRow, "LineNo");
-    	}
-    	else
-		    this.goToLine(this.results.Get(0));
+    {
+        this.goToLine(this.results.Get(0));
+    }
 }
 
 ExtSearch.prototype.addSearchResult = function (line, lineNo, matches) {
     var resRow = this.results.Add();
     resRow.FoundLine = line;
     resRow.LineNo = lineNo;
-    resRow.ExactMatch = matches[0];
+    if (this.form.WholeWords)
+        resRow.ExactMatch = matches[0].replace(/^[^\w\dА-я]/, '').replace(/[^\w\dА-я]$/, '');
+    else
+        resRow.ExactMatch = matches[0];
 }
 
 ExtSearch.prototype.activateEditor = function () {
-	if (!snegopat.activeTextWindow())
-		stdcommands.Frame.GotoBack.send();
+    if (!snegopat.activeTextWindow())
+        stdcommands.Frame.GotoBack.send();
 }
 
 ExtSearch.prototype.goToLine = function (row) {
@@ -181,13 +196,24 @@ ExtSearch.prototype.goToLine = function (row) {
  
     // Переведем фокус в окно текстового редактора.
     this.activateEditor();
-    
-    var pos = row.FoundLine.search(row.ExactMatch);        
-    var colNo = pos < 1 ? 1 : pos;
+
+    // Найдем позицию найденного слова в строке.
+    var searchPattern = this.form.WholeWords ? "(?:[^\\w\\dА-я]|^)" + row.ExactMatch + "([^\\w\\dА-я]|$)" : StringUtils.addSlashes(row.ExactMatch); 
+    var re = new RegExp(searchPattern, 'g');
+    var matches = re.exec(row.FoundLine);
+
+    var colNo = 1;    
+    if (matches) 
+    {        
+        colNo = re.lastIndex - row.ExactMatch.length + 1;
+        
+        if (this.form.WholeWords && matches.length > 1)        
+            colNo -= matches[1].length; 
+           
+    }
     
     // Установим выделение на найденное совпадение со строкой поиска.
     this.targetWindow.SetCaretPos(row.LineNo, colNo);
-    if (pos > 0) colNo++;
     this.targetWindow.SetSelection(row.LineNo, colNo, row.LineNo, colNo + row.ExactMatch.length);
 }
 
@@ -283,16 +309,26 @@ ExtSearch.prototype.BtSearchClick = function (control) {
 }
 
 ExtSearch.prototype.CmdBarOptionsBtAbout = function (control) {
-    RunApp('http://snegopat.ru/forum/viewtopic.php?f=3&t=90');
+    RunApp('http://snegopat.ru/scripts/wiki?name=extSearch.js');
 }
 
 ExtSearch.prototype.SearchResultsSelection = function (control, selectedRow, selectedCol, defaultHandler) {
     this.goToLine(selectedRow.val);
-   	defaultHandler.val = false; // Это для того чтобы после нажатия на строку курсор не уходит с табличного поля, и при новой активизации формы можно было курсором посмотреть другие значения
+    defaultHandler.val = false; // Это для того чтобы после нажатия на строку курсор не уходит с табличного поля, и при новой активизации формы можно было курсором посмотреть другие значения
 }
 
 ExtSearch.prototype.beforeExitApp = function () {
     this.watcher.stopWatch();
+}
+
+ExtSearch.prototype.IsRegExpChanged = function(Элемент) {
+    if (this.form.IsRegExp)
+        this.form.WholeWords = false;
+}
+
+ExtSearch.prototype.WholeWordsChanged = function(Элемент) {
+    if (this.form.WholeWords)
+        this.form.IsRegExp = false;
 }
 
 ////} ExtSearch
