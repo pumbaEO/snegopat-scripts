@@ -134,7 +134,16 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
     
     var iFlag = !this.form.CaseSensetive;
     
-    var re = new RegExp(pattern, iFlag ? 'i' : '');
+    var re = null;
+    try 
+    {
+        re = new RegExp(pattern, iFlag ? 'i' : '');
+    }
+    catch (e)
+    {
+        DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
+        return;
+    }
             
     for(var lineNo=1; lineNo < this.targetWindow.LinesCount(); lineNo++)
     {
