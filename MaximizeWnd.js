@@ -5,6 +5,10 @@ $dname Максимизирует окно текстового документ
 events.connect(Designer, "createTextWindow", SelfScript.Self);
 
 function createTextWindow(textWnd) {
+
+    // Проверим, не открывается ли это какое-либо дочернее окно из конструктора запросов.
+    if (textWnd.extName == "Язык запросов")
+        return;
     
     try 
     {
