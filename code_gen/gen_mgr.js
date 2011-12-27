@@ -172,7 +172,17 @@ function formatAssign(lines)
 function fillLine(symbol, count)
 {
     var text = ""
-    while(count--)
-        text += symbol
+    if(count < 17)
+    {
+        while(count--)
+            text += symbol
+    }
+    else
+    {
+        var part = fillLine(symbol, Math.floor(count / 2))
+        text = part + part
+        if(count % 2)
+            text += symbol
+    }
     return text
 }
