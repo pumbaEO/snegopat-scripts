@@ -292,6 +292,121 @@ _TextWindow.prototype.GetWordUnderCursor = function () {
 
     return line.substr(wordBegPos, wordEndPos - wordBegPos + 1);
 }
+
+/** Возвращает строковый литерал, внутри которого находится курсор. 
+FIXME: Текущая реализация некорректно отрабатывает ситуацию, когда курсор
+находится вне строкового литерала между границами двух других строковых  
+литералов (см. тест macrosTest10 в testTextWindow_GetStringUnderCursor.js). */
+_TextWindow.prototype.GetStringUnderCursor = function () {
+
+    var pos = this.GetCaretPos();
+
+    var beginRow = pos.beginRow;
+    var wordBegPos = pos.beginCol - 1;
+    
+    // Далее везде помним, что нумерация строк начинаются с 1,
+    // а нумерация символов в js-строке - с 0.
+    var line = this.GetLine(pos.beginRow);
+    var str = '';
+    
+    while (true)
+    {            
+        if (beginRow < 1 || wordBegPos < 0)
+            return null;
+    
+        var curChar = line.charAt(wordBegPos);
+        
+        /* Если встретилась двойная кавычка, то либо строка завершилась, либо
+        рядом есть еще одна экранирующая двойная кавычка. */
+        if (curChar == '"')
+        {
+            if (wordBegPos - 1 > -1 && line.charAt(wordBegPos - 1) == '"')
+            {
+                str = '"' + str;
+                wordBegPos -= 2;
+                continue;
+            }                    
+            break;
+        }
+        
+        /* Если встретился символ вертикальной черты, то значит нам 
+        встретилась мультистрока. Добавляем перевод строки и продолжаем 
+        парсинг с конца близлежайшей верхней строки. */
+        if (curChar == '|')
+        {
+            str = "\n" + str;
+            beginRow--;
+            if (beginRow < 1) 
+                return null;
+                
+            line = this.GetLine(beginRow);
+            wordBegPos = line.length - 1;
+            continue;
+        }
+            
+        /* В остальных случаях встретился обычный символ, добавляем его к строке. */
+        str = curChar + str;        
+        wordBegPos--;
+    }
+        
+    var endRow = pos.beginRow;
+    var wordEndPos = pos.beginCol;
+    var linesCount = this.LinesCount();
+    var line = this.GetLine(endRow);
+    
+    // Регулярное выражение для проверки начала очередной строки в мультистроке.
+    var reMultilineString = new RegExp('^\s*\|');
+    
+    while (true)
+    {
+        if (endRow > linesCount)
+            return null;
+                        
+        if (wordEndPos >= line.length) 
+        {
+            /* Надо проверить, находимся ли мы в мультистроке.
+            Критерий проверки: наличие вертикальной черты в самом начале следующей строки.
+            Если да, мы в мультистроке, то просто переходим к обработке следующей строки.
+            Если нет, то значит имеет место быть синтаксическая ошибка. */
+            
+            endRow++;
+            if (endRow > linesCount)
+                return null;
+            
+            line = this.GetLine(endRow);
+            
+            // Если следующая строка - не продолжение мультстроки, то это ошибка.
+            var match = reMultilineString.exec(line);
+            if (!match) return null;
+
+            // Добавляем перевод строки и продолжаем со следующей за вертикальной чертой позиции.
+            str += "\n";
+            wordEndPos = reMultilineString.lastIndex + 1;
+        }
+                        
+        var curChar = line.charAt(wordEndPos);
+        
+        /* Если встретилась двойная кавычка, то либо строка завершилась, либо
+        рядом есть еще одна экранирующая двойная кавычка. */
+        if (curChar == '"')
+        {
+            if (wordEndPos + 1 < line.length && line.charAt(wordEndPos + 1) == '"')
+            {
+                str += '"';
+                wordEndPos += 2;
+                continue;
+            }                    
+            break;
+        }
+
+        /* В остальных случаях встретился обычный символ, добавляем его к строке. */
+        str += curChar;        
+        wordEndPos++;        
+    }
+
+    return str;
+}
+
 //} Реализация основных методов
 
 //{ Русскоязычные аналоги основных методов объекта Текстовый документ (TextDocument).
