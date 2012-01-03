@@ -280,8 +280,18 @@ ExtSearch.prototype.addToHistory = function (query) {
         history.Delete(history.Count() - 1);
 }
 
+ExtSearch.prototype.getRegExpEditorScriptPath = function () {
+    var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
+    var scriptPath = mainFolder + "scripts\\RegExpEditor.js";
+    var f = v8New('File', scriptPath);
+    if (f.Exist())
+        return scriptPath;
+    return '';
+}
+
 ExtSearch.prototype.OnOpen = function () {
-    
+    if (!this.getRegExpEditorScriptPath())
+        this.form.Controls.Query.ChoiceButton = false;
 }
 
 ExtSearch.prototype.OnClose = function () {
@@ -338,6 +348,21 @@ ExtSearch.prototype.IsRegExpChanged = function(Элемент) {
 ExtSearch.prototype.WholeWordsChanged = function(Элемент) {
     if (this.form.WholeWords)
         this.form.IsRegExp = false;
+}
+
+ExtSearch.prototype.QueryStartChoice = function (Control, DefaultHandler) {
+    var reEditorPath = this.getRegExpEditorScriptPath();
+    if (reEditorPath)
+    {
+        DefaultHandler.val = false;
+        reEditorAddin = stdlib.require(reEditorPath);
+        if (reEditorAddin)
+        {
+            this.form.IsRegExp = true;
+            var reEditor = reEditorAddin.CreateRegExpEditor();
+            reEditor.open(Control.val);
+        }        
+    }
 }
 
 ////} ExtSearch

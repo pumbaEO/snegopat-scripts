@@ -39,7 +39,9 @@ function CreateRegExpEditor() {
 function _RegExpEditor() {
     this.form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), this);
 
-    this.textWindow = null; // текстовый документ, из которого открыт редактор.
+    this.owner = null; // Элемент управления, из которого открыт редактор.    
+    this.textWindow = null; // Текстовый документ, из которого открыт редактор.
+    
     this.re = null;
     
     this.resTree = this.form.ResultTree;
@@ -51,7 +53,11 @@ function _RegExpEditor() {
     this.fillHelpers();
 }
 
-_RegExpEditor.prototype.open = function (pattern) {
+_RegExpEditor.prototype.open = function (owner) {
+    this.owner = owner;
+    if (this.owner)
+        this.initRegExpFormProps(owner.Value);
+        
     this.form.Open();
 }
 
@@ -246,7 +252,7 @@ _RegExpEditor.prototype.addHelper = function (pattern, hint, category) {
 ////
 
 _RegExpEditor.prototype.OnOpen = function () {
-    if (!this.textWindow)
+    if (!this.textWindow && !this.owner)
         this.form.Controls.btOk.Visible = false;
 }
 
@@ -303,13 +309,21 @@ _RegExpEditor.prototype.btHelpClick = function (Элемент) {
 }
 
 _RegExpEditor.prototype.btOkClick = function (Элемент) {
+    
+    var pattern = this.getPattern();
+    
     if (this.textWindow && this.textWindow.IsActive()) 
     {
-        var pattern = this.getPattern();
-        // Экранируем двойные кавычки.
+        /* Т.е. текст вставляется в модуль как строковый литерал, 
+        то необходимо экранировать двойные кавычки. */
         pattern = pattern.replace(/\"/g, '""');
         this.textWindow.SetSelectedText(pattern);
     }
+    else if (this.owner) 
+    {
+        this.owner.Value = pattern;
+    }
+    
     this.form.Close();
     this.form = null;
 }
