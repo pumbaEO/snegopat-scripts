@@ -328,6 +328,25 @@ _RegExpEditor.prototype.btOkClick = function (Ёлемент) {
     this.form = null;
 }
 
+_RegExpEditor.prototype.CmdBarAddSlashes = function ( нопка) {
+    this.form.RegExSource = this.form.RegExSource.replace(/\\/g, '\\\\');
+}
+
+_RegExpEditor.prototype.CmdBarRemoveSlashes = function ( нопка) {
+    this.form.RegExSource = this.form.RegExSource.replace(/\\\\/g, '\\');
+}
+
+_RegExpEditor.prototype.CmdBarAddDoubleQuotes = function ( нопка) {
+    this.form.RegExSource = this.form.RegExSource.replace(/"/g, '""');
+}
+
+_RegExpEditor.prototype.CmdBarRemoveDoubleQuotes = function ( нопка) {
+    this.form.RegExSource = this.form.RegExSource.replace(/""/g, '"');
+}
+
+_RegExpEditor.prototype.CmdBarRemoveNewLines = function ( нопка) {
+    this.form.RegExSource = this.form.RegExSource.replace(/\r|\n/g, '');
+}
 ////} RegExpEditor - ќбработчики событий формы
 
 
