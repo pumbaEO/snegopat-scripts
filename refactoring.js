@@ -1,14 +1,14 @@
 $engine JScript
 $uname Refactoring
-$dname Рефакторинг
+$dname Р РµС„Р°РєС‚РѕСЂРёРЅРі
 $addin global
 $addin stdlib
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Cкрипт "Рефакторинг" (refactoring.js) для проекта "Снегопат"
+////{ CРєСЂРёРїС‚ "Р РµС„Р°РєС‚РѕСЂРёРЅРі" (refactoring.js) РґР»СЏ РїСЂРѕРµРєС‚Р° "РЎРЅРµРіРѕРїР°С‚"
 ////
-//// Описание: Реализует простейшие инструменты рефакторинга.
-//// Автор: Александр Кунташов <kuntashov@gmail.com>, http://compaud.ru/blog
+//// РћРїРёСЃР°РЅРёРµ: Р РµР°Р»РёР·СѓРµС‚ РїСЂРѕСЃС‚РµР№С€РёРµ РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ СЂРµС„Р°РєС‚РѕСЂРёРЅРіР°.
+//// РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РљСѓРЅС‚Р°С€РѕРІ <kuntashov@gmail.com>, http://compaud.ru/blog
 ////}
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,10 +16,10 @@ stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Макросы
+////{ РњР°РєСЂРѕСЃС‹
 ////
 
-SelfScript.self['macrosВыделить метода (extract method)'] = function () {
+SelfScript.self['macrosР’С‹РґРµР»РёС‚СЊ РјРµС‚РѕРґР° (extract method)'] = function () {
 
     var tw = GetTextWindow();
     if (!tw) return;
@@ -27,11 +27,11 @@ SelfScript.self['macrosВыделить метода (extract method)'] = function () {
     var selText = tw.GetSelectedText();
     if (selText == '') return;
         
-    var tpl = 'Процедура <?"Имя процедуры">(<?"Параметры процедуры")\n\n\t<?>\n\nКонецПроцедуры//<?"Имя процедуры">()';
+    var tpl = 'РџСЂРѕС†РµРґСѓСЂР° <?"РРјСЏ РїСЂРѕС†РµРґСѓСЂС‹">(<?"РџР°СЂР°РјРµС‚СЂС‹ РїСЂРѕС†РµРґСѓСЂС‹")\n\n\t<?>\n\nРљРѕРЅРµС†РџСЂРѕС†РµРґСѓСЂС‹//<?"РРјСЏ РїСЂРѕС†РµРґСѓСЂС‹">()';
         
 }
 
-SelfScript.self['macrosПоказать список процедур и функций модуля'] = function () {
+SelfScript.self['macrosРџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє РїСЂРѕС†РµРґСѓСЂ Рё С„СѓРЅРєС†РёР№ РјРѕРґСѓР»СЏ'] = function () {
     var tw = GetTextWindow();
     if (!tw) return;
     var module = SyntaxAnalysis.AnalyseTextDocument(tw);
@@ -39,7 +39,7 @@ SelfScript.self['macrosПоказать список процедур и функций модуля'] = function ()
     methList.selectMethod();
 }
 
-////} Макросы
+////} РњР°РєСЂРѕСЃС‹
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ MethodListForm
@@ -56,12 +56,12 @@ MethodListForm.prototype.selectMethod = function () {
 }
 
 MethodListForm.prototype.MethodListSelection = function (Control, SelectedRow, Column, DefaultHandler) {
-    //TODO: обработка выбора строки.
+    //TODO: РѕР±СЂР°Р±РѕС‚РєР° РІС‹Р±РѕСЂР° СЃС‚СЂРѕРєРё.
     this.form.Close();
 }
 
 MethodListForm.prototype.MethodListOnRowOutput = function (Control, RowAppearance, RowData) {
-    // Вставить содержимое обработчика.
+    // Р’СЃС‚Р°РІРёС‚СЊ СЃРѕРґРµСЂР¶РёРјРѕРµ РѕР±СЂР°Р±РѕС‚С‡РёРєР°.
 }
 
 
@@ -69,9 +69,9 @@ MethodListForm.prototype.MethodListOnRowOutput = function (Control, RowAppearanc
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Вспомогательные функции
+////{ Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё
 ////
 
 
 
-////} Вспомогательные функции
+////} Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё

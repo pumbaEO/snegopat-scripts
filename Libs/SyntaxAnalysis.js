@@ -1,19 +1,19 @@
-$engine JScript
+п»ї$engine JScript
 $uname SyntaxAnalysis
-$dname Класс SyntaxAnalysis
+$dname РљР»Р°СЃСЃ SyntaxAnalysis
 $addin global
 $addin stdlib
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Cкрипт-библиотека SyntaxAnalysis (SyntaxAnalysis.js) для проекта "Снегопат"
+////{ CРєСЂРёРїС‚-Р±РёР±Р»РёРѕС‚РµРєР° SyntaxAnalysis (SyntaxAnalysis.js) РґР»СЏ РїСЂРѕРµРєС‚Р° "РЎРЅРµРіРѕРїР°С‚"
 ////
-//// Описание: Реализует функционал по cинтаксическому анализу исходного кода на 
-//// внутреннем языке 1С:Предприятия 8.
+//// РћРїРёСЃР°РЅРёРµ: Р РµР°Р»РёР·СѓРµС‚ С„СѓРЅРєС†РёРѕРЅР°Р» РїРѕ cРёРЅС‚Р°РєСЃРёС‡РµСЃРєРѕРјСѓ Р°РЅР°Р»РёР·Сѓ РёСЃС…РѕРґРЅРѕРіРѕ РєРѕРґР° РЅР° 
+//// РІРЅСѓС‚СЂРµРЅРЅРµРј СЏР·С‹РєРµ 1РЎ:РџСЂРµРґРїСЂРёСЏС‚РёСЏ 8.
 //// 
-//// Основана на исходном коде скриптлета SyntaxAnalysis.wsc для проекта OpenConf.
+//// РћСЃРЅРѕРІР°РЅР° РЅР° РёСЃС…РѕРґРЅРѕРј РєРѕРґРµ СЃРєСЂРёРїС‚Р»РµС‚Р° SyntaxAnalysis.wsc РґР»СЏ РїСЂРѕРµРєС‚Р° OpenConf.
 ////
-//// Автор SyntaxAnalysis.wsc: Алексей Диркс <adirks@ngs.ru>  
-//// Автор порта: Александр Кунташов <kuntashov@gmail.com>, http://compaud.ru/blog
+//// РђРІС‚РѕСЂ SyntaxAnalysis.wsc: РђР»РµРєСЃРµР№ Р”РёСЂРєСЃ <adirks@ngs.ru>  
+//// РђРІС‚РѕСЂ РїРѕСЂС‚Р°: РђР»РµРєСЃР°РЅРґСЂ РљСѓРЅС‚Р°С€РѕРІ <kuntashov@gmail.com>, http://compaud.ru/blog
 ////}
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,23 +32,23 @@ SyntaxAnalysis.Create1CMethodDescription = function(parentModule) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Регулярные выражения для поиска конструкций встроенного языка 1С.
+////{ Р РµРіСѓР»СЏСЂРЅС‹Рµ РІС‹СЂР°Р¶РµРЅРёСЏ РґР»СЏ РїРѕРёСЃРєР° РєРѕРЅСЃС‚СЂСѓРєС†РёР№ РІСЃС‚СЂРѕРµРЅРЅРѕРіРѕ СЏР·С‹РєР° 1РЎ.
 ////TODO: 
-////    - Удалить из регулярок определения метода Далее - не имеет смысла для 8.х
-////    - Описать индексы и назначения группировок, подобно тому, как сделано для RE_VAR.
+////    - РЈРґР°Р»РёС‚СЊ РёР· СЂРµРіСѓР»СЏСЂРѕРє РѕРїСЂРµРґРµР»РµРЅРёСЏ РјРµС‚РѕРґР° Р”Р°Р»РµРµ - РЅРµ РёРјРµРµС‚ СЃРјС‹СЃР»Р° РґР»СЏ 8.С…
+////    - РћРїРёСЃР°С‚СЊ РёРЅРґРµРєСЃС‹ Рё РЅР°Р·РЅР°С‡РµРЅРёСЏ РіСЂСѓРїРїРёСЂРѕРІРѕРє, РїРѕРґРѕР±РЅРѕ С‚РѕРјСѓ, РєР°Рє СЃРґРµР»Р°РЅРѕ РґР»СЏ RE_VAR.
 SyntaxAnalysis.RE_COMMENT       = new RegExp('^\\s*((?:(?:(?:"[^"]")*)|(?:[^/]*)|(?:[^/]+/))*)(//.*)?\\s*$', "");
-/* Группировки: 1: Объявление метода (процедура/функция), 2: Имя метода, 3: Список параметров метода строкой, 4: "Далее" - имеет смысл только для 7.7. */
-SyntaxAnalysis.RE_PROC          = new RegExp('^\\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\\s+([\\wА-яёЁ\\d]+)\\s*\\(([\\wА-яёЁ\\d\\s,.="\']*)\\)\\s*((?:forward)|(?:далее))?(.*)$', "i");
-SyntaxAnalysis.RE_PARAM         = new RegExp('(?:(?:Val)|(?:Знач)\\s+)?([\\wА-яёЁ\\d]+)(\\s*=\\s*(?:(?:"[^"]")|(?:[^,)]*))*)?', "ig");
-SyntaxAnalysis.RE_PROC_END      = new RegExp('((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))', "i");
-SyntaxAnalysis.RE_VARS_DEF      = new RegExp('^\\s*(?:(?:Var)|(?:Перем))\\s*([\\wА-яёЁ\\d,=\\[\\]\\s]*)(\\s+экспорт\\s*)?([\\s;]*)(.*?)$', "i");
-/* Группировки: 1: Имя переменной, 2: Определение размерности массива, 3: Экспорт, 4: Конечный символ ("," или пусто - конец строки). */
-SyntaxAnalysis.RE_VAR           = new RegExp('([\\wА-яёЁ\\d]+)\\s*(\\[[\\d\\s,]*\\])?(\\s+экспорт\\s*)?(?:\\s*(?:,|;|$))', "ig");
-SyntaxAnalysis.RE_VAR_ASSIGN    = new RegExp('([\\wА-яёЁ\\d.]+)\\s*=\\s*(([^;]*);)?', "g");
-SyntaxAnalysis.RE_CALL          = new RegExp('([\\wА-яёЁ\\d.]+)\\s*\\(', "g");
+/* Р“СЂСѓРїРїРёСЂРѕРІРєРё: 1: РћР±СЉСЏРІР»РµРЅРёРµ РјРµС‚РѕРґР° (РїСЂРѕС†РµРґСѓСЂР°/С„СѓРЅРєС†РёСЏ), 2: РРјСЏ РјРµС‚РѕРґР°, 3: РЎРїРёСЃРѕРє РїР°СЂР°РјРµС‚СЂРѕРІ РјРµС‚РѕРґР° СЃС‚СЂРѕРєРѕР№, 4: "Р”Р°Р»РµРµ" - РёРјРµРµС‚ СЃРјС‹СЃР» С‚РѕР»СЊРєРѕ РґР»СЏ 7.7. */
+SyntaxAnalysis.RE_PROC          = new RegExp('^\\s*((?:procedure)|(?:function)|(?:РїСЂРѕС†РµРґСѓСЂР°)|(?:С„СѓРЅРєС†РёСЏ))\\s+([\\wРђ-СЏС‘РЃ\\d]+)\\s*\\(([\\wРђ-СЏС‘РЃ\\d\\s,.="\']*)\\)\\s*((?:forward)|(?:РґР°Р»РµРµ))?(.*)$', "i");
+SyntaxAnalysis.RE_PARAM         = new RegExp('(?:(?:Val)|(?:Р—РЅР°С‡)\\s+)?([\\wРђ-СЏС‘РЃ\\d]+)(\\s*=\\s*(?:(?:"[^"]")|(?:[^,)]*))*)?', "ig");
+SyntaxAnalysis.RE_PROC_END      = new RegExp('((?:EndProcedure)|(?:EndFunction)|(?:РљРѕРЅРµС†РџСЂРѕС†РµРґСѓСЂС‹)|(?:РљРѕРЅРµС†Р¤СѓРЅРєС†РёРё))', "i");
+SyntaxAnalysis.RE_VARS_DEF      = new RegExp('^\\s*(?:(?:Var)|(?:РџРµСЂРµРј))\\s*([\\wРђ-СЏС‘РЃ\\d,=\\[\\]\\s]*)(\\s+СЌРєСЃРїРѕСЂС‚\\s*)?([\\s;]*)(.*?)$', "i");
+/* Р“СЂСѓРїРїРёСЂРѕРІРєРё: 1: РРјСЏ РїРµСЂРµРјРµРЅРЅРѕР№, 2: РћРїСЂРµРґРµР»РµРЅРёРµ СЂР°Р·РјРµСЂРЅРѕСЃС‚Рё РјР°СЃСЃРёРІР°, 3: Р­РєСЃРїРѕСЂС‚, 4: РљРѕРЅРµС‡РЅС‹Р№ СЃРёРјРІРѕР» ("," РёР»Рё РїСѓСЃС‚Рѕ - РєРѕРЅРµС† СЃС‚СЂРѕРєРё). */
+SyntaxAnalysis.RE_VAR           = new RegExp('([\\wРђ-СЏС‘РЃ\\d]+)\\s*(\\[[\\d\\s,]*\\])?(\\s+СЌРєСЃРїРѕСЂС‚\\s*)?(?:\\s*(?:,|;|$))', "ig");
+SyntaxAnalysis.RE_VAR_ASSIGN    = new RegExp('([\\wРђ-СЏС‘РЃ\\d.]+)\\s*=\\s*(([^;]*);)?', "g");
+SyntaxAnalysis.RE_CALL          = new RegExp('([\\wРђ-СЏС‘РЃ\\d.]+)\\s*\\(', "g");
 SyntaxAnalysis.RE_SPACE         = new RegExp('\\s+', "g");
 //SyntaxAnalysis.RE_CRLF          = new RegExp('[\\n]+', "");
-////} Регулярные выражения для поиска конструкций встроенного языка 1С.
+////} Р РµРіСѓР»СЏСЂРЅС‹Рµ РІС‹СЂР°Р¶РµРЅРёСЏ РґР»СЏ РїРѕРёСЃРєР° РєРѕРЅСЃС‚СЂСѓРєС†РёР№ РІСЃС‚СЂРѕРµРЅРЅРѕРіРѕ СЏР·С‹РєР° 1РЎ.
     
 SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
     
@@ -96,7 +96,7 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
                     Meth = SyntaxAnalysis.Create1CMethodDescription(moduleContext);
                     Meth.Name = Matches[2];
                     Meth.StartLine = i;                    
-                    Meth.IsProc = (Matches[1].toLowerCase() == 'процедура' || Matches[1].toLowerCase() == 'procedure');
+                    Meth.IsProc = (Matches[1].toLowerCase() == 'РїСЂРѕС†РµРґСѓСЂР°' || Matches[1].toLowerCase() == 'procedure');
                     
                     str = Matches[3];
                     while( (Matches = SyntaxAnalysis.RE_PARAM.exec(str)) != null )
@@ -226,27 +226,27 @@ function _1CModule(textWindow) {
     this.context = SyntaxAnalysis.AnalyseModule(this.textWindow.GetText(), true);
 }
 
-/* Возвращает исходный код метода по названию метода. */
+/* Р’РѕР·РІСЂР°С‰Р°РµС‚ РёСЃС…РѕРґРЅС‹Р№ РєРѕРґ РјРµС‚РѕРґР° РїРѕ РЅР°Р·РІР°РЅРёСЋ РјРµС‚РѕРґР°. */
 _1CModule.prototype.getMethodSource = function(methodName) {
     var method = this.context.getMethodByName(methodName);
     if (!method) return undefined;
     return this.textWindow.Range(method.StartLine + 1, 1, method.EndLine + 1).GetText();
 }
 
-/* Возвращает таблицу значений с описаниями методов модуля. */
+/* Р’РѕР·РІСЂР°С‰Р°РµС‚ С‚Р°Р±Р»РёС†Сѓ Р·РЅР°С‡РµРЅРёР№ СЃ РѕРїРёСЃР°РЅРёСЏРјРё РјРµС‚РѕРґРѕРІ РјРѕРґСѓР»СЏ. */
 _1CModule.prototype.getMethodsTable = function() {
     return this.context._vtAllMethods;
 }
 
-/* Возвращает описание метода по номеру строки, находящейся внутри метода. */
+/* Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕРїРёСЃР°РЅРёРµ РјРµС‚РѕРґР° РїРѕ РЅРѕРјРµСЂСѓ СЃС‚СЂРѕРєРё, РЅР°С…РѕРґСЏС‰РµР№СЃСЏ РІРЅСѓС‚СЂРё РјРµС‚РѕРґР°. */
 _1CModule.prototype.getMethodByLineNumber = function (lineNo) {
 
     var methods = this.context.Methods;
     
     for (var i=0; i<methods.length; i++)
     {
-        /* Помним, что нумерация строк начинается с 1, 
-        а строки модуля в SyntaxAnalysis проиндексированы с 0. */
+        /* РџРѕРјРЅРёРј, С‡С‚Рѕ РЅСѓРјРµСЂР°С†РёСЏ СЃС‚СЂРѕРє РЅР°С‡РёРЅР°РµС‚СЃСЏ СЃ 1, 
+        Р° СЃС‚СЂРѕРєРё РјРѕРґСѓР»СЏ РІ SyntaxAnalysis РїСЂРѕРёРЅРґРµРєСЃРёСЂРѕРІР°РЅС‹ СЃ 0. */
         if (methods[i].StartLine + 1 <= lineNo && lineNo <= methods[i].EndLine + 1)
             return methods[i];
     }
@@ -254,8 +254,8 @@ _1CModule.prototype.getMethodByLineNumber = function (lineNo) {
     return undefined;
 }
 
-/* Возвращает описание метода, которому принадлежит текущая строка 
-(строка, в которой находится курсор). */
+/* Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕРїРёСЃР°РЅРёРµ РјРµС‚РѕРґР°, РєРѕС‚РѕСЂРѕРјСѓ РїСЂРёРЅР°РґР»РµР¶РёС‚ С‚РµРєСѓС‰Р°СЏ СЃС‚СЂРѕРєР° 
+(СЃС‚СЂРѕРєР°, РІ РєРѕС‚РѕСЂРѕР№ РЅР°С…РѕРґРёС‚СЃСЏ РєСѓСЂСЃРѕСЂ). */
 _1CModule.prototype.getActiveLineMethod = function () {
     var pos = this.textWindow.GetCaretPos();
     return this.getMethodByLineNumber(pos.beginRow);
@@ -268,32 +268,32 @@ _1CModule.prototype.getActiveLineMethod = function () {
 
 function _1CModuleContextDescription(initValueTable) {
 
-    // Массив всех методов модуля.
+    // РњР°СЃСЃРёРІ РІСЃРµС… РјРµС‚РѕРґРѕРІ РјРѕРґСѓР»СЏ.
     this.Methods = new Array();
         
-    // Ассоциативный массив Имя метода -> _1CMethodDescription
+    // РђСЃСЃРѕС†РёР°С‚РёРІРЅС‹Р№ РјР°СЃСЃРёРІ РРјСЏ РјРµС‚РѕРґР° -> _1CMethodDescription
     this._methodsByName = {};
     
-    // Массив всех явным образом объявленных переменных модуля.
+    // РњР°СЃСЃРёРІ РІСЃРµС… СЏРІРЅС‹Рј РѕР±СЂР°Р·РѕРј РѕР±СЉСЏРІР»РµРЅРЅС‹С… РїРµСЂРµРјРµРЅРЅС‹С… РјРѕРґСѓР»СЏ.
     this.ModuleVars = new Array();        
     
-    // Ассоциативный массив Имя переменной -> Тип переменной (пока тип всегда null).
+    // РђСЃСЃРѕС†РёР°С‚РёРІРЅС‹Р№ РјР°СЃСЃРёРІ РРјСЏ РїРµСЂРµРјРµРЅРЅРѕР№ -> РўРёРї РїРµСЂРµРјРµРЅРЅРѕР№ (РїРѕРєР° С‚РёРї РІСЃРµРіРґР° null).
     this._moduleVarsTypes = {};
     
     this._vtAllMethods = null;
     if (initValueTable) 
     {
-        var v8Type_String = v8New('TypeDescription', 'Строка', undefined, v8New('StringQualifiers', 255));
-        var v8Type_Number = v8New('TypeDescription', 'Число', v8New('NumberQualifiers', 10, 0));
-        var v8Type_Boolean = v8New('TypeDescription', 'Булево');
+        var v8Type_String = v8New('TypeDescription', 'РЎС‚СЂРѕРєР°', undefined, v8New('StringQualifiers', 255));
+        var v8Type_Number = v8New('TypeDescription', 'Р§РёСЃР»Рѕ', v8New('NumberQualifiers', 10, 0));
+        var v8Type_Boolean = v8New('TypeDescription', 'Р‘СѓР»РµРІРѕ');
     
         this._vtAllMethods = v8New('ValueTable');
         var cols = this._vtAllMethods.Columns;
-        // Добавляем колонки.
-        cols.Add('Name', v8Type_String, 'Имя процедуры/функции');
-        cols.Add('IsProc', v8Type_Boolean, 'Процедура');
-        cols.Add('StartLine', v8Type_Number, 'N первой строки');
-        cols.Add('EndLine', v8Type_Number, 'N последней строки');
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕР»РѕРЅРєРё.
+        cols.Add('Name', v8Type_String, 'РРјСЏ РїСЂРѕС†РµРґСѓСЂС‹/С„СѓРЅРєС†РёРё');
+        cols.Add('IsProc', v8Type_Boolean, 'РџСЂРѕС†РµРґСѓСЂР°');
+        cols.Add('StartLine', v8Type_Number, 'N РїРµСЂРІРѕР№ СЃС‚СЂРѕРєРё');
+        cols.Add('EndLine', v8Type_Number, 'N РїРѕСЃР»РµРґРЅРµР№ СЃС‚СЂРѕРєРё');
         cols.Add('_method'); // _1CMethodDescription
     }
 }
@@ -301,12 +301,12 @@ function _1CModuleContextDescription(initValueTable) {
 _1CModuleContextDescription.prototype.addMethod = function (method) {
 
     if (this._methodsByName[method.name])
-        Message('Метод ' + method.name + 'уже был объявлен ранее в этом модуле!');
+        Message('РњРµС‚РѕРґ ' + method.name + 'СѓР¶Рµ Р±С‹Р» РѕР±СЉСЏРІР»РµРЅ СЂР°РЅРµРµ РІ СЌС‚РѕРј РјРѕРґСѓР»Рµ!');
         
     this.Methods.push(method);
     this._methodsByName[method.Name] = method;
     
-    // Добавляем метод в таблицу значений.
+    // Р”РѕР±Р°РІР»СЏРµРј РјРµС‚РѕРґ РІ С‚Р°Р±Р»РёС†Сѓ Р·РЅР°С‡РµРЅРёР№.
     if (this._vtAllMethods) 
     {
         var methRow = this._vtAllMethods.Add();
@@ -341,34 +341,34 @@ _1CModuleContextDescription.prototype.getVarType = function (name) {
 
 function _1CMethodDescription(parentModule) {
         
-    // Идентификатор (имя) метода.
+    // РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ (РёРјСЏ) РјРµС‚РѕРґР°.
     this.Name = "";
     
-    // Тип метода. Если истина - то это Процедура, иначе - это функция.
+    // РўРёРї РјРµС‚РѕРґР°. Р•СЃР»Рё РёСЃС‚РёРЅР° - С‚Рѕ СЌС‚Рѕ РџСЂРѕС†РµРґСѓСЂР°, РёРЅР°С‡Рµ - СЌС‚Рѕ С„СѓРЅРєС†РёСЏ.
     this.IsProc = false;
 
-    // Массив параметров метода.
+    // РњР°СЃСЃРёРІ РїР°СЂР°РјРµС‚СЂРѕРІ РјРµС‚РѕРґР°.
     this.Params = new Array();
     
-    // Массив явным образом объявленных переменных.
+    // РњР°СЃСЃРёРІ СЏРІРЅС‹Рј РѕР±СЂР°Р·РѕРј РѕР±СЉСЏРІР»РµРЅРЅС‹С… РїРµСЂРµРјРµРЅРЅС‹С….
     this.DeclaredVars = new Array();
     
-    // Массив автоматических локальных переменных (не объявленных явным образом).
+    // РњР°СЃСЃРёРІ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёС… Р»РѕРєР°Р»СЊРЅС‹С… РїРµСЂРµРјРµРЅРЅС‹С… (РЅРµ РѕР±СЉСЏРІР»РµРЅРЅС‹С… СЏРІРЅС‹Рј РѕР±СЂР°Р·РѕРј).
     this.AutomaticVars = new Array();
     
-    // Список вызовов: массив методов, вызываемых из данного метода.
+    // РЎРїРёСЃРѕРє РІС‹Р·РѕРІРѕРІ: РјР°СЃСЃРёРІ РјРµС‚РѕРґРѕРІ, РІС‹Р·С‹РІР°РµРјС‹С… РёР· РґР°РЅРЅРѕРіРѕ РјРµС‚РѕРґР°.
     this.Calls = new Array();
     
-    // Номер строки объявления метода.
+    // РќРѕРјРµСЂ СЃС‚СЂРѕРєРё РѕР±СЉСЏРІР»РµРЅРёСЏ РјРµС‚РѕРґР°.
     this.StartLine = 0;
     
-    // Номер строки завершения объявления метода.
+    // РќРѕРјРµСЂ СЃС‚СЂРѕРєРё Р·Р°РІРµСЂС€РµРЅРёСЏ РѕР±СЉСЏРІР»РµРЅРёСЏ РјРµС‚РѕРґР°.
     this.EndLine = 0;
     
-    // Ассоциативный массив Имя переменной -> Тип переменной (пока тип всегда null).
+    // РђСЃСЃРѕС†РёР°С‚РёРІРЅС‹Р№ РјР°СЃСЃРёРІ РРјСЏ РїРµСЂРµРјРµРЅРЅРѕР№ -> РўРёРї РїРµСЂРµРјРµРЅРЅРѕР№ (РїРѕРєР° С‚РёРї РІСЃРµРіРґР° null).
     this._varsTypes = {};
     
-    // Контекст модуля, в котором объявлен данный метод (_1CModuleContextDescription).
+    // РљРѕРЅС‚РµРєСЃС‚ РјРѕРґСѓР»СЏ, РІ РєРѕС‚РѕСЂРѕРј РѕР±СЉСЏРІР»РµРЅ РґР°РЅРЅС‹Р№ РјРµС‚РѕРґ (_1CModuleContextDescription).
     this.parentModule = parentModule;
 }
 
@@ -399,7 +399,7 @@ _1CMethodDescription.prototype.getVarType = function (name) {
 ////} _1CMethodDescription
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Вспомогательные функции объекта Array
+////{ Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё РѕР±СЉРµРєС‚Р° Array
 if(!Array.prototype.indexOf) {
     Array.prototype.indexOf = function(searchElement, fromIndex) {
         for(var i = fromIndex||0, length = this.length; i<length; i++)
@@ -407,4 +407,4 @@ if(!Array.prototype.indexOf) {
         return -1
     };
 };
-////} Вспомогательные функции объекта Array
+////} Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё РѕР±СЉРµРєС‚Р° Array
