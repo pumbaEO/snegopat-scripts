@@ -69,6 +69,13 @@ function onDoModal(dlgInfo)
             }
         }
     }
+    else if(dlgInfo.stage == openModalWnd && (dlgInfo.caption == "Захват объектов в хранилище конфигурации" ||
+        dlgInfo.caption == "Помещение объектов в хранилище конфигурации"))
+    {
+        //for(var i = 0; i < dlgInfo.form.controlsCount; i++)
+        //    Message(dlgInfo.form.getControl(i).name)
+        dlgInfo.form.getControl("GetRecursive").value = true
+    }
 }
 
 function onIdle()
