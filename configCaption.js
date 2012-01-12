@@ -14,9 +14,6 @@ events.connect(windows, "onChangeTitles", SelfScript.self)
 
 function setCaption(mainTitle, additionalTitle)
 {
-    //var newTitle = ПолучитьНаименованиеБазы() +" ("+ Метаданные.Версия +") / Снегопат " + sVersion + mainTitle.replace(/^Конфигуратор - /, " / ")
-    //if(additionalTitle.length)
-    //    newTitle += " - " + additionalTitle
     var mainTitleShort = mainTitle.replace(/^Конфигуратор - /, "")
     windows.caption = eval(captionExpr)
 }

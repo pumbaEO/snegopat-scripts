@@ -14,6 +14,7 @@ $addin stdcommands
 var pflPath = "StgAutoConnect/"
 var pflData = pflPath + "data"                      // Данные
 var pflShowMessage = pflPath + "ShowMessage"        // Показывать сообщение при подстановке
+var prevConnectSuccessed = true
 
 // Настройку отображения сообщений будем хранить едино для всех баз, в профиле Снегопата
 profileRoot.createValue(pflShowMessage, true, pflSnegopat)
@@ -31,14 +32,25 @@ function onDoModal(dlgInfo)
             var data = profileRoot.getValue(pflData)
             if(data)
             {
-                // Если есть сохраненные данные, то вводим их
-                dlgInfo.form.getControl("UserName").value = data.login
-                dlgInfo.form.getControl("UserPassword").value = data.password
-                dlgInfo.form.getControl("DepotPath").value = data.path
-                dlgInfo.cancel = true   // Отменяем показ диалога
-                dlgInfo.result = 1      // Как будто в нем нажали Ок
-                if(profileRoot.getValue(pflShowMessage))    // Информируем пользователя, если он хочет
-                    Message("Авто-подключение к хранилищу '" + data.path + "' пользователем '" + data.login + "'")
+                if(!prevConnectSuccessed)
+                {
+                    if(MessageBox("Авто-соединение с хранилищем было неудачным. Сбросить сохраненные данные?", mbYesNo | mbDefButton1 | mbIconQuestion, "Снегопат") == mbaYes)
+                        profileRoot.deleteValue(pflData)
+                }
+                else
+                {
+                    // Если есть сохраненные данные, то вводим их
+                    dlgInfo.form.getControl("UserName").value = data.login
+                    dlgInfo.form.getControl("UserPassword").value = data.password
+                    dlgInfo.form.getControl("DepotPath").value = data.path
+                    dlgInfo.cancel = true   // Отменяем показ диалога
+                    dlgInfo.result = 1      // Как будто в нем нажали Ок
+                    if(profileRoot.getValue(pflShowMessage))    // Информируем пользователя, если он хочет
+                        Message("Авто-подключение к хранилищу '" + data.path + "' пользователем '" + data.login + "'")
+                    // Взведем процедуру определения успешности соединения с хранилищем
+                    prevConnectSuccessed = false
+                    events.connect(Designer, "onIdle", SelfScript.self)
+                }
             }
         }
         else if(dlgInfo.stage == afterDoModal && dlgInfo.result == 1)
@@ -57,6 +69,19 @@ function onDoModal(dlgInfo)
             }
         }
     }
+    else if(dlgInfo.stage == openModalWnd && (dlgInfo.caption == "Захват объектов в хранилище конфигурации" ||
+        dlgInfo.caption == "Помещение объектов в хранилище конфигурации"))
+    {
+        //for(var i = 0; i < dlgInfo.form.controlsCount; i++)
+        //    Message(dlgInfo.form.getControl(i).name)
+        dlgInfo.form.getControl("GetRecursive").value = true
+    }
+}
+
+function onIdle()
+{
+    prevConnectSuccessed = true
+    events.disconnect(Designer, "onIdle", SelfScript.self)
 }
 
 SelfScript.self["macrosСбросить cохраненные данные"] = function()
