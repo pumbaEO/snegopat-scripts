@@ -31,8 +31,18 @@ function onMessageBox(param)
     // artbear сообщения типа "Объект Роль.Менеджер заблокирован."
     reRoleBlock = /Объект\s*Роль\.[\d\wzа-яё]+\s*заблокирован\./ig
     if(reRoleBlock.test(param.text)){
+        Message(param.text)
 	    param.result = mbaYes
 	    param.cancel = true
+        return;
+    }
+    
+    // artbear сообщения типа "Объединение конфигураций завершено."
+    reConfigUnionEnd = /объединение\s+конфигураций\s+завершено\./ig
+    if(reConfigUnionEnd.test(param.text)){
+	    param.result = mbaYes
+	    param.cancel = true
+        Message(param.text)
         return;
     }
 }
