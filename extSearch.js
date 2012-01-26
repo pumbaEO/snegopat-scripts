@@ -35,7 +35,10 @@ SelfScript.self['macrosНайти текст'] = function() {
     es.Show();
     
     if (selText == '')
+    {
         es.clearSearchResults();
+        es.setDefaultSearchQuery();
+    }
     else
         es.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
 }
@@ -258,6 +261,10 @@ ExtSearch.prototype.moveRowCursor = function (forward) {
 
 ExtSearch.prototype.clearSearchResults = function () {
     this.results.Clear();
+}
+
+ExtSearch.prototype.setDefaultSearchQuery = function () {
+    this.form.CurrentControl=this.form.Controls.Query;
 }
 
 ExtSearch.prototype.addToHistory = function (query) {
