@@ -382,8 +382,8 @@ Snippet.prototype.insert = function (textWindow) {
     var code = this.template;
     
     // Определить, есть ли выделенный текст, который надо будет подставить вместо <?>.
+    var selection = this.getSelection(textWindow);
     var selectedText = textWindow.GetSelectedText();
-    var selection = textWindow.GetSelection();
     var isSelected = (selectedText != "");    
     
     /* Если в хвосте есть перевод строки (выделены с shift'ом строки и в итоге курсор  
@@ -467,6 +467,41 @@ Snippet.prototype.insert = function (textWindow) {
         var col = selection.beginCol + cursorCoords.col + ind.length - (isSelected ? 0 : 1);
         textWindow.SetCaretPos(row, col);
     }
+}
+
+/* Корректирует текущее выделение блока и возвращает выделение (ISelection).
+Корректировка заключается в изменении  колонки в первой строке и 
+номера последней строки:
+    - если первая строка выделена не с начала, но левее выделения в первой строке только
+    пробельные символы, то выделение начинаем с первого символа первой строки;
+    - если все символы из последней строки, попавшие в выделение - пробельные, то
+    эту строку исключаем из выделения. */
+Snippet.prototype.getSelection = function (textWindow) {
+    
+    var sel = textWindow.GetSelection();
+    if (sel.beginRow != sel.endRow) 
+    {
+        var beginCol = sel.beginCol;
+        
+        /* Если левее начала выделения только пробельные символы, 
+        то считаем началом блока начало строки. */
+        var leftPart = textWindow.GetLine(sel.beginRow).substr(0, beginCol - 1);
+        if (leftPart.match(/^\s+$/))
+            beginCol = 1;
+                
+        /* В последней строке выделения от начала строки и до конца
+        выделения - пустая строка, то исключим эту строку из выделения. */
+        var endRow = sel.endRow;//sel.endCol > 1 ? sel.endRow : sel.endRow - 1;
+        leftPart = textWindow.GetLine(endRow).substr(0, sel.endCol - 1);
+        if (!leftPart || leftPart.match(/^\s+$/))
+            endRow--;
+        
+        // Корректируем выделение выделение блока.
+        textWindow.SetSelection(sel.beginRow, beginCol, endRow, textWindow.GetLine(endRow).length + 1);
+        sel = textWindow.GetSelection();
+    }
+    
+    return sel;
 }
 
 ////} Snippet
