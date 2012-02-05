@@ -42,17 +42,42 @@ SelfScript.self['macrosНастройка'] = function() {
 
 ////} Макросы
 
-var MarkerTypes = {};
-MarkerTypes.ADDED = "МаркерДобавлено";
-MarkerTypes.REMOVED = "МаркерУдалено";
-MarkerTypes.CHANGED = "МаркерИзменено";
+var MarkerTypes = {
+    ADDED: "МаркерДобавлено",
+    REMOVED: "МаркерУдалено",
+    CHANGED:"МаркерИзменено"
+};
 
 var MarkerFormatStringParameters = {};
+var pflAuthorJs = 'Авторский комментарий/Настройки';
 
-var pflAuthorJs = 'Авторский комментарий/Настройки'
+function addMarker(markerType) {
+
+    var w = GetTextWindow();
+    if (!w) return;
+            
+    var sel = w.GetSelection();
+    if (sel.beginRow == sel.endRow)
+    {    
+        // Однострочник.        
+        var line = w.GetLine(sel.beginRow);
+        var code = markLine(markerType, line);        
+        w.ReplaceLine(sel.beginRow, code);
+    }
+    else 
+    {
+        // Блок кода.
+        var endRow = sel.endCol > 1 ? sel.endRow : sel.endRow - 1;
+        var block = w.Range(sel.beginRow, 1, endRow).GetText();        
+        var code = markBlock(markerType, block);        
+        w.Range(sel.beginRow, 1, endRow).SetText(code);
+    }    
+}
 
 function getSignature() {
-    return Settings['ФорматПодписи'].replace(/%(.+?)(?:#(.+)){0,1}%/ig, function (match, p1, p2, offset, s) {
+    var fmt = Settings['ФорматПодписи'];
+    var ptn = /%(.+?)(?:#(.+)){0,1}%/ig;
+    return fmt.replace(ptn, function (match, p1, p2, offset, s) {
         // p1 - имя управляющей конструкции.
         // p2 - параметр управляющей конструкции (для ДатаВремя).
         return MarkerFormatStringParameters[p1].call(null, p2);
@@ -71,29 +96,6 @@ function getEndComment() {
         endComment += " " + getSignature();
 
     return endComment;
-}
-
-function addMarker(markerType) {
-    
-    var w = GetTextWindow();
-    if (!w) return;
-            
-    var sel = w.GetSelection();
-    if (sel.beginRow == sel.endRow)
-    {    
-        // Однострочник.        
-        var line = w.GetLine(sel.beginRow);
-        var code = markLine(markerType, line);        
-        w.Range(sel.beginRow, 1, sel.beginRow).SetText(code);
-    }
-    else 
-    {
-        // Блок кода.
-        var endRow = sel.endCol > 1 ? sel.endRow : sel.endRow - 1;
-        var block = w.Range(sel.beginRow, 1, endRow).GetText();        
-        var code = markBlock(markerType, block);        
-        w.Range(sel.beginRow, 1, endRow).SetText(code);
-    }    
 }
 
 function markLine(markerType, line) {
@@ -269,6 +271,15 @@ function НадписьДатаВремяНажатие (Элемент) {
         addToSignatureFormat(form, "ДатаВремя#" + КонструкторФорматнойСтроки.Текст);
 }
 //} Обработчики элементов управления формы
+
+//{ Горячие клавиши по умолчанию.
+function getPredefinedHotkeys(predef) {
+    predef.setVersion(1);
+    predef.add('Маркер "Добавлено"', "Alt + A");
+    predef.add('Маркер "Изменено"', "Alt + C");
+    predef.add('Маркер "Удалено"', "Alt + D");
+}
+//} Горячие клавиши по умолчанию.
 
 //{ Параметры подстановки, используемые в форматной строке подписи.
 addFormatStringParam("ИмяПользователя", "parseTpl(name)")
