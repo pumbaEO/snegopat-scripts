@@ -20,21 +20,26 @@ var мВерсияСкрипта = 1.35
  */
 
 // Зададим путь в профайле
-var pflExtFilesOpenOnStart    = "ExtFiles/OpenOnStart"
-var pflExtShowExtInName        = "ExtFiles/ShowExtInName"
-var pflExtFilesPath            = "ExtFiles/Path"
-var pflExtFilesPathBase        = "ExtFiles/PathBase"
+var pflExtFilesOpenOnStart  = "ExtFiles/OpenOnStart"
+var pflExtShowExtInName     = "ExtFiles/ShowExtInName"
+var pflExtFilesPath         = "ExtFiles/Path"
+var pflExtFilesPathBase     = "ExtFiles/PathBase"
+var pflExtOpen1CExtensions  = "ExtFiles/Open1CExtensions"
 
 // Восстановим настройки
 profileRoot.createValue(pflExtFilesOpenOnStart, false, pflSnegopat)
 profileRoot.createValue(pflExtShowExtInName, true, pflSnegopat)
 profileRoot.createValue(pflExtFilesPath, false, pflSnegopat)
 profileRoot.createValue(pflExtFilesPathBase, false, pflBase)
+profileRoot.createValue(pflExtOpen1CExtensions, СформироватьТзРасширенияФайловПоУмолчанию(), pflSnegopat)
+
 
 var мОткрыватьПриСтарте = profileRoot.getValue(pflExtFilesOpenOnStart)
 var мОтображатьРасширениеФайлаВПредставлении = profileRoot.getValue(pflExtShowExtInName)
 var мТзКаталогиОбщие = profileRoot.getValue(pflExtFilesPath)
 var мТзКаталогиБазы = profileRoot.getValue(pflExtFilesPathBase)
+var мТзРасширенияФайлов = profileRoot.getValue(pflExtOpen1CExtensions);
+var RE_EXTENSIONS = null;
 
 global.connectGlobals(SelfScript)
 
@@ -98,12 +103,15 @@ function мЗаписатьНастройки()
     мТзКаталогиОбщие=мФормаНастройки.КаталогиОбщие
     мТзКаталогиБазы=мФормаНастройки.КаталогиБазы
     мОткрыватьПриСтарте=мФормаНастройки.ОткрыватьФормуПриЗагрузке
+    мТзРасширенияФайлов = мФормаНастройки.РасширенияФайлов.Скопировать();
+    RE_EXTENSIONS = null; // Регулярку надо переформировать.
     
     profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtShowExtInName, мОтображатьРасширениеФайлаВПредставлении)
     profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtFilesPath, ValueToStringInternal(мТзКаталогиОбщие))
     profileRoot.setValue(pflExtFilesPathBase, ValueToStringInternal(мТзКаталогиБазы))
+    profileRoot.setValue(pflExtFilesPathBase, мТзРасширенияФайлов)
     
     мОбновитьФайлы()
 }
@@ -124,6 +132,7 @@ function НастройкиПриОткрытии()
     мФормаНастройки.ОтображатьРасширениеФайлаВПредставлении=мОтображатьРасширениеФайлаВПредставлении
     мЗагрузитьНастройку(мТзКаталогиОбщие, мФормаНастройки.КаталогиОбщие);
     мЗагрузитьНастройку(мТзКаталогиБазы, мФормаНастройки.КаталогиБазы);
+    мФормаНастройки.РасширенияФайлов = мТзРасширенияФайлов;
 }
 
 function КпШапкаЗаписатьИЗакрыть(Кнопка)
@@ -323,7 +332,11 @@ function ДеревоФайловПередНачаломИзменения(пЭ
     пОтказ.val = true
     лТекСтрока=пЭлемент.val.ТекущаяСтрока
     if(лТекСтрока.ЭтоКаталог) return
-    stdlib.openFileIn1C(лТекСтрока.ИмяФайла)
+    
+    if (МожноОткрытьФайлВКонфигураторе(лТекСтрока.ИмяФайла))
+        stdlib.openFileIn1C(лТекСтрока.ИмяФайла)
+    else 
+        ЗапуститьПриложение(лТекСтрока.ИмяФайла);
 }
 
 function ДеревоФайловПриВыводеСтроки(пЭлемент, пОформлениеСтроки, пДанныеСтроки)
@@ -337,3 +350,37 @@ function ДеревоФайловПриВыводеСтроки(пЭлемент
     else
         лЯчейкаИмя.Картинка=БиблиотекаКартинок.Форма
 }
+
+function СформироватьТзРасширенияФайловПоУмолчанию() 
+{
+    var ТЗ = v8New("ТаблицаЗначений");
+    ТЗ.Колонки.Добавить("Расширение");
+
+    function Расш(расширение) { ТЗ.Добавить().Расширение = расширение; }
+    
+    // Стандартные файлы 1С:Предприятия 8.
+    Расш("txt"); Расш("bmp"); Расш("dib"); Расш("png"); Расш("rle"); 
+    Расш("jpg"); Расш("jpeg"); Расш("tif"); Расш("ico"); Расш("mxl"); 
+    Расш("epf"); Расш("erf"); Расш("htm"); Расш("html"); Расш("grs"); 
+    Расш("geo"); Расш("st"); Расш("lgf"); Расш("elf"); Расш("cf"); Расш("pff");
+
+    // Файлы Снегопата.
+    Расш("ssf"); Расш("js"); Расш("vbs");
+    
+    return ТЗ;
+}
+
+function МожноОткрытьФайлВКонфигураторе(ИмяФайла) 
+{
+    if (!RE_EXTENSIONS) 
+    {
+        var ext = new Array();
+        for (var i=0; i<мТзРасширенияФайлов.Количество(); i++)
+            ext.push(мТзРасширенияФайлов.Get(i).Расширение);
+            
+        RE_EXTENSIONS = new RegExp('\.(?:' + ext.join('|') + ' )$', 'i');
+    }
+    
+    return RE_EXTENSIONS.test(ИмяФайла);
+}
+
