@@ -192,21 +192,27 @@ function GetAbsolutePathName(pathToFile)
 	i = 0
 	while (i < comps.length){
 		if (comps[i]=="." || comps[i]=="") {
-			comps.splice(i,1)
-			WScript.Echo("7 "+comps.length + "  join "+comps.join("\\"))
+			var sl1 = comps.slice(0,i)
+			var sl2 = comps.slice(i+1)
+			comps = sl1.concat(sl2)
 			continue;
 		} else {
 			if (comps[i] == "..") {
 				if (i > 0 && comps[i-1] != "..") {
-				comps.splice(i-1,i+1)
+				var sl1 = comps.slice(0,i-1)
+				var sl2 = comps.slice(i+1)
+				comps = sl1.concat(sl2)
 				i -= 1;
 				continue;
 				} else {
 				if (i==0 && prefix.substr(prefix.length -1, 1) == "\\") {
-					comps.splice(i,1)
+					var sl1 = comps.slice(0,i)
+					var sl2 = comps.slice(i+1)
+					comps = sl1.concat(sl2)
 					continue;
 				} else {
 					i +=1
+					continue4
 				}
 				continue;
 			}
