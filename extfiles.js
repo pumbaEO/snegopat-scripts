@@ -169,6 +169,92 @@ function КаталогиБазыИмяКаталогаНачалоВыбора(
     Элемент.val.Значение=лКаталог
 }
 
+function GetAbsolutePathName(pathToFile)
+{
+    if (pathToFile.length == 0) return pathToFile
+    //код взят из python для определеня abspath
+    debugger; 
+    backslash = "\\"
+    if (pathToFile.substr(0,4)=='\\\\.\\' ||  pathToFile.substr(0,4)=='\\\\?\\') return pathToFile
+    
+    path = pathToFile.replace("/", "\\")
+    prefix = ''
+    if (path.substr(1,1) == ":") {
+        prefix = path.substr(0,2)
+        path = path.substr(2)
+    }
+    if (prefix == '') {
+        while (path.substr(0,1) == "\\"){
+            prefix = prefix + backslash
+            path = path.substr(1)
+        }
+    }
+    else {
+        if (path.substr(0,1)=="\\") {
+            prefix = prefix + backslash
+            while (path.substr(0,1) == "\\"){
+                path = path.substr(1)
+            }
+        }
+    }
+    comps = path.split("\\")
+    i = 0
+    while (i < comps.length){
+        if (comps[i]=="." || comps[i]=="") {
+            var sl1 = comps.slice(0,i)
+            var sl2 = comps.slice(i+1)
+            comps = sl1.concat(sl2)
+            continue;
+        } else {
+            if (comps[i] == "..") {
+                if (i > 0 && comps[i-1] != "..") {
+                var sl1 = comps.slice(0,i-1)
+                var sl2 = comps.slice(i+1)
+                comps = sl1.concat(sl2)
+                i -= 1;
+                continue;
+                } else {
+                if (i==0 && prefix.substr(prefix.length -1, 1) == "\\") {
+                    var sl1 = comps.slice(0,i)
+                    var sl2 = comps.slice(i+1)
+                    comps = sl1.concat(sl2)
+                    continue;
+                } else {
+                    i +=1
+                    continue4
+                }
+                continue;
+            }
+            continue;
+            }
+            i += 1;
+        } 
+    }
+    if (comps.length == 0) comps.push('.')
+    return prefix + comps.join(backslash)
+}
+
+function buildPath (a, b) {
+    if (a == "") return b
+
+    var is_a_drive = a.substr(1,1) == ":" ? true:false
+    var is_b_drive = b.substr(1,1) == ":" ? true:false
+    if (is_b_drive == true) return b
+    var path = a;
+    if (path.substr(path.length-1,1) == "\\" && b.substr(0,1) == "\\") {
+        return path+b.substr(1)
+    }
+    if (path.substr(path.length-1,1) == "\\" && b.substr(0,1) != "\\") {
+        return path+b;
+    }
+    if (path.substr(path.length-1,1) != "\\" && b.substr(0,1) != "\\") {
+        return path+"\\"+b
+    }
+    if (path.substr(path.length-1,1) != "\\" && b.substr(0,1) == "\\") {
+        return path+b;
+    }
+}
+
 function мДобавитьФайлы(пПуть, пУзел)
 {
     var лФайлы=FindFiles(пПуть, '*.*', false)
@@ -201,9 +287,33 @@ function мДобавитьФайлы(пПуть, пУзел)
 
 function ДобавитьКаталоги(пТзКаталоги)
 {
+    var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
+    try {
+        var fso = new ActiveXObject ("Scripting.FileSystemObject")
+    }
+    catch (er) {
+        var fso = null
+    }
     for (var лИнд=0; лИнд<пТзКаталоги.Количество(); лИнд++)
     {
         var лКаталог=пТзКаталоги.Получить(лИнд).ИмяКаталога;
+        //Добавим возможность формирования пути каталога, относительно Снегопата. 
+        // путь начинаться должен с "..", по просбе 
+        if (лКаталог.substr(0,2) == "..") {
+            if (fso == null) {
+                var млКаталог = GetAbsolutePathName(buildPath(mainFolder, лКаталог))
+            } else {
+                var млКаталог = fso.GetAbsolutePathName(fso.buildPath(mainFolder, лКаталог))    
+            }
+            //Сделаем проверку существования каталога от 1С.
+            var f = v8New("File", млКаталог); 
+            if (f.Exist()) {
+                лКаталог = млКаталог;
+            } else {
+                Message("Каталог отностельно Снегопата не существует, пропускаем " + млКаталог);
+                continue; //
+            }
+        }
         лСтрокаДереваФайлов=мФормаСкрипта.ДеревоФайлов.Строки.Добавить()
         лСтрокаДереваФайлов.Имя=лКаталог
         лСтрокаДереваФайлов.ИмяФайла=лКаталог
