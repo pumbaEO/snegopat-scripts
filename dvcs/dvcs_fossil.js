@@ -11,12 +11,16 @@ $addin vbs
 
 //var attrTypeCategory        = "{30E571BC-A897-4A78-B2E5-1EA6D48B5742}"
 
+var FSO = new ActiveXObject("Scripting.FileSystemObject");
+var ForReading = 1, ForWriting = 2, ForAppending = 8;
+var WshShell = new ActiveXObject("WScript.Shell");
+var TempDir = WshShell.ExpandEnvironmentStrings("%temp%") + "\\";
+
 extfiles.registerDVCSBackend("fossil", Backend_fossil)
 
 function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
             
-            var WshShell = new ActiveXObject("WScript.Shell");
-    
+            
             WshScriptExec=WshShell.Exec("cmd.exe /K /C");
             WshScriptExec.StdIn.WriteLine("chcp 1251 > null");
             WshScriptExec.StdIn.WriteLine(pathToCatalog.substr(0,2));
@@ -34,7 +38,7 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
             {
                 var filename = "";
                 var r = WshScriptExec.StdOut.ReadLine();
-                Message(""+r)
+                //Message(""+r)
                 //FIXME: добавить регулярку. 
                 if (r.indexOf('EDITED')!=-1)
                 {
@@ -42,7 +46,7 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                     array.push(filename)
                     newItem = ValueTablesFiles.Add();
                     newItem.Catalog = pathToCatalog;
-                    newItem.FullFileName = fso.BuildPath(pathToCatalog, filename.replace('/', '\\'));
+                    newItem.FullFileName = FSO.BuildPath(pathToCatalog, filename.replace('/', '\\'));
                     newItem.Status = "EDITED";
                     continue;
                 }
@@ -52,7 +56,7 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                         array.push(filename)
                         newItem = ValueTablesFiles.Add();
                         newItem.Catalog = pathToCatalog;
-                        newItem.FullFileName = fso.BuildPath(pathToCatalog, filename.replace('/', '\\'));
+                        newItem.FullFileName = FSO.BuildPath(pathToCatalog, filename.replace('/', '\\'));
                         newItem.Status = "DELETED";
                         continue;
                     }
@@ -70,7 +74,7 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                     };
                     newItem = ValueTablesFiles.Add();
                     newItem.Catalog = pathToCatalog;
-                    newItem.FullFileName = fso.BuildPath(pathToCatalog, r.replace('/', '\\'));
+                    newItem.FullFileName = FSO.BuildPath(pathToCatalog, r.replace('/', '\\'));
                     newItem.Status = 'NOTVERSIONED';
                     }
                 }
@@ -126,36 +130,36 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     WshScriptExec=WshShell.Exec("cmd.exe /K /C");
     WshScriptExec.StdIn.WriteLine("chcp 1251 > null");
     r = WshScriptExec.StdOut.ReadLine();
-    Message(r);
+    //Message(r);
     WshScriptExec.StdIn.WriteLine(лКаталог.substr(0,2));
     //r = WshScriptExec.StdOut.ReadLine();
     r = WshScriptExec.StdOut.ReadLine();
     WshScriptExec.StdIn.WriteLine('cd "' +лКаталог +'"');
     //r = WshScriptExec.StdOut.ReadLine();
     r = WshScriptExec.StdOut.ReadLine();
-    Message(r);
+    //Message(r);
     WshScriptExec.StdIn.WriteLine("fossil finfo -b --limit 2 "+лТекСтрока.ИмяФайла);
     //r = WshScriptExec.StdOut.ReadLine();
-    Message("if 1");
+    //Message("if 1");
     while(!WshScriptExec.StdOut.AtEndOfStream) {
         r = WshScriptExec.StdOut.ReadLine();
-        Message(r);
+        //Message(r);
         if (r.indexOf('finfo')!=-1) break
     }
     if (!WshScriptExec.StdOut.AtEndOfStream) {
         r = WshScriptExec.StdOut.ReadLine();
-        Message(r);
+        //Message(r);
         ver1 = r.split(' ')[0]
-        Message("ver 1 is "+ver1);
+        //Message("ver 1 is "+ver1);
         if (!WshScriptExec.StdOut.AtEndOfStream) {
             r = WshScriptExec.StdOut.ReadLine();
-            Message(r);
+            //Message(r);
             ver2 = r.split(' ')[0]
-            Message("ver 2 is "+ver2);
+            //Message("ver 2 is "+ver2);
         }
     }
 
-    if (ver1!=null) {
+    if (ver1!=null || ver1!='') {
         WshScriptExec.StdIn.WriteLine("fossil artifact "+ver1);
         WshScriptExec.StdIn.WriteLine("echo NEXT")
         while(!WshScriptExec.StdOut.AtEndOfStream) {
@@ -165,21 +169,21 @@ Z efeb6f455893cacba3131bb79ea0c9fe
         while (!WshScriptExec.StdOut.AtEndOfStream) 
         {
             r = WshScriptExec.StdOut.ReadLine();
-            Message(r);
+            //Message(r);
             if (r.indexOf('NEXT')!=-1) break
             var ar = r.split(' ')
-            Message("array "+ar);
+            //Message("array "+ar);
             if (ar[0] == "F") //Работаем с файлом...
             {
                 filename = ar[1]
                 filenameToSearch = лТекСтрока.ИмяФайла
                 filenameToSearch = filenameToSearch.substr(лКаталог.length+1, filenameToSearch.length - лКаталог.length);
                 filenameToSearch = filenameToSearch.replace('\\','/')
-                Message("Ищем "+filename+" 1c "+filenameToSearch);
+                //Message("Ищем "+filename+" 1c "+filenameToSearch);
                 if (filename == filenameToSearch)  //Ура нашли... 
                 {
                     ver1sha1 = ar[2]
-                    Message("Нашли  "+ver1sha1);
+                    //Message("Нашли  "+ver1sha1);
                 }
             }
 
@@ -187,7 +191,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
         }
     }
     //r = WshScriptExec.StdOut.ReadLine();
-    Message("вышли из цикла...");
+    //Message("вышли из цикла...");
     // if (ver2!=null) {
     // 	WshScriptExec.StdIn.WriteLine("fossil artifact "+ver2);
     // 	while (!WshScriptExec.StdOut.AtEndOfStream) 
@@ -208,9 +212,9 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     // 	}
     // }
 
-    if (ver1 == null) {Message("ver 1 не нашли ничего"); return ;}
-    //var file1ToDiff = fso.BuildPath(TempDir, ver1+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
-    var file1ToDiff = fso.BuildPath(TempDir, ver1+лТекСтрока.Имя)
+    if (ver1 == null || ver1 == "") {Message("ver 1 не нашли ничего"); return ;}
+    //var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
+    var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя)
     WshScriptExec.StdIn.WriteLine("fossil test-content-rawget "+ver1sha1 + " "+file1ToDiff);
     r = WshScriptExec.StdOut.ReadLine();
     if (лТекСтрока.КартинкаСтатус == 1)
@@ -223,15 +227,18 @@ Z efeb6f455893cacba3131bb79ea0c9fe
             Message("ver 2 не существует не с чем сравнивать")
             return false
         }
-        var file2ToDiff = fso.BuildPath(TempDir, ver2+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
+        var file2ToDiff = FSO.BuildPath(TempDir, ver2+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
         WshScriptExec.StdIn.WriteLine("fossil test-content-rawget "+ver2sha1 + " "+file2ToDiff);
         r = WshScriptExec.StdOut.ReadLine();
         Path1 = file2ToDiff;
         Path2 = file1ToDiff;
     }
-    param2["path1"] = Path1;
-    param2["path2"] = Path2
-    
+    //debugger;
+    param2.insert("path1", Path1);
+    param2.insert("path2", Path2);
+    //param2["path2"] = Path2
+    WshScriptExec.StdIn.WriteLine("exit")
+    WshScriptExec.StdOut.Read(0);
     return true
 }
 function Backend_fossil(command, param1, param2) {

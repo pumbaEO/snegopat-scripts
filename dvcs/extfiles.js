@@ -67,6 +67,7 @@ function registerDiffBackend(description, caller) {
 	// тут расширение файла будет использоваться для определения инструмента. 
 	DiffBackends.insert(description, caller)
 }
+
 function ТзКаталоговИнициализировать(пТзКаталоги)
 {
     try{
@@ -212,7 +213,7 @@ function КаталогиБазыИмяКаталогаНачалоВыбора(
 function registerDVCSBackend(description, caller) {
     DvcsBackends.insert(description, caller);
 	мОбновитьФайлы();
-	Message("Зарегистр "+description)
+	//Message("Зарегистр "+description)
 }
 
 
@@ -372,6 +373,8 @@ function КнШапкаСравнитьСПоследнейВерсией(Эле
 	if (!caller("DIFF", structParam, pathsToFiles))
 		return
     
+	Path1 = pathsToFiles["path1"];
+	Path2 = pathsToFiles["path2"];
     macrosЗапуститьСравнениеФайлов();
     Path1 = null;
     Path2 = null;
@@ -471,13 +474,17 @@ function hookCompareFiles(dlgInfo)
 
 function macrosЗапуститьСравнениеФайлов()
 {
-	var ext = Path1.substr(Path1.length-4)
+	var ext = Path1.substr(Path1.length-3)
+	//Message(ext);
+	debugger;
 	if (!DiffBackends.Property(ext)){
 		events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
 		stdcommands.Frame.CompareFiles.send()
+	} else {
+		var caller = DiffBackends[ext]
+		caller(Path1, Path2)
 	}
-	var caller = DiffBackends[ext]
-	caller(Path1, Path2)
+	
 }
 
 /* 
