@@ -317,14 +317,11 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     // Запусим shell и найдем версии файлов. 
     //var TextDoc = v8New("TextDocument");
     TextDoc.Clear();
-    //debugger;
-    Message(лКаталог);
     TextDoc.AddLine('cd /d "' +лКаталог +'"')
     TextDoc.AddLine('fossil finfo -b --limit 2 "'+лТекСтрока.ИмяФайла+'" >> "' +PathToFossilOutput+'"');
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-    //debugger;
     TextDoc.Read(PathToFossilOutput, "UTF-8");
     if (TextDoc.LineCount() == 0) {
         Message (" 1 комманда отработала, но вывод не записался, надо отладить!")
