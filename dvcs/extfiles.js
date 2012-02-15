@@ -6,50 +6,51 @@ $addin stdcommands
 $addin stdlib
 
 /* Скрипт для открытия внешних файлов для Снегопата
-* Автор		: Пушин Владимир, vladnet@gmail.com
-* Дата создания: 24.08.2011
-* Описание		: Добавляет окно из которого можно открывать внешние файлы
-*/
+ * Автор        : Пушин Владимир, vladnet@gmail.com
+ * Дата создания: 24.08.2011
+ * Описание     : Добавляет окно из которого можно открывать внешние файлы
+ */
 var мВерсияСкрипта = 1.36
 
 /* Версия 1.35
-* 1. Добавлена возможность обновлять не все каталоги, а только текущий
-* 2. Косметические изменения форм
-* 3. Добавлены горячие кнопки для кнопок обновления каталогов
-* 4. Теперь при обновлении каталога позиция курсора сохраняется
-*/
+ * 1. Добавлена возможность обновлять не все каталоги, а только текущий
+ * 2. Косметические изменения форм
+ * 3. Добавлены горячие кнопки для кнопок обновления каталогов
+ * 4. Теперь при обновлении каталога позиция курсора сохраняется
+ */
 
 // Зададим путь в профайле
-var pflExtFilesOpenOnStart	= "ExtFiles/OpenOnStart"
-var pflExtShowExtInName		= "ExtFiles/ShowExtInName"
-var pflExtFilesPath			= "ExtFiles/Path"
-var pflExtFilesPathBase		= "ExtFiles/PathBase"
-var pflVersionControl		= "ExtFiles/VersionControl"
-var pfColorModiefed			= "ExtFiles/ColorModiefed"
-var pfColorDeleted			= "ExtFiles/ColorDeleted"
-var pfColorNotVersioned		= "ExtFiles/ColorNotVersioned"
-
+var pflExtFilesOpenOnStart  = "ExtFiles/OpenOnStart"
+var pflExtShowExtInName     = "ExtFiles/ShowExtInName"
+var pflExtFilesPath         = "ExtFiles/Path"
+var pflExtFilesPathBase     = "ExtFiles/PathBase"
+var pflExtOpen1CExtensions  = "ExtFiles/Open1CExtensions"
+var pflVersionControl        = "ExtFiles/VersionControl"
+var pfColorModiefed            = "ExtFiles/ColorModiefed"
+var pfColorDeleted            = "ExtFiles/ColorDeleted"
+var pfColorNotVersioned        = "ExtFiles/ColorNotVersioned"
 
 // Восстановим настройки
 profileRoot.createValue(pflExtFilesOpenOnStart, false, pflSnegopat)
 profileRoot.createValue(pflExtShowExtInName, true, pflSnegopat)
 profileRoot.createValue(pflExtFilesPath, false, pflSnegopat)
 profileRoot.createValue(pflExtFilesPathBase, false, pflBase)
-profileRoot.createValue(pflVersionControl, false, pflSnegopat)
+profileRoot.createValue(pflExtOpen1CExtensions, СформироватьТзРасширенияФайловПоУмолчанию(), pflSnegopat)
 //FIXME: добавить соответствие цветов, как соотетствие, а не n переменных. 
 profileRoot.createValue(pfColorModiefed, false, pflSnegopat)
 profileRoot.createValue(pfColorDeleted, false, pflSnegopat)
 profileRoot.createValue(pfColorNotVersioned, false, pflSnegopat)
 
 
-
 var мОткрыватьПриСтарте = profileRoot.getValue(pflExtFilesOpenOnStart)
 var мОтображатьРасширениеФайлаВПредставлении = profileRoot.getValue(pflExtShowExtInName)
 var мТзКаталогиОбщие = profileRoot.getValue(pflExtFilesPath)
 var мТзКаталогиБазы = profileRoot.getValue(pflExtFilesPathBase)
+var мТзРасширенияФайлов = profileRoot.getValue(pflExtOpen1CExtensions);
+var RE_EXTENSIONS = null;
 //FIXME: Добавить варианты использования версионного контроля. Не fossil единым. 
-//	1. В ТЧ с каталогами выбирать вариант
-//	2. Сделать вызов разных обработок в зависимости от варинат, добавить вариант авторегистрации...
+//    1. В ТЧ с каталогами выбирать вариант
+//    2. Сделать вызов разных обработок в зависимости от варинат, добавить вариант авторегистрации...
 // если народу понравиться, можно будет добавить кнопки, показ только измененных?
 // var мИспользоватьВерисонирование = profileRoot.getValue(pflVersionControl)
 var мЦветФонаИзмененные = profileRoot.getValue(pfColorModiefed)
@@ -64,8 +65,8 @@ var DiffBackends = v8New("Structure");
 global.connectGlobals(SelfScript)
 
 function registerDiffBackend(description, caller) {
-	// тут расширение файла будет использоваться для определения инструмента. 
-	DiffBackends.insert(description, caller)
+    // тут расширение файла будет использоваться для определения инструмента. 
+    DiffBackends.insert(description, caller)
 }
 
 function ТзКаталоговИнициализировать(пТзКаталоги)
@@ -136,22 +137,25 @@ function КпШапкаНастройки(Элемент)
 
 function мЗаписатьНастройки()
 {
-    мТзКаталогиОбщие		= мФормаНастройки.КаталогиОбщие
-    мТзКаталогиБазы			= мФормаНастройки.КаталогиБазы
-    мОткрыватьПриСтарте		= мФормаНастройки.ОткрыватьФормуПриЗагрузке
-    мЦветФонаИзмененные		= мФормаНастройки.ЦветФонаИзмененные
-    мЦветФонаУдаленный		= мФормаНастройки.ЦветФонаУдаленный
-    мЦветФонаНеВерсионный	= мФормаНастройки.ЦветФонаНеВерсионный
-    
+    мТзКаталогиОбщие=мФормаНастройки.КаталогиОбщие
+    мТзКаталогиБазы=мФормаНастройки.КаталогиБазы
+    мОткрыватьПриСтарте=мФормаНастройки.ОткрыватьФормуПриЗагрузке
+    мТзРасширенияФайлов = мФормаНастройки.РасширенияФайлов.Скопировать();
+    RE_EXTENSIONS = null; // Регулярку надо переформировать.
+    мЦветФонаИзмененные        = мФормаНастройки.ЦветФонаИзмененные
+    мЦветФонаУдаленный        = мФормаНастройки.ЦветФонаУдаленный
+    мЦветФонаНеВерсионный    = мФормаНастройки.ЦветФонаНеВерсионный
+
     profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtShowExtInName, мОтображатьРасширениеФайлаВПредставлении)
     profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtFilesPath, ValueToStringInternal(мТзКаталогиОбщие))
     profileRoot.setValue(pflExtFilesPathBase, ValueToStringInternal(мТзКаталогиБазы))
+    profileRoot.setValue(pflExtFilesPathBase, мТзРасширенияФайлов)
     profileRoot.setValue(pfColorModiefed, мЦветФонаИзмененные)
     profileRoot.setValue(pfColorDeleted, мЦветФонаУдаленный)
     profileRoot.setValue(pfColorNotVersioned, мЦветФонаНеВерсионный)
-    
+
     мОбновитьФайлы()
 }
 
@@ -174,6 +178,7 @@ function НастройкиПриОткрытии()
     мФормаНастройки.ЦветФонаНеВерсионный = мЦветФонаНеВерсионный
     мЗагрузитьНастройку(мТзКаталогиОбщие, мФормаНастройки.КаталогиОбщие);
     мЗагрузитьНастройку(мТзКаталогиБазы, мФормаНастройки.КаталогиБазы);
+    мФормаНастройки.РасширенияФайлов = мТзРасширенияФайлов;
 }
 
 function КпШапкаЗаписатьИЗакрыть(Кнопка)
@@ -210,13 +215,96 @@ function КаталогиБазыИмяКаталогаНачалоВыбора(
     Элемент.val.Значение=лКаталог
 }
 
-function registerDVCSBackend(description, caller) {
-    DvcsBackends.insert(description, caller);
-	мОбновитьФайлы();
-	//Message("Зарегистр "+description)
+function GetAbsolutePathName(pathToFile)
+{
+    if (pathToFile.length == 0) return pathToFile
+    //код взят из python для определеня abspath
+    debugger; 
+    backslash = "\\"
+    if (pathToFile.substr(0,4)=='\\\\.\\' ||  pathToFile.substr(0,4)=='\\\\?\\') return pathToFile
+    
+    path = pathToFile.replace("/", "\\")
+    prefix = ''
+    if (path.substr(1,1) == ":") {
+        prefix = path.substr(0,2)
+        path = path.substr(2)
+    }
+    if (prefix == '') {
+        while (path.substr(0,1) == "\\"){
+            prefix = prefix + backslash
+            path = path.substr(1)
+        }
+    }
+    else {
+        if (path.substr(0,1)=="\\") {
+            prefix = prefix + backslash
+            while (path.substr(0,1) == "\\"){
+                path = path.substr(1)
+            }
+        }
+    }
+    comps = path.split("\\")
+    i = 0
+    while (i < comps.length){
+        if (comps[i]=="." || comps[i]=="") {
+            var sl1 = comps.slice(0,i)
+            var sl2 = comps.slice(i+1)
+            comps = sl1.concat(sl2)
+            continue;
+        } else {
+            if (comps[i] == "..") {
+                if (i > 0 && comps[i-1] != "..") {
+                var sl1 = comps.slice(0,i-1)
+                var sl2 = comps.slice(i+1)
+                comps = sl1.concat(sl2)
+                i -= 1;
+                continue;
+                } else {
+                if (i==0 && prefix.substr(prefix.length -1, 1) == "\\") {
+                    var sl1 = comps.slice(0,i)
+                    var sl2 = comps.slice(i+1)
+                    comps = sl1.concat(sl2)
+                    continue;
+                } else {
+                    i +=1
+                    continue4
+                }
+                continue;
+            }
+            continue;
+            }
+            i += 1;
+        } 
+    }
+    if (comps.length == 0) comps.push('.')
+    return prefix + comps.join(backslash)
 }
 
+function buildPath (a, b) {
+    if (a == "") return b
 
+    var is_a_drive = a.substr(1,1) == ":" ? true:false
+    var is_b_drive = b.substr(1,1) == ":" ? true:false
+    if (is_b_drive == true) return b
+    var path = a;
+    if (path.substr(path.length-1,1) == "\\" && b.substr(0,1) == "\\") {
+        return path+b.substr(1)
+    }
+    if (path.substr(path.length-1,1) == "\\" && b.substr(0,1) != "\\") {
+        return path+b;
+    }
+    if (path.substr(path.length-1,1) != "\\" && b.substr(0,1) != "\\") {
+        return path+"\\"+b
+    }
+    if (path.substr(path.length-1,1) != "\\" && b.substr(0,1) == "\\") {
+        return path+b;
+    }
+}
+
+function registerDVCSBackend(description, caller) {
+    DvcsBackends.insert(description, caller);
+    мОбновитьФайлы();
+} //registerDVCSBackend
 function мДобавитьФайлы(пПуть, пУзел)
 {
     var лФайлы=FindFiles(пПуть, '*.*', false)
@@ -231,7 +319,7 @@ function мДобавитьФайлы(пПуть, пУзел)
         лСтрокаДереваФайлов.ЭтоКаталог=лФайл.ЭтоКаталог()
         лСтрокаДереваФайлов.ИмяФайла=лФайл.ПолноеИмя
         лСтрокаДереваФайлов.ДатаИзменения=лФайл.ПолучитьВремяИзменения();
-        //debugger;
+        лСтрокаДереваФайлов.КартинкаСтатус = 0;
         var StructureToFind = v8New("Structure");
         StructureToFind.Insert("FullFileName", лСтрокаДереваФайлов.ИмяФайла);
         var Rows = ValueTablesFiles.FindRows(StructureToFind);
@@ -265,9 +353,33 @@ function мДобавитьФайлы(пПуть, пУзел)
 
 function ДобавитьКаталоги(пТзКаталоги)
 {
+    var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
+    try {
+        var fso = new ActiveXObject ("Scripting.FileSystemObject")
+    }
+    catch (er) {
+        var fso = null
+    }
     for (var лИнд=0; лИнд<пТзКаталоги.Количество(); лИнд++)
     {
         var лКаталог=пТзКаталоги.Получить(лИнд).ИмяКаталога;
+        //Добавим возможность формирования пути каталога, относительно Снегопата. 
+        // путь начинаться должен с "..", по просбе 
+        if (лКаталог.substr(0,2) == "..") {
+            if (fso == null) {
+                var млКаталог = GetAbsolutePathName(buildPath(mainFolder, лКаталог))
+            } else {
+                var млКаталог = fso.GetAbsolutePathName(fso.buildPath(mainFolder, лКаталог))    
+            }
+            //Сделаем проверку существования каталога от 1С.
+            var f = v8New("File", млКаталог); 
+            if (f.Exist()) {
+                лКаталог = млКаталог;
+            } else {
+                Message("Каталог отностельно Снегопата не существует, пропускаем " + млКаталог);
+                continue; //
+            }
+        }
         лСтрокаДереваФайлов=мФормаСкрипта.ДеревоФайлов.Строки.Добавить()
         лСтрокаДереваФайлов.Имя=лКаталог
         лСтрокаДереваФайлов.ИмяФайла=лКаталог
@@ -275,16 +387,24 @@ function ДобавитьКаталоги(пТзКаталоги)
         //проверим каталог с fossil
         var лТекущаяСтрока = лСтрокаДереваФайлов;
         //Теперь определим что у нас изменилось в этом каталоге и потом когда будем файлы добавлять проверять в этом массиве. 
+        // старые записи для этого каталога. 
+        var StructureToFind = v8New("Structure");
+        StructureToFind.Insert("Catalog", лКаталог);
+        var Rows = ValueTablesFiles.FindRows(StructureToFind);
+        if (Rows.Count() > 0) {
+            for (var i = 0; i<Rows.Count(); i++){
+                ValueTablesFiles.Delete(Rows.Get(i));
+            }
+        }
         if (fso.FileExists(fso.BuildPath(лКаталог, '_FOSSIL_')))
         {
-			
-			if (DvcsBackends.Property('fossil')) {
-				var caller = DvcsBackends['fossil'];
-				var result = caller("STATUS", лКаталог, ValueTablesFiles)
-			}
-    }
+            
+            if (DvcsBackends.Property('fossil')) {
+                var caller = DvcsBackends['fossil'];
+                var result = caller("STATUS", лКаталог, ValueTablesFiles)
+            }
+        }
         мДобавитьФайлы(лКаталог, лСтрокаДереваФайлов)
-
         лСтрокаДереваФайлов.Строки.Сортировать("ЭтоКаталог Убыв, Имя", true)
     }
     мФормаСкрипта.ДеревоФайлов.Строки.Сортировать("ЭтоКаталог Убыв, Имя", true)
@@ -327,6 +447,29 @@ function мОбновитьФайлыТекущейВетки()
     
     while(лТекСтрока.Родитель != undefined) лТекСтрока=лТекСтрока.Родитель
     лТекСтрока.Строки.Очистить()
+
+    //проверим каталог с fossil
+    //var лТекущаяСтрока = лСтрокаДереваФайлов;
+    var лКаталог = лТекСтрока.ИмяФайла
+    //Теперь определим что у нас изменилось в этом каталоге и потом когда будем файлы добавлять проверять в этом массиве. 
+    // старые записи для этого каталога. 
+    var StructureToFind = v8New("Structure");
+    StructureToFind.Insert("Catalog", лКаталог);
+    var Rows = ValueTablesFiles.FindRows(StructureToFind);
+    if (Rows.Count() > 0) {
+        for (var i = 0; i<Rows.Count(); i++){
+            ValueTablesFiles.Delete(Rows.Get(i));
+        }
+    }
+    if (fso.FileExists(fso.BuildPath(лКаталог, '_FOSSIL_')))
+    {
+        
+        if (DvcsBackends.Property('fossil')) {
+            var caller = DvcsBackends['fossil'];
+            var result = caller("STATUS", лКаталог, ValueTablesFiles)
+        }
+    }
+    
     мДобавитьФайлы(лТекСтрока.Имя, лТекСтрока)
     лТекСтрока.Строки.Сортировать("ЭтоКаталог Убыв, Имя", true)
     
@@ -365,16 +508,16 @@ function КнШапкаСравнитьСПоследнейВерсией(Эле
 {
     лТекСтрока=мФормаСкрипта.ЭлементыФормы.ДеревоФайлов.ТекущаяСтрока
     if(лТекСтрока==undefined) return
-	var caller = DvcsBackends["fossil"]
-	var structParam = v8New("Structure");
-	structParam.insert("ValueTablesFiles", ValueTablesFiles)
-	structParam.insert("Row", лТекСтрока);
-	var pathsToFiles = v8New("Structure");
-	if (!caller("DIFF", structParam, pathsToFiles))
-		return
+    var caller = DvcsBackends["fossil"]
+    var structParam = v8New("Structure");
+    structParam.insert("ValueTablesFiles", ValueTablesFiles)
+    structParam.insert("Row", лТекСтрока);
+    var pathsToFiles = v8New("Structure");
+    if (!caller("DIFF", structParam, pathsToFiles))
+        return
     
-	Path1 = pathsToFiles["path1"];
-	Path2 = pathsToFiles["path2"];
+    Path1 = pathsToFiles["path1"];
+    Path2 = pathsToFiles["path2"];
     macrosЗапуститьСравнениеФайлов();
     Path1 = null;
     Path2 = null;
@@ -426,12 +569,15 @@ function ДеревоФайловПередНачаломИзменения(пЭ
     пОтказ.val = true
     лТекСтрока=пЭлемент.val.ТекущаяСтрока
     if(лТекСтрока.ЭтоКаталог) return
-    stdlib.openFileIn1C(лТекСтрока.ИмяФайла)
-}
+    
+    if (МожноОткрытьФайлВКонфигураторе(лТекСтрока.ИмяФайла))
+        stdlib.openFileIn1C(лТекСтрока.ИмяФайла)
+    else 
+        ЗапуститьПриложение(лТекСтрока.ИмяФайла);
+} //ДеревоФайловПередНачаломИзменения
 
 function ДеревоФайловПриВыводеСтроки(пЭлемент, пОформлениеСтроки, пДанныеСтроки)
 {
-    
     лЯчейкаИмя=пОформлениеСтроки.val.Ячейки.Имя
     лЯчейкаИмя.ОтображатьКартинку=true
     if (пДанныеСтроки.val.КартинкаСтатус == 1) {
@@ -451,7 +597,41 @@ function ДеревоФайловПриВыводеСтроки(пЭлемент
         лЯчейкаИмя.Картинка=БиблиотекаКартинок.ОткрытьФайл
     else
         лЯчейкаИмя.Картинка=БиблиотекаКартинок.Форма
-}
+} //ДеревоФайловПриВыводеСтроки
+
+function СформироватьТзРасширенияФайловПоУмолчанию() 
+{
+    var ТЗ = v8New("ТаблицаЗначений");
+    ТЗ.Колонки.Добавить("Расширение");
+
+    function Расш(расширение) { ТЗ.Добавить().Расширение = расширение; }
+    
+    // Стандартные файлы 1С:Предприятия 8.
+    Расш("txt"); Расш("bmp"); Расш("dib"); Расш("png"); Расш("rle"); 
+    Расш("jpg"); Расш("jpeg"); Расш("tif"); Расш("ico"); Расш("mxl"); 
+    Расш("epf"); Расш("erf"); Расш("htm"); Расш("html"); Расш("grs"); 
+    Расш("geo"); Расш("st"); Расш("lgf"); Расш("elf"); Расш("cf"); Расш("pff");
+
+    // Файлы Снегопата.
+    Расш("ssf"); Расш("js"); Расш("vbs");
+    
+    return ТЗ;
+} //СформироватьТзРасширенияФайловПоУмолчанию
+
+function МожноОткрытьФайлВКонфигураторе(ИмяФайла) 
+{
+    if (!RE_EXTENSIONS) 
+    {
+        var ext = new Array();
+        for (var i=0; i<мТзРасширенияФайлов.Количество(); i++)
+            ext.push(мТзРасширенияФайлов.Get(i).Расширение);
+            
+        RE_EXTENSIONS = new RegExp('\.(?:' + ext.join('|') + ' )$', 'i');
+    }
+    
+    return RE_EXTENSIONS.test(ИмяФайла);
+} //МожноОткрытьФайлВКонфигураторе
+
 function hookCompareFiles(dlgInfo)
 {
     if (Path1 == null) return
@@ -470,44 +650,31 @@ function hookCompareFiles(dlgInfo)
         var wsh = new ActiveXObject("WScript.Shell")
         wsh.SendKeys('^~')
     }
-}
+} //hookCompareFiles
 
 function macrosЗапуститьСравнениеФайлов()
 {
-	var ext = Path1.substr(Path1.length-3)
-	if (!DiffBackends.Property(ext)){
-		events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
-		stdcommands.Frame.CompareFiles.send()
-	} else {
-		var caller = DiffBackends[ext]
-		caller(Path1, Path2)
-	}
-	
-}
+    var ext = Path1.substr(Path1.length-3)
+    if (!DiffBackends.Property(ext)){
+        events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
+        stdcommands.Frame.CompareFiles.send()
+    } else {
+        var caller = DiffBackends[ext]
+        caller(Path1, Path2)
+    }
+    
+} //macrosЗапуститьСравнениеФайлов
 
-/* 
-Пока не забыл, как нам вытащить вариант старый файла...
-1. fossil finfo -b test.txt
-Вывод команды 
-[CODE]
-7704d33278 2012-02-07 Sosna 'blal'
-[/CODE]
-2. 7704d33278 - это важно...
-3. fossil artifact 7704d33278 
-Вывод команды 
-[CODE]
-C 'blal'
-D 2012-02-07T16:43:05.990
-F new/test2.txt da39a3ee5e6b4b0d3255bfef95601890afd80709
-F null da39a3ee5e6b4b0d3255bfef95601890afd80709
-F test.txt 577ceb90a97e84bb5083e5027f5ae90abb59d5e1
-F ЭкспортНалоговыхНакладных.epf 3d31ccac62731f672a4d52f5ea398d5fd4a85c96
-P 77c433f86d69037ea9d4082cfa044d4b7f0d5336
-R 75b5f18b20c32b629db78d4868515a9c
-U Sosna
-Z efeb6f455893cacba3131bb79ea0c9fe
-[/CODE]
-4. F test.txt 577ceb90a97e84bb5083e5027f5ae90abb59d5e1 - это важно. 
-5. 577ceb90a97e84bb5083e5027f5ae90abb59d5e1 - это id в базе.
-6. fossil test-content-rawget 577ceb90a97e84bb5083e5027f5ae90abb59d5e1 filename.bla 
-В результате мы получаем filename.bla с это ревизией.  */
+
+function КпШапкаОткрытьТекущийКаталогВКоманднойСтроке(Элемент) {
+    var лТекСтрока=мФормаСкрипта.ЭлементыФормы.ДеревоФайлов.ТекущаяСтрока;
+    if(лТекСтрока==undefined) return
+    var лКаталог = "";
+    if (лТекСтрока.ЭтоКаталог) {
+        лКаталог = лТекСтрока.ИмяФайла;
+    } else {
+        лКаталог = лТекСтрока.Родитель.ИмяФайла;
+    }
+    ЗапуститьПриложение("cmd.exe", лКаталог);
+} //КпШапкаОткрытьТекущийКаталогВКоманднойСтроке
+

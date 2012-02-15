@@ -2,24 +2,108 @@
 $uname dvcs_fossil
 $dname Backend к fossil
 $addin extfiles
+$addin global
+$addin stdcommands
 $addin stdlib
-$addin vbs
 
 // (c) Сосна Евгений sheneja at sosna.zp.ua
 // Скрипт - Backend к fossil для отображения версионного контроля. 
 //
 
-//var attrTypeCategory        = "{30E571BC-A897-4A78-B2E5-1EA6D48B5742}"
+global.connectGlobals(SelfScript)
+
+var pfFossilPath                    = "ExtFilesDVCS/fossilpath"
+var pfFossilPathBase                = "ExtFilesDVCS/fossilpathbase"
+profileRoot.createValue(pfFossilPath, "fossil.exe", pflSnegopat)
+profileRoot.createValue(pfFossilPathBase, "", pflBase)
+
+// Настройки для fossil 
+var PathToFossil = "";
+var мPathToFossilBase = "";
+var мPathToFossil  = "";
+мPathToFossilBase = profileRoot.getValue(pfFossilPathBase)
+мPathToFossil = profileRoot.getValue(pfFossilPath)
+
+if (мPathToFossilBase!=''){
+    if (мPathToFossilBase.substr(0,2) == "..") {
+        var мPathToFossilBase = fso.GetAbsolutePathName(fso.buildPath(mainFolder, мPathToFossilBase))
+        }
+    var f = v8New("File", мPathToFossilBase); 
+    if (f.Exist()) {
+        PathToFossil = мPathToFossilBase;
+    }
+}
+if (PathToFossil=='' && мPathToFossil!='') { //прочтем настройки снегопата
+    if (мPathToFossil.substr(0,2) == "..") {
+        var мPathToFossil = fso.GetAbsolutePathName(fso.buildPath(mainFolder, мPathToFossil))
+        }
+    var f = v8New("File", мPathToFossil); 
+    if (f.Exist()) {
+        PathToFossil = мPathToFossil;
+    }
+}
+if (PathToFossil == '') {
+    мPathToFossil = "fossil.exe";
+    PathToFossil = мPathToFossil;
+}
+
 
 var FSO = new ActiveXObject("Scripting.FileSystemObject");
 var ForReading = 1, ForWriting = 2, ForAppending = 8;
 var WshShell = new ActiveXObject("WScript.Shell");
 var TempDir = WshShell.ExpandEnvironmentStrings("%temp%") + "\\";
-//FIXME: вынести в настройку, у меня он в PATH прописан, но вдруг. 
-var PathToFossil = "fossil.exe"; // определим установку пути к фоссилу
+var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
+
+
+var мФормаНастройки=null
 
 extfiles.registerDVCSBackend("fossil", Backend_fossil)
 
+function macrosНастройкиFossil(){
+    var pathToForm=SelfScript.fullPath.replace(/js$/, 'ssf')
+    мФормаНастройки=loadScriptForm(pathToForm, SelfScript.self) // Обработку событий формы привяжем к самому скрипту
+    мФормаНастройки.ОткрытьМодально()
+}
+
+function мЗаписатьНастройки()
+{
+    var FossilSnegopat = мФормаНастройки.cmdSnegopat;
+    var FossilBase = мФормаНастройки.cmdBase;
+    profileRoot.setValue(pfFossilPath, FossilSnegopat)
+    profileRoot.setValue(pfFossilPathBase, FossilBase)
+}
+
+function НастройкиПриОткрытии()
+{
+    мФормаНастройки.cmdSnegopat=мPathToFossil
+    мФормаНастройки.cmdBase=мPathToFossilBase
+}
+
+function cmdSnegopatНачалоВыбора(Элемент, СтандартнаяОбработка) {
+    лФайл=мВыбратьФайл()
+    if(лФайл=="") return
+    Элемент.val.Значение=лФайл
+}
+
+function cmdBaseНачалоВыбора(Элемент, СтандартнаяОбработка) {
+    лФайл=мВыбратьФайл()
+    if(лФайл=="") return
+    Элемент.val.Значение=лФайл
+}
+
+function КнопкаЗаписатьНажатие(Кнопка) {
+    мЗаписатьНастройки();
+    мФормаНастройки.Закрыть();
+}
+
+function мВыбратьФайл()
+{
+    ДиалогОткрытияФайла=v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Открытие)
+    //ДиалогОткрытияФайла.ПолноеИмяФайла = ""
+    ДиалогОткрытияФайла.Заголовок = "Выберите файл с fossil "
+    if(ДиалогОткрытияФайла.Выбрать()==false) return ""
+    return ДиалогОткрытияФайла.ПолноеИмяФайла
+}
 /** Возвращает текст sText преобразованный из кодировки sSrcCharset (по ум. windows-1251) в UTF-8
  * Обязателен только 1-й параметр 
  */
@@ -116,7 +200,7 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                     filename = r.split('     ')[1]
                     newItem = ValueTablesFiles.Add();
                     newItem.Catalog = pathToCatalog;
-                    newItem.FullFileName = FSO.BuildPath(pathToCatalog, filename.replace('/', '\\'));
+                    newItem.FullFileName = FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'));
                     newItem.Status = "EDITED";
                     continue;
                 }
@@ -125,7 +209,7 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                         filename = r.split('    ')[1]
                         newItem = ValueTablesFiles.Add();
                         newItem.Catalog = pathToCatalog;
-                        newItem.FullFileName = FSO.BuildPath(pathToCatalog, filename.replace('/', '\\'));
+                        newItem.FullFileName = FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'));
                         newItem.Status = "DELETED";
                         continue;
                     }
@@ -143,19 +227,19 @@ function getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                     };
                     newItem = ValueTablesFiles.Add();
                     newItem.Catalog = pathToCatalog;
-                    newItem.FullFileName = FSO.BuildPath(pathToCatalog, r.replace('/', '\\'));
+                    newItem.FullFileName = FSO.BuildPath(pathToCatalog, r.replace(/\//g, '\\'));
                     newItem.Status = 'NOTVERSIONED';
                     }
             }
     
         return true
 }
+
 function getFilePathToDiff(param1, param2) {
     
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
     var TextDoc = v8New("TextDocument");
-    //TextDoc.AddLine("Временный файл для fossil");
     TextDoc.Записать(PathToFossilOutput, "UTF-8");
     // возвращать будем структру, path1 и path2 
     var ValueTablesFiles = param1["ValueTablesFiles"]
@@ -170,6 +254,33 @@ function getFilePathToDiff(param1, param2) {
     {
         лКаталог = Rows.Get(0).Catalog;
     }
+    if (лКаталог == '') { //определим текущий ROOT каталог для fossil 
+        млКаталог = лТекСтрока.Родитель.ИмяФайла;
+        TextDoc.AddLine('cd /d"' +млКаталог +'"')
+        TextDoc.AddLine('"'+PathToFossil +'" status >> "'+PathToFossilOutput+'"');
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        TextDoc.Read(PathToFossilOutput, "UTF-8");
+        if (TextDoc.LineCount() == 0) {
+            Message ("комманда отработала, но вывод не записался, надо отладить!")
+            return false //что то пошло не так. 
+        }
+        
+        var i=0;
+        for (var i=1; i<=TextDoc.LineCount(); i++)
+        {
+            var r = TextDoc.GetLine(i);
+            if (r.indexOf("local-root:")!=-1){ // все нашли, теперь 
+                млКаталог  = r.split('   ')[1];
+                лКаталог = млКаталог.replace(/\//g, '\\');
+                лКаталог = лКаталог.substr(0, лКаталог.length-1);
+                break;
+            }
+        }
+        TextDoc.Clear();
+        TextDoc.Write(PathToFossilOutput, "UTF-8");
+    }
+    
     //debugger;
     /* 
 Пока не забыл, как нам вытащить вариант старый файла...
@@ -207,15 +318,16 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     //var TextDoc = v8New("TextDocument");
     TextDoc.Clear();
     //debugger;
-    TextDoc.AddLine('cd /d"' +лКаталог +'"')
+    Message(лКаталог);
+    TextDoc.AddLine('cd /d "' +лКаталог +'"')
     TextDoc.AddLine('fossil finfo -b --limit 2 "'+лТекСтрока.ИмяФайла+'" >> "' +PathToFossilOutput+'"');
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-    
+    //debugger;
     TextDoc.Read(PathToFossilOutput, "UTF-8");
     if (TextDoc.LineCount() == 0) {
-        Message ("комманда отработала, но вывод не записался, надо отладить!")
+        Message (" 1 комманда отработала, но вывод не записался, надо отладить!")
         return false //что то пошло не так. 
     }
     if (TextDoc.LineCount() > 0){
@@ -240,7 +352,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
         
         TextDoc.Read(PathToFossilOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
-            Message ("комманда отработала, но вывод не записался, надо отладить!")
+            Message ("2 комманда отработала, но вывод не записался, надо отладить!")
             return false //что то пошло не так. 
             }
         for (var i=1; i<=TextDoc.LineCount(); i++) {
@@ -252,7 +364,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
                 filename = ar[1]
                 filenameToSearch = лТекСтрока.ИмяФайла
                 filenameToSearch = filenameToSearch.substr(лКаталог.length+1, filenameToSearch.length - лКаталог.length);
-                filenameToSearch = filenameToSearch.replace('\\','/')
+                filenameToSearch = filenameToSearch.replace(/\\/g,'/')
                 if (filename == filenameToSearch)  //Ура нашли... 
                 {
                     ver1sha1 = ar[2]
@@ -272,7 +384,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
         
         TextDoc.Read(PathToFossilOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
-            Message ("комманда отработала, но вывод не записался, надо отладить!")
+            Message ("3 комманда отработала, но вывод не записался, надо отладить!")
             return false //что то пошло не так. 
             }
         for (var i=1; i<=TextDoc.LineCount(); i++) {
@@ -284,10 +396,10 @@ Z efeb6f455893cacba3131bb79ea0c9fe
                 filename = ar[1]
                 filenameToSearch = лТекСтрока.ИмяФайла
                 filenameToSearch = filenameToSearch.substr(лКаталог.length+1, filenameToSearch.length - лКаталог.length);
-                filenameToSearch = filenameToSearch.replace('\\','/')
+                filenameToSearch = filenameToSearch.replace(/\\/g,'/')
                 if (filename == filenameToSearch)  //Ура нашли... 
                 {
-                    ver1sha1 = ar[2]
+                    ver2sha1 = ar[2]
                 }
             }
         }
@@ -383,7 +495,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     if (ver1 == null || ver1 == "") {Message("ver 1 не нашли ничего"); return ;}
     //var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
     var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя)
-    TextDoc.AddLine('cd /d"' +лКаталог +'"')
+    TextDoc.AddLine('cd /d "' +лКаталог +'"')
     TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver1sha1 + ' >> "'+file1ToDiff+'"');
     // Не знаю как на ошибку проверить...
     TextDoc.Write(PathToBatFossil, 'cp866');
@@ -401,13 +513,13 @@ Z efeb6f455893cacba3131bb79ea0c9fe
         Path2 = лТекСтрока.ИмяФайла;
     }
     else {
-        if (ver2sha1 == null) {
+        if (ver2sha1 == '') {
             Message("ver 2 не существует не с чем сравнивать")
             return false
         }
-        var file2ToDiff = FSO.BuildPath(TempDir, ver2+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
-        TextDoc.AddLine('cd /d"' +лКаталог +'"')
-        TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver1sha1 + ' >> "'+file2ToDiff+'"');
+        var file2ToDiff = FSO.BuildPath(TempDir, ver2+лТекСтрока.Имя)
+        TextDoc.AddLine('cd /d "' +лКаталог +'"')
+        TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver2sha1 + ' >> "'+file2ToDiff+'"');
         // Не знаю как на ошибку проверить...
         TextDoc.Write(PathToBatFossil, 'cp866');
         TextDoc.Clear();
@@ -422,7 +534,8 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     //WshScriptExec.StdIn.WriteLine("exit")
     
     return true
-}
+} //getFilePathToDiff
+
 function Backend_fossil(command, param1, param2) {
     if (command == "STATUS") return getStatusForCatalog(param1, param2)
     if (command == "DIFF") return getFilePathToDiff(param1, param2)
