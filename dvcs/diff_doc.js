@@ -4,6 +4,7 @@ $dname Backend к diff просмотру
 $addin extfiles
 
 extfiles.registerDiffBackend("doc", diff)
+extfiles.registerDiffBackend("docx", diff)
 
 var objArgs,num,sBaseDoc,sNewDoc,sTempDoc,objScript,word,destination;
 // Microsoft Office versions for Microsoft Windows OS

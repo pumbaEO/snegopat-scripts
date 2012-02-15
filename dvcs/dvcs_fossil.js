@@ -493,7 +493,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
     //var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
     var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя)
     TextDoc.AddLine('cd /d "' +лКаталог +'"')
-    TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver1sha1 + ' >> "'+file1ToDiff+'"');
+    TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver1sha1 + ' "'+file1ToDiff+'"');
     // Не знаю как на ошибку проверить...
     TextDoc.Write(PathToBatFossil, 'cp866');
     TextDoc.Clear();
@@ -516,7 +516,7 @@ Z efeb6f455893cacba3131bb79ea0c9fe
         }
         var file2ToDiff = FSO.BuildPath(TempDir, ver2+лТекСтрока.Имя)
         TextDoc.AddLine('cd /d "' +лКаталог +'"')
-        TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver2sha1 + ' >> "'+file2ToDiff+'"');
+        TextDoc.AddLine('"'+PathToFossil+'" test-content-rawget '+ver2sha1 + ' "'+file2ToDiff+'"');
         // Не знаю как на ошибку проверить...
         TextDoc.Write(PathToBatFossil, 'cp866');
         TextDoc.Clear();
