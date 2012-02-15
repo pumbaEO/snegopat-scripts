@@ -475,8 +475,6 @@ function hookCompareFiles(dlgInfo)
 function macrosЗапуститьСравнениеФайлов()
 {
 	var ext = Path1.substr(Path1.length-3)
-	//Message(ext);
-	debugger;
 	if (!DiffBackends.Property(ext)){
 		events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
 		stdcommands.Frame.CompareFiles.send()
