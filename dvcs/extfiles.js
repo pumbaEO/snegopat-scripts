@@ -60,7 +60,7 @@ var мЦветФонаУдаленный = profileRoot.getValue(pfColorDeleted)
 var Path1 = null
 var Path2 = null
 var DvcsBackends = v8New("Structure");
-var DiffBackends = v8New("Structure");
+var DiffBackends = v8New("Structure"); 
 
 global.connectGlobals(SelfScript)
 
@@ -449,10 +449,9 @@ function мОбновитьФайлыТекущейВетки()
     лТекСтрока.Строки.Очистить()
 
     //проверим каталог с fossil
-    //var лТекущаяСтрока = лСтрокаДереваФайлов;
     var лКаталог = лТекСтрока.ИмяФайла
     //Теперь определим что у нас изменилось в этом каталоге и потом когда будем файлы добавлять проверять в этом массиве. 
-    // старые записи для этого каталога. 
+    //старые записи для этого каталога. 
     var StructureToFind = v8New("Structure");
     StructureToFind.Insert("Catalog", лКаталог);
     var Rows = ValueTablesFiles.FindRows(StructureToFind);
@@ -654,7 +653,9 @@ function hookCompareFiles(dlgInfo)
 
 function macrosЗапуститьСравнениеФайлов()
 {
-    var ext = Path1.substr(Path1.length-3)
+    if (Path1 == null || Path2 == null) return
+    var ext = v8New("File", Path1).Extension;
+    ext = ext.substr(1); //Уберем первый символ, там точка.
     if (!DiffBackends.Property(ext)){
         events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
         stdcommands.Frame.CompareFiles.send()
