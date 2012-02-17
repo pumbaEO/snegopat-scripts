@@ -276,8 +276,13 @@ copy test.txt > blabla.txt
     if (ver1 == null || ver1 == "") {Message("ver 1 не нашли ничего"); return ;}
     //var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя+'.'+лТекСтрока.Расширение)
     var file1ToDiff = FSO.BuildPath(TempDir, ver1+лТекСтрока.Имя)
+    var file2ToDiff = FSO.BuildPath(TempDir, 'current'+лТекСтрока.Имя)
     TextDoc.AddLine('cd /d "' +лКаталог +'"')
-    TextDoc.AddLine(PathToFossil+' finfo -p -r '+ver1 + ' "'+лТекСтрока.ИмяФайла + '" > "'+file1ToDiff+'"');
+    TextDoc.AddLine('copy /Y "'+лТекСтрока.ИмяФайла +'" "'+file2ToDiff+'"')
+    TextDoc.AddLine(PathToFossil+' revert -r '+ver1 +' "'+лТекСтрока.ИмяФайла +'" ')
+    TextDoc.AddLine('copy /Y "'+лТекСтрока.ИмяФайла +'" "'+file1ToDiff+'"')
+    TextDoc.AddLine(PathToFossil+' undo "'+лТекСтрока.ИмяФайла +'" ')
+    //TextDoc.AddLine(PathToFossil+' finfo -p -r '+ver1 + ' "'+лТекСтрока.ИмяФайла + '" > "'+file1ToDiff+'"');
     // Не знаю как на ошибку проверить...
     TextDoc.Write(PathToBatFossil, 'cp866');
     TextDoc.Clear();
@@ -287,7 +292,7 @@ copy test.txt > blabla.txt
     if (лТекСтрока.КартинкаСтатус == 1)
     {
         Path1 = file1ToDiff;
-        Path2 = лТекСтрока.ИмяФайла;
+        Path2 = file2ToDiff;
     }
     else {
         if (ver2 == '') {
