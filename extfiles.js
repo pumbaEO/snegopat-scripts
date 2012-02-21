@@ -111,7 +111,7 @@ function мЗаписатьНастройки()
     profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtFilesPath, ValueToStringInternal(мТзКаталогиОбщие))
     profileRoot.setValue(pflExtFilesPathBase, ValueToStringInternal(мТзКаталогиБазы))
-    profileRoot.setValue(pflExtFilesPathBase, мТзРасширенияФайлов)
+    profileRoot.setValue(pflExtOpen1CExtensions, мТзРасширенияФайлов)
     
     мОбновитьФайлы()
 }
