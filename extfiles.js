@@ -499,7 +499,7 @@ function МожноОткрытьФайлВКонфигураторе(ИмяФа
         for (var i=0; i<мТзРасширенияФайлов.Количество(); i++)
             ext.push(мТзРасширенияФайлов.Get(i).Расширение);
             
-        RE_EXTENSIONS = new RegExp('\.(?:' + ext.join('|') + ' )$', 'i');
+        RE_EXTENSIONS = new RegExp('\.(?:' + ext.join('|') + ')$', 'i');
     }
     
     return RE_EXTENSIONS.test(ИмяФайла);
