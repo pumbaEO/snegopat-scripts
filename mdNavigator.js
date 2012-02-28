@@ -40,21 +40,8 @@ function walkMdObjs(mdObj, parentName)
     }
 }
 
-function PropsOfMdObj(mdObj){
-    var text = []
-    var mdc = mdObj.mdclass
-    var okStr = "Модуль,Картинка,Форма,МодульОбъекта,МодульМенеджера,";
-
-    for(var i = 0, c = mdc.propertiesCount; i < c; i++)
-    {
-        var mdPropName = mdc.propertyAt(i).name(1);
-        if (okStr.search(mdPropName + '\,') != -1)
-            text.push(mdPropName);
-    }
-
-    return text;
-}
-
+// Функция по таймеру получает текущий текст из поля ввода,
+// и если он изменился, фильтрует список
 function onTimer()
 {
     vbs.var0 = form.ЭлементыФормы.ТекстФильтра
@@ -75,6 +62,9 @@ function readMDtoVT()
     walkMdObjs(metadata.current.rootObject, "")
 }
 
+// Функция заполнения списка объектов метаданных
+// Если есть строка фильтра, выводит объекты, удовлетворяющие фильтру,
+// иначе выводит список последних выбранных объектов
 function fillTable()
 {
     form.ТаблицаМетаданных.Clear()
@@ -110,6 +100,8 @@ function fillTable()
         form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(0)
 }
 
+// Единый метод обработки выбора пользователя.
+// Параметром передается функтор, который непосредственно выполняет действие.
 function doAction(func)
 {
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
@@ -149,15 +141,15 @@ function doAction(func)
     listOfChoices.unshift(row)
     if(listOfChoices.length > 15)
         listOfChoices.pop()
-    // Очистим фильтр и закроем форму
+    // Очистим фильтр и закроем форму, указав как результат объект и функтор
     form.ТекстФильтра = ''
     currentFilter = ''
     form.ТекущийЭлемент = form.ЭлементыФормы.ТекстФильтра
     fillTable()
-    // Вызовем функцию для объекта метаданных
     form.Close({mdObj:mdObj, func:func})
 }
 
+// Описание команд для обработки свойств
 var propsCommands = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
     {propName: "Картинка",          title: "Открыть картинку",      hotkey: 13, modif: 0},
@@ -166,12 +158,15 @@ var propsCommands = [
     {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4},
 ]
 
+// Функция настройки команд для текущего выбранного объекта
 function updateCommands()
 {
+    // Сначала удалим непостоянные команды
     var cmdBar = form.ЭлементыФормы.Команды
     var buttons = cmdBar.Кнопки
     for(var k = buttons.Count() - 5; k > 0; k--)
         buttons.Delete(5)
+    // Получим текущую выбранную строку
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var enabled = false
     if(curRow)
@@ -180,6 +175,7 @@ function updateCommands()
         if(mdObj)
         {
             enabled = true;
+            // Переберем свойства объекта, и добавим команды для их обработки
             var mdc = mdObj.mdclass
             for(var i = 0, c = mdc.propertiesCount; i < c; i++)
             {
@@ -222,15 +218,20 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
     else
         currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
     
+    updateCommands()
     // Будем опрашивать изменение текста каждые 400 мсек
     tID = createTimer(400, SelfScript.self, "onTimer")
-    updateCommands()
     var res = form.ОткрытьМодально()
     killTimer(tID)
-    if(res)
+    if(res) // Если что-то выбрали, вызовем обработчик
         res.func(res.mdObj)
 }
 
+/*
+ * Обработчики событий формы
+ */
+
+// Это для пермещения вверх/вниз текущего выбора
 function ТекстФильтраРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
     if(!form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока)
@@ -252,6 +253,7 @@ function ТекстФильтраРегулирование(Элемент, На
     СтандартнаяОбработка.val = false
 }
 
+// Выбор из списка фильтров
 function ТекстФильтраНачалоВыбора(Элемент, СтандартнаяОбработка)
 {
     СтандартнаяОбработка.val = false
@@ -269,25 +271,13 @@ function ТекстФильтраНачалоВыбора(Элемент, Ста
     }
 }
 
-function КомандыАктивировать(Кнопка)
-{
-    doAction(function(mdObj){mdObj.activateInTree()})
-}
-
-function КомандыРедактировать(Кнопка)
-{
-    doAction(function(mdObj){mdObj.openEditor()})
-}
-
+// Изменение текущей строки - обновить команды
 function ТаблицаМетаданныхПриАктивизацииСтроки(Элемент)
 {
     updateCommands()
 }
 
-function ТаблицаМетаданныхВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
-{
-}
-
+// Команда "Обновить МД"
 function КомандыОбновитьМД(Кнопка)
 {
     readMDtoVT()
@@ -295,9 +285,21 @@ function КомандыОбновитьМД(Кнопка)
         fillTable()
 }
 
+// Команда "Открыть в дереве"
+function КомандыАктивировать(Кнопка)
+{
+    doAction(function(mdObj){mdObj.activateInTree()})
+}
+
+// Команда "Редактировать"
+function КомандыРедактировать(Кнопка)
+{
+    doAction(function(mdObj){mdObj.openEditor()})
+}
+
+// Команда открытия свойств
 function openProperty(Кнопка)
 {
     var n = Кнопка.val.Name
     doAction(function(mdObj){mdObj.editProperty(n)})
 }
-
