@@ -138,6 +138,12 @@ function macrosНастройка()
     form = null
 }
 
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Настройка';
+}
+
 function КоманднаяПанель1Проверить(Кнопка)
 {
     var mainTitle = windows.mainTitle, additionalTitle = windows.additionalTitle
