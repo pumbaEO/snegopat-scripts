@@ -21,7 +21,7 @@ function walkMdObjs(mdObj, parentName)
     if (mdObj == metadata.current.rootObject)
         row.Name = "Конфигурация";
     else
-        row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1, true) + "." + mdObj.name
+        row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1) + "." + mdObj.name
     row.lName = row.Name.toLowerCase()
     vtMD.push(row)
 
@@ -100,6 +100,13 @@ function fillTable()
         form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(0)
 }
 
+function findMdObj(uuid)
+{
+    if(uuid == metadata.current.rootObject.id)
+        return metadata.current.rootObject
+    return metadata.current.findByUUID(uuid);
+}
+
 // Единый метод обработки выбора пользователя.
 // Параметром передается функтор, который непосредственно выполняет действие.
 function doAction(func)
@@ -107,7 +114,7 @@ function doAction(func)
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     if(!curRow)
         return
-    var mdObj = metadata.current.findByUUID(curRow.UUID);
+    var mdObj = findMdObj(curRow.UUID);
     if(!mdObj)
     {
         MessageBox("Объект '" + curRow.Name + "' не найден.");
@@ -171,7 +178,7 @@ function updateCommands()
     var enabled = false
     if(curRow)
     {
-        var mdObj = metadata.current.findByUUID(curRow.UUID)
+        var mdObj = findMdObj(curRow.UUID)
         if(mdObj)
         {
             enabled = true;
