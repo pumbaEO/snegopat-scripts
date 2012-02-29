@@ -347,3 +347,8 @@ function openProperty(Кнопка)
     var n = Кнопка.val.Name
     doAction(function(mdObj){mdObj.editProperty(n)})
 }
+// Двойной щелчок по таблице
+function ТаблицаМетаданныхВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+    doAction(function(mdObj){mdObj.activateInTree()})
+}
