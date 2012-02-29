@@ -202,6 +202,7 @@ var propsCommands = [
     {propName: "Форма",             title: "Открыть форму",         hotkey: 13, modif: 0},
     {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
     {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4},
+    {propName: "Макет",             title: "Открыть макет",         hotkey: 13, modif: 0},
 ]
 
 // Функция настройки команд для текущего выбранного объекта
