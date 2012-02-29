@@ -40,19 +40,58 @@ function walkMdObjs(mdObj, parentName)
     }
 }
 
-// Функция по таймеру получает текущий текст из поля ввода,
-// и если он изменился, фильтрует список
-function onTimer()
+// Класс для отслеживания изменения текста в поле ввода, для замены
+// события АвтоПодборТекста. Штатное событие плохо тем, что не возникает
+// - при установке пустого текста
+// - при изменении текста путем вставки/вырезания из/в буфера обмена
+// - не позволяет регулировать задержку
+// field - элемент управления поле ввода, чье изменение хотим отслеживать
+// ticks - величина задержки после ввода текста в десятых секунды (т.е. 3 - 300 мсек)
+// invoker - функция обратного вызова, вызывается после окончания изменения текста,
+//  новый текст передается параметром функции
+function TextChangesWatcher(field, ticks, invoker)
 {
-    vbs.var0 = form.ЭлементыФормы.ТекстФильтра
+    this.ticks = ticks
+    this.invoker = invoker
+    this.field = field
+}
+
+// Начать отслеживание изменения текста
+TextChangesWatcher.prototype.start = function()
+{
+    this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
+    this.noChangesTicks = 0
+    this.timerID = createTimer(100, this, "onTimer")
+}
+// Остановить отслеживание изменения текста
+TextChangesWatcher.prototype.stop = function()
+{
+    killTimer(this.timerID)
+}
+// Обработчик события таймера
+TextChangesWatcher.prototype.onTimer = function()
+{
+    // Получим текущий текст из поля ввода
+    vbs.var0 = this.field
     vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
-    form.ЭлементыФормы.ТекстФильтра.УстановитьГраницыВыделения(1, 1, 1, 10000)
-    var newText = form.ЭлементыФормы.ТекстФильтра.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
-    form.ЭлементыФормы.ТекстФильтра.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
-    if(newText != currentFilter)
+    this.field.УстановитьГраницыВыделения(1, 1, 1, 10000)
+    var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
+    this.field.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
+    // Проверим, изменился ли текст по сравению с прошлым разом
+    if(newText != this.lastText)
     {
-        currentFilter = newText
-        fillTable()
+        // изменился, запомним его
+        this.lastText = newText
+        this.noChangesTicks = 0
+    }
+    else
+    {
+        // Текст не изменился. Если мы еще не сигнализировали об этом, то увеличим счетчик тиков
+        if(this.noChangesTicks <= this.ticks)
+        {
+            if(++this.noChangesTicks > this.ticks)  // Достигли заданного количества тиков.
+                this.invoker(newText)               // Отрапортуем
+        }
     }
 }
 
@@ -65,8 +104,9 @@ function readMDtoVT()
 // Функция заполнения списка объектов метаданных
 // Если есть строка фильтра, выводит объекты, удовлетворяющие фильтру,
 // иначе выводит список последних выбранных объектов
-function fillTable()
+function fillTable(newFilter)
 {
+    currentFilter = newFilter
     form.ТаблицаМетаданных.Clear()
     var mode = ''
     if(!currentFilter.length)
@@ -150,9 +190,8 @@ function doAction(func)
         listOfChoices.pop()
     // Очистим фильтр и закроем форму, указав как результат объект и функтор
     form.ТекстФильтра = ''
-    currentFilter = ''
     form.ТекущийЭлемент = form.ЭлементыФормы.ТекстФильтра
-    fillTable()
+    fillTable('')
     form.Close({mdObj:mdObj, func:func})
 }
 
@@ -219,17 +258,17 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
         form.КлючСохраненияПоложенияОкна = "mdNavigator"
         // Заполним таблицу изначально
-        currentFilter = ""
-        fillTable()
+        fillTable('')
     }
     else
         currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
     
     updateCommands()
-    // Будем опрашивать изменение текста каждые 400 мсек
-    tID = createTimer(400, SelfScript.self, "onTimer")
+    // Будем отлавливать изменение текста с задержкой 300 мсек
+    var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable)
+    tc.start()
     var res = form.ОткрытьМодально()
-    killTimer(tID)
+    tc.stop()
     if(res) // Если что-то выбрали, вызовем обработчик
         res.func(res.mdObj)
 }
@@ -289,7 +328,7 @@ function КомандыОбновитьМД(Кнопка)
 {
     readMDtoVT()
     if(currentFilter.length)
-        fillTable()
+        fillTable(currentFilter)
 }
 
 // Команда "Открыть в дереве"
