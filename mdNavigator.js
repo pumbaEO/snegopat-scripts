@@ -311,10 +311,7 @@ function ТекстФильтраНачалоВыбора(Элемент, Ста
             vl.Add(listOfFilters[k])
         var res = form.ВыбратьИзСписка(vl, Элемент.val)
         if(res)
-        {
             form.ТекстФильтра = res.Значение;
-            onTimer()
-        }
     }
 }
 
