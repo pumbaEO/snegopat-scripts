@@ -7,6 +7,8 @@ $addin global
 global.connectGlobals(SelfScript)
 
 // (c) Евгений JohnyDeath Мартыненков
+// (c) Александр Орефков
+
 var form = null
 var vtMD = null
 var currentFilter = ''
@@ -44,7 +46,9 @@ function walkMdObjs(mdObj, parentName)
 // события АвтоПодборТекста. Штатное событие плохо тем, что не возникает
 // - при установке пустого текста
 // - при изменении текста путем вставки/вырезания из/в буфера обмена
-// - не позволяет регулировать задержку
+// - при отмене редактирования (Ctrl+Z)
+// не позволяет регулировать задержку
+// Параметры конструктора
 // field - элемент управления поле ввода, чье изменение хотим отслеживать
 // ticks - величина задержки после ввода текста в десятых секунды (т.е. 3 - 300 мсек)
 // invoker - функция обратного вызова, вызывается после окончания изменения текста,
@@ -203,6 +207,7 @@ var propsCommands = [
     {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
     {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4},
     {propName: "Макет",             title: "Открыть макет",         hotkey: 13, modif: 0},
+    {propName: "Права",             title: "Открыть права",         hotkey: 13, modif: 0},
 ]
 
 // Функция настройки команд для текущего выбранного объекта
@@ -249,6 +254,21 @@ function updateCommands()
     buttons.Get(2).Enabled = enabled
     buttons.Get(3).Enabled = enabled
 }
+
+(function()
+{
+    var gprops = [
+        "МодульУправляемогоПриложения/модуль управляемого приложения",
+        "МодульОбычногоПриложения/модуль обычного приложения",
+        "МодульСеанса/модуль сеанса",
+        "МодульВнешнегоСоединения/модуль внешнего соединения",
+        ]
+    for(var k in gprops)
+    {
+        var cmd = gprops[k].split('/')
+        SelfScript.self["macrosОткрыть " + cmd[1]] = new Function('metadata.current.rootObject.editProperty("' + cmd[0] + '")')
+    }
+})()
 
 SelfScript.self['macrosОткрыть объект метаданных'] = function()
 {
