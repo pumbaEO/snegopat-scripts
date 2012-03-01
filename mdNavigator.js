@@ -7,6 +7,8 @@ $addin global
 global.connectGlobals(SelfScript)
 
 // (c) Евгений JohnyDeath Мартыненков
+// (c) Александр Орефков
+
 var form = null
 var vtMD = null
 var currentFilter = ''
@@ -21,7 +23,7 @@ function walkMdObjs(mdObj, parentName)
     if (mdObj == metadata.current.rootObject)
         row.Name = "Конфигурация";
     else
-        row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1, true) + "." + mdObj.name
+        row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1) + "." + mdObj.name
     row.lName = row.Name.toLowerCase()
     vtMD.push(row)
 
@@ -40,32 +42,60 @@ function walkMdObjs(mdObj, parentName)
     }
 }
 
-function PropsOfMdObj(mdObj){
-    var text = []
-    var mdc = mdObj.mdclass
-    var okStr = "Модуль,Картинка,Форма,МодульОбъекта,МодульМенеджера,";
-
-    for(var i = 0, c = mdc.propertiesCount; i < c; i++)
-    {
-        var mdPropName = mdc.propertyAt(i).name(1);
-        if (okStr.search(mdPropName + '\,') != -1)
-            text.push(mdPropName);
-    }
-
-    return text;
+// Класс для отслеживания изменения текста в поле ввода, для замены
+// события АвтоПодборТекста. Штатное событие плохо тем, что не возникает
+// - при установке пустого текста
+// - при изменении текста путем вставки/вырезания из/в буфера обмена
+// - при отмене редактирования (Ctrl+Z)
+// не позволяет регулировать задержку
+// Параметры конструктора
+// field - элемент управления поле ввода, чье изменение хотим отслеживать
+// ticks - величина задержки после ввода текста в десятых секунды (т.е. 3 - 300 мсек)
+// invoker - функция обратного вызова, вызывается после окончания изменения текста,
+//  новый текст передается параметром функции
+function TextChangesWatcher(field, ticks, invoker)
+{
+    this.ticks = ticks
+    this.invoker = invoker
+    this.field = field
 }
 
-function onTimer()
+// Начать отслеживание изменения текста
+TextChangesWatcher.prototype.start = function()
 {
-    vbs.var0 = form.ЭлементыФормы.ТекстФильтра
+    this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
+    this.noChangesTicks = 0
+    this.timerID = createTimer(100, this, "onTimer")
+}
+// Остановить отслеживание изменения текста
+TextChangesWatcher.prototype.stop = function()
+{
+    killTimer(this.timerID)
+}
+// Обработчик события таймера
+TextChangesWatcher.prototype.onTimer = function()
+{
+    // Получим текущий текст из поля ввода
+    vbs.var0 = this.field
     vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
-    form.ЭлементыФормы.ТекстФильтра.УстановитьГраницыВыделения(1, 1, 1, 10000)
-    var newText = form.ЭлементыФормы.ТекстФильтра.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
-    form.ЭлементыФормы.ТекстФильтра.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
-    if(newText != currentFilter)
+    this.field.УстановитьГраницыВыделения(1, 1, 1, 10000)
+    var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
+    this.field.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
+    // Проверим, изменился ли текст по сравению с прошлым разом
+    if(newText != this.lastText)
     {
-        currentFilter = newText
-        fillTable()
+        // изменился, запомним его
+        this.lastText = newText
+        this.noChangesTicks = 0
+    }
+    else
+    {
+        // Текст не изменился. Если мы еще не сигнализировали об этом, то увеличим счетчик тиков
+        if(this.noChangesTicks <= this.ticks)
+        {
+            if(++this.noChangesTicks > this.ticks)  // Достигли заданного количества тиков.
+                this.invoker(newText)               // Отрапортуем
+        }
     }
 }
 
@@ -75,8 +105,12 @@ function readMDtoVT()
     walkMdObjs(metadata.current.rootObject, "")
 }
 
-function fillTable()
+// Функция заполнения списка объектов метаданных
+// Если есть строка фильтра, выводит объекты, удовлетворяющие фильтру,
+// иначе выводит список последних выбранных объектов
+function fillTable(newFilter)
 {
+    currentFilter = newFilter
     form.ТаблицаМетаданных.Clear()
     var mode = ''
     if(!currentFilter.length)
@@ -110,12 +144,21 @@ function fillTable()
         form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(0)
 }
 
+function findMdObj(uuid)
+{
+    if(uuid == metadata.current.rootObject.id)
+        return metadata.current.rootObject
+    return metadata.current.findByUUID(uuid);
+}
+
+// Единый метод обработки выбора пользователя.
+// Параметром передается функтор, который непосредственно выполняет действие.
 function doAction(func)
 {
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     if(!curRow)
         return
-    var mdObj = metadata.current.findByUUID(curRow.UUID);
+    var mdObj = findMdObj(curRow.UUID);
     if(!mdObj)
     {
         MessageBox("Объект '" + curRow.Name + "' не найден.");
@@ -149,37 +192,42 @@ function doAction(func)
     listOfChoices.unshift(row)
     if(listOfChoices.length > 15)
         listOfChoices.pop()
-    // Очистим фильтр и закроем форму
+    // Очистим фильтр и закроем форму, указав как результат объект и функтор
     form.ТекстФильтра = ''
-    currentFilter = ''
     form.ТекущийЭлемент = form.ЭлементыФормы.ТекстФильтра
-    fillTable()
-    // Вызовем функцию для объекта метаданных
+    fillTable('')
     form.Close({mdObj:mdObj, func:func})
 }
 
+// Описание команд для обработки свойств
 var propsCommands = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
     {propName: "Картинка",          title: "Открыть картинку",      hotkey: 13, modif: 0},
     {propName: "Форма",             title: "Открыть форму",         hotkey: 13, modif: 0},
     {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
     {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4},
+    {propName: "Макет",             title: "Открыть макет",         hotkey: 13, modif: 0},
+    {propName: "Права",             title: "Открыть права",         hotkey: 13, modif: 0},
 ]
 
+// Функция настройки команд для текущего выбранного объекта
 function updateCommands()
 {
+    // Сначала удалим непостоянные команды
     var cmdBar = form.ЭлементыФормы.Команды
     var buttons = cmdBar.Кнопки
     for(var k = buttons.Count() - 5; k > 0; k--)
         buttons.Delete(5)
+    // Получим текущую выбранную строку
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var enabled = false
     if(curRow)
     {
-        var mdObj = metadata.current.findByUUID(curRow.UUID)
+        var mdObj = findMdObj(curRow.UUID)
         if(mdObj)
         {
             enabled = true;
+            // Переберем свойства объекта, и добавим команды для их обработки
             var mdc = mdObj.mdclass
             for(var i = 0, c = mdc.propertiesCount; i < c; i++)
             {
@@ -207,6 +255,21 @@ function updateCommands()
     buttons.Get(3).Enabled = enabled
 }
 
+(function()
+{
+    var gprops = [
+        "МодульУправляемогоПриложения/модуль управляемого приложения",
+        "МодульОбычногоПриложения/модуль обычного приложения",
+        "МодульСеанса/модуль сеанса",
+        "МодульВнешнегоСоединения/модуль внешнего соединения",
+        ]
+    for(var k in gprops)
+    {
+        var cmd = gprops[k].split('/')
+        SelfScript.self["macrosОткрыть " + cmd[1]] = new Function('metadata.current.rootObject.editProperty("' + cmd[0] + '")')
+    }
+})()
+
 SelfScript.self['macrosОткрыть объект метаданных'] = function()
 {
     if(!vtMD)
@@ -216,21 +279,26 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
         form.КлючСохраненияПоложенияОкна = "mdNavigator"
         // Заполним таблицу изначально
-        currentFilter = ""
-        fillTable()
+        fillTable('')
     }
     else
         currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
     
-    // Будем опрашивать изменение текста каждые 400 мсек
-    tID = createTimer(400, SelfScript.self, "onTimer")
     updateCommands()
+    // Будем отлавливать изменение текста с задержкой 300 мсек
+    var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable)
+    tc.start()
     var res = form.ОткрытьМодально()
-    killTimer(tID)
-    if(res)
+    tc.stop()
+    if(res) // Если что-то выбрали, вызовем обработчик
         res.func(res.mdObj)
 }
 
+/*
+ * Обработчики событий формы
+ */
+
+// Это для пермещения вверх/вниз текущего выбора
 function ТекстФильтраРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
     if(!form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока)
@@ -252,6 +320,7 @@ function ТекстФильтраРегулирование(Элемент, На
     СтандартнаяОбработка.val = false
 }
 
+// Выбор из списка фильтров
 function ТекстФильтраНачалоВыбора(Элемент, СтандартнаяОбработка)
 {
     СтандартнаяОбработка.val = false
@@ -262,45 +331,47 @@ function ТекстФильтраНачалоВыбора(Элемент, Ста
             vl.Add(listOfFilters[k])
         var res = form.ВыбратьИзСписка(vl, Элемент.val)
         if(res)
-        {
             form.ТекстФильтра = res.Значение;
-            onTimer()
-        }
     }
 }
 
-function КомандыАктивировать(Кнопка)
-{
-    doAction(function(mdObj){mdObj.activateInTree()})
-}
-
-function КомандыРедактировать(Кнопка)
-{
-    doAction(function(mdObj){mdObj.openEditor()})
-}
-
+// Изменение текущей строки - обновить команды
 function ТаблицаМетаданныхПриАктивизацииСтроки(Элемент)
 {
     updateCommands()
 }
 
-function ТаблицаМетаданныхВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
-{
-}
-
+// Команда "Обновить МД"
 function КомандыОбновитьМД(Кнопка)
 {
     readMDtoVT()
     if(currentFilter.length)
-        fillTable()
+        fillTable(currentFilter)
 }
 
+// Команда "Открыть в дереве"
+function КомандыАктивировать(Кнопка)
+{
+    doAction(function(mdObj){mdObj.activateInTree()})
+}
+
+// Команда "Редактировать"
+function КомандыРедактировать(Кнопка)
+{
+    doAction(function(mdObj){mdObj.openEditor()})
+}
+
+// Команда открытия свойств
 function openProperty(Кнопка)
 {
     var n = Кнопка.val.Name
     doAction(function(mdObj){mdObj.editProperty(n)})
 }
-
+// Двойной щелчок по таблице
+function ТаблицаМетаданныхВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+    doAction(function(mdObj){mdObj.activateInTree()})
+}
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros()
