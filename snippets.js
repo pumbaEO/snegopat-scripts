@@ -56,6 +56,12 @@ function macrosВставитьРасширеннуюУправляющуюКо�
         w.SetSelectedText('<%' + selParam + '>');    
 }
 
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'ОткрытьНастройкиСкрипта';
+}
+
 ////} Макросы
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +72,7 @@ function SnippetsManager() {
 
     SnippetsManager._instance = this;
 
-    this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, {'TemplateFilesList':v8New('ValueList')});
+    this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, {'TemplateFilesList':getDefaultTemplatesList()});
     this.settings.LoadSettings();    
     
     this._snippets = {};
@@ -548,23 +554,28 @@ SettingsManagerDialog.prototype.CmdBarAbout = function (button) {
     RunApp('http://snegopat.ru/scripts/wiki?name=snippets.js');
 }
 
-SettingsManagerDialog.prototype.CmdBarStListAddStFile = function (button) {
-    
+SettingsManagerDialog.prototype.selectTemplateFiles = function (multiselect) {
+
     var dlg = v8New('FileDialog',  FileDialogMode.Open);
-    dlg.Multiselect = true;
+    dlg.Multiselect = multiselect ? true : false;
     dlg.CheckFileExist = true;
     dlg.Filter = "Файлы шаблонов (*.st)|*.st|Все файлы|*";
     
     if (dlg.Choose())
+        return multiselect ? dlg.SelectedFiles : dlg.FullFileName;
+        
+    return null;
+}
+
+SettingsManagerDialog.prototype.CmdBarStListAddStFile = function (button) {
+
+    var selected = this.selectTemplateFiles(true);    
+    if (selected)
     {
         this.form.Modified = true;
         
-        for(var  i=0; i<dlg.SelectedFiles.Count(); i++)
-        {   
-            var path = dlg.SelectedFiles.Get(i);
-            if (!this.form.TemplateFilesList.FindByValue(path))
-                this.form.TemplateFilesList.Add(path);
-        }
+        for (var i=0; i<selected.Count(); i++)
+            this.form.TemplateFilesList.Add().Value = selected.Get(i);
     }
 }
 
@@ -575,6 +586,18 @@ SettingsManagerDialog.prototype.CmdBarStListDeleteStFile = function (button) {
         this.form.TemplateFilesList.Delete(curRow);
         this.form.Modified = true;        
     }
+}
+
+SettingsManagerDialog.prototype.TemplateFilesListValueStartChoice = function (Control, DefaultHandler) {
+
+    DefaultHandler.val = false;
+
+    var fname = this.selectTemplateFiles(false);    
+    if (fname)
+    {
+        this.form.Modified = true;
+        Control.val.Value = fname;
+    }    
 }
 
 SettingsManagerDialog.prototype.OnOpen = function() {
@@ -603,6 +626,36 @@ SettingsManagerDialog.prototype.BeforeClose = function(Cancel, StandardHandler) 
 
 ////} SettingsManagerDialog 
 
+////{ Вспомогательные функции для работы с настройками. 
+function getDefaultTemplatesList() {
+    var tplList = v8New('ValueTable');
+    tplList.Columns.Add('Value');
+    return tplList;
+}
+
+function __convertSettingsFromValueListToValueTable() {
+ 
+    /* Изначально настройки хранились в СпискеЗначений. 
+    Возникла необходимость переделать на ТаблицуЗначений.
+    Данная процедура выполняет конвертацию. */
+    
+    var pflSnippets = SelfScript.uniqueName + '/TemplateFilesList';
+    var defaultTplList = getDefaultTemplatesList();
+    
+    profileRoot.createValue(SelfScript.name, defaultTplList, pflSnegopat);    
+    var tplList = profileRoot.getValue(pflSnippets);
+    
+    if (toV8Value(tplList).typeName() == 'ValueList')
+    {
+        for(var i=0; i<tplList.Count(); i++)
+            defaultTplList.Add().Value = tplList.Get(i).Value; 
+    }
+    
+    profileRoot.setValue(pflSnippets, defaultTplList);
+
+}
+////} Вспомогательные функции для работы с настройками. 
+
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Startup
 ////
@@ -612,6 +665,10 @@ function GetSnippetsManager() {
         
     return SnippetsManager._instance;
 }
+
+//{ Конвертация значения настройки TemplateFilesList из списка значений в таблицу значений.
+__convertSettingsFromValueListToValueTable();
+//}
 
 events.connect(snegopat, "onProcessTemplate", GetSnippetsManager());
 
