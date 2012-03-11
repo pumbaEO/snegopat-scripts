@@ -50,6 +50,7 @@ StyleType = {
 }
 
 pflStyleSetting = "Highlight/Style";
+pflShowLineNumbers = "Highlight/ShowLineNumbers";
 
 function Highlighter(code) {
 
@@ -58,8 +59,13 @@ function Highlighter(code) {
     this.code = this.replaceTabs(code);   
     
     profileRoot.createValue(pflStyleSetting, StyleType.Default, pflSnegopat);
+    profileRoot.createValue(pflShowLineNumbers, false, pflSnegopat);    
+    
     this.style = profileRoot.getValue(pflStyleSetting);
     this.form.Controls.Style.Value = this.style;
+    
+    this.showLineNumbers = profileRoot.getValue(pflShowLineNumbers);
+    this.form.Controls.ShowLineNumbers.Value = this.showLineNumbers;
 }
 
 Highlighter.prototype.open = function () {
@@ -120,12 +126,28 @@ Highlighter.prototype.replaceTabs = function (code) {
 }
 
 Highlighter.prototype.highlightCode = function () {
+
     this.startHTMLDoc();
+    
     var obj = hljs.highlight('1c', this.code);
-    this.doc.writeln('<pre><code>');
-    this.doc.writeln(obj.value);
-    this.doc.writeln('</code></pre>');
-    this.endHTMLDoc();
+    
+    if (this.showLineNumbers) 
+    {
+        this.doc.writeln('<ol><pre><code>');
+    
+        var a = obj.value.replace(/^\s+/, '').replace(/\s*$/,'').replace(/^\s*$/gm, "&nbsp;\n").split(/\n/);
+        for (var i=0; i<a.length; i++)
+            this.doc.writeln('<li>' + a[i] + '</li>');
+        this.doc.writeln('</code></pre></ol>');   
+    }
+    else
+    {
+        this.doc.writeln('<pre><code>');
+        this.doc.writeln(obj.value);
+        this.doc.writeln('</code></pre>');    
+    }
+    
+    this.endHTMLDoc(); 
 }
 
 Highlighter.prototype.reload = function () {
@@ -144,6 +166,12 @@ Highlighter.prototype.CmdBarReload = function (Кнопка) {
 Highlighter.prototype.StyleOnChange = function (Элемент) {
     this.style = this.form.Controls.Style.Value;
     profileRoot.setValue(pflStyleSetting, this.style);    
+    this.reload();
+}
+
+Highlighter.prototype.ShowLineNumbersOnChange = function (Элемент) {
+	this.showLineNumbers = this.form.Controls.ShowLineNumbers.Value;
+    profileRoot.setValue(pflShowLineNumbers, this.showLineNumbers);
     this.reload();
 }
 
