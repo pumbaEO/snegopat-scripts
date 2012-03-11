@@ -74,7 +74,7 @@ Highlighter.prototype.open = function () {
 
 Highlighter.prototype.startHTMLDoc = function () {
     this.doc.clear();
-    this.doc.writeln("<!DOCTYPE html><head><style>");
+    this.doc.writeln("<!DOCTYPE html><body><style>");
     this.doc.writeln(this.getStylesheetSource());
     this.doc.writeln("</style>");
 }
@@ -85,6 +85,8 @@ Highlighter.prototype.getStylesheetSource = function () {
     {
     case StyleType.BlackWhite:
         style = ""
+        + "li { color: gray; }"
+        + "font { color: black; font-size: 10pt; }"
         + "pre code {display: block; font: Courier New, padding: 0.5em; font-size: 10pt;}"
         + "pre code { color: black; }"
         + "pre .string { color: black; }"
@@ -98,6 +100,8 @@ Highlighter.prototype.getStylesheetSource = function () {
         
     default:
         style = ""
+        + "li { color: gray; }"
+        + "font { color: blue; font-size: 10pt; }"
         + "pre code {display: block; font: Courier New, padding: 0.5em; background: white; font-size: 10pt; }"
         + "pre code { color: blue; }"
         + "pre .string { color: black; }"
@@ -133,12 +137,12 @@ Highlighter.prototype.highlightCode = function () {
     
     if (this.showLineNumbers) 
     {
-        this.doc.writeln('<ol><pre><code>');
+        this.doc.writeln('<pre><code><ol>');
     
         var a = obj.value.replace(/^\s+/, '').replace(/\s*$/,'').replace(/^\s*$/gm, "&nbsp;\n").split(/\n/);
         for (var i=0; i<a.length; i++)
-            this.doc.writeln('<li>' + a[i] + '</li>');
-        this.doc.writeln('</code></pre></ol>');   
+            this.doc.writeln('<li><font>' + a[i] + '</font></li>');
+        this.doc.writeln('</ol></code></pre>');   
     }
     else
     {
@@ -174,6 +178,12 @@ Highlighter.prototype.ShowLineNumbersOnChange = function (Элемент) {
     profileRoot.setValue(pflShowLineNumbers, this.showLineNumbers);
     this.reload();
 }
+
+Highlighter.prototype.CmdBarShowHTML = function (Кнопка) {
+    Message(this.doc.getElementsByTagName('body')[0].innerHTML);
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ highlight.js by Ivan Sagalaev http://softwaremaniacs.org/soft/highlight/
