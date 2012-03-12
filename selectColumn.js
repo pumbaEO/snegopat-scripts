@@ -38,8 +38,9 @@ SelfScript.self['macrosВыбрать колонку ТабличногоПол�
         var stg = v8Files.attachStorage(file)
         // Получим из хранилища содержимое под-файла form
         var text = stg.open("form", fomIn).getString(dsUtf8)
+        //Message(text)
         // Простым регэкспом выдернем встречающиеся колонки
-        var re = /\{6,3,0,1\},1,0,0,4,0,"(.+)"/g
+        var re = /\{6,3,0,\d\},\d,0,0,4,0,"(.+)"/g
         var columns = {}
         while(re.exec(text))
             columns[RegExp.$1] = 1
