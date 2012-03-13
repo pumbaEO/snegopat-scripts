@@ -255,21 +255,6 @@ function updateCommands()
     buttons.Get(3).Enabled = enabled
 }
 
-(function()
-{
-    var gprops = [
-        "МодульУправляемогоПриложения/модуль управляемого приложения",
-        "МодульОбычногоПриложения/модуль обычного приложения",
-        "МодульСеанса/модуль сеанса",
-        "МодульВнешнегоСоединения/модуль внешнего соединения",
-        ]
-    for(var k in gprops)
-    {
-        var cmd = gprops[k].split('/')
-        SelfScript.self["macrosОткрыть " + cmd[1]] = new Function('metadata.current.rootObject.editProperty("' + cmd[0] + '")')
-    }
-})()
-
 SelfScript.self['macrosОткрыть объект метаданных'] = function()
 {
     if(!vtMD)
@@ -366,6 +351,14 @@ function openProperty(Кнопка)
 {
     var n = Кнопка.val.Name
     doAction(function(mdObj){mdObj.editProperty(n)})
+    /*
+    doAction(function(mdObj)
+    {
+        var ep = mdObj.getExtProp(n);
+        var file = ep.saveToFile(v8files.open("file://c:\\temp\\test.data", fomOut));
+        file.close()
+    })
+    */
 }
 // Двойной щелчок по таблице
 function ТаблицаМетаданныхВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
@@ -378,3 +371,19 @@ function getDefaultMacros()
 {
     return 'Открыть объект метаданных';
 }
+
+// Создадим макросы для открытия модулей конфигурации
+(function()
+{
+    var mdObj = metadata.current.rootObject
+    var mdc = mdObj.mdclass
+    for(var i = 0, c = mdc.propertiesCount; i < c; i++)
+    {
+        var mdProp = mdc.propertyAt(i)
+        if(mdObj.isPropModule(mdProp.id))
+        {
+            var descr = mdProp.description.split('\n')[0].toLowerCase()
+            SelfScript.self["macrosОткрыть " + descr] = new Function('metadata.current.rootObject.openModule("' + mdProp.id + '")')
+        }
+    }
+})()
