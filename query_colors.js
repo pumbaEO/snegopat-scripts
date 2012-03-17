@@ -19,6 +19,12 @@ function macrosОткрытьОкно()
     form = null
 }
 
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'ОткрытьОкно';
+}
+
 function ПриОткрытии()
 {
     var qec = profileRoot.getFolder("SelectColorCategory")

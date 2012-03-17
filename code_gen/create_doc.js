@@ -20,7 +20,7 @@ function genarateNewDoc(param)
     if(!docKind.length)
         return false
     vbs.result = "док" + docKind
-    var varName = vbs.DoExecute('InputString result, "Укажите название группы"')
+    var varName = vbs.DoExecute('InputString result, "Укажите название переменной"')
     
     // Получим список возможных типов
     var tf = new codegen_manager.TypeFinder()
@@ -49,7 +49,7 @@ function genarateNewDoc(param)
         {
             var tp = mdObj.childObject("ТабличныеЧасти", i)
             text += processAttribs("  Заполнение табличной части " + tp.name,
-                "Для Каждого Из Цикл\n\t" + lineVarName + " = " + varName + "." + tp.name + ".Добавить();\n" , "КонецЦикла;\n",
+                "Для Каждого Из Цикл\n" + indent + lineVarName + " = " + varName + "." + tp.name + ".Добавить();\n" , "КонецЦикла;\n",
                 indent + lineVarName, tp, tf)
         }
         if(tabPartsCount > 1)

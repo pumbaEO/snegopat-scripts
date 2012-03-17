@@ -25,6 +25,7 @@ stdlib.require('TextWindow.js', SelfScript);
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
+
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
 ////
@@ -43,10 +44,28 @@ SelfScript.Self['macrosРаскрасить выделенный текст'] = 
 
 ////}
 
+StyleType = {
+    'Default': 0,
+    'BlackWhite': 1
+}
+
+pflStyleSetting = "Highlight/Style";
+pflShowLineNumbers = "Highlight/ShowLineNumbers";
+
 function Highlighter(code) {
+
     this.form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), this);
     this.doc = this.form.Controls.HTMLDoc.document;
-    this.code = this.replaceTabs(code);
+    this.code = this.replaceTabs(code);   
+    
+    profileRoot.createValue(pflStyleSetting, StyleType.Default, pflSnegopat);
+    profileRoot.createValue(pflShowLineNumbers, false, pflSnegopat);    
+    
+    this.style = profileRoot.getValue(pflStyleSetting);
+    this.form.Controls.Style.Value = this.style;
+    
+    this.showLineNumbers = profileRoot.getValue(pflShowLineNumbers);
+    this.form.Controls.ShowLineNumbers.Value = this.showLineNumbers;
 }
 
 Highlighter.prototype.open = function () {
@@ -55,22 +74,45 @@ Highlighter.prototype.open = function () {
 
 Highlighter.prototype.startHTMLDoc = function () {
     this.doc.clear();
-    this.doc.writeln("<!DOCTYPE html><head><style>");
+    this.doc.writeln("<!DOCTYPE html><body><style>");
     this.doc.writeln(this.getStylesheetSource());
     this.doc.writeln("</style>");
 }
 
 Highlighter.prototype.getStylesheetSource = function () {
-    var style = ""
-    + "pre code {display: block; font: Courier New, padding: 0.5em; background: white; }"
-    + "pre code { color: blue; }"
-    + "pre .string { color: black; }"
-    + "pre .comment { color: green; }"
-    + "pre .number { color: black; }"
-    + "pre .date { color: black; }"
-    + "pre .keyword { color: red; }"
-    + "pre .preprocessor { color: brown; }"
-    + "pre.operator { color: red; }";
+    var style;
+    switch (this.style)
+    {
+    case StyleType.BlackWhite:
+        style = ""
+        + "li { color: gray; }"
+        + "font { color: black; font-size: 10pt; }"
+        + "pre code {display: block; font: Courier New, padding: 0.5em; font-size: 10pt;}"
+        + "pre code { color: black; }"
+        + "pre .string { color: black; }"
+        + "pre .comment { color: gray; font-style: italic; }"
+        + "pre .number { color: black; }"
+        + "pre .date { color: black; }"
+        + "pre .keyword { color: black; font-weight: bold; }"
+        + "pre .preprocessor { color: gray; font-weight: bold; font-style: italic; }"
+        + "pre.operator { color: black; }";
+        break;
+        
+    default:
+        style = ""
+        + "li { color: gray; }"
+        + "font { color: blue; font-size: 10pt; }"
+        + "pre code {display: block; font: Courier New, padding: 0.5em; background: white; font-size: 10pt; }"
+        + "pre code { color: blue; }"
+        + "pre .string { color: black; }"
+        + "pre .comment { color: green; }"
+        + "pre .number { color: black; }"
+        + "pre .date { color: black; }"
+        + "pre .keyword { color: red; }"
+        + "pre .preprocessor { color: brown; }"
+        + "pre.operator { color: red; }";
+        break;
+    }
     return style;
 }
 
@@ -88,12 +130,33 @@ Highlighter.prototype.replaceTabs = function (code) {
 }
 
 Highlighter.prototype.highlightCode = function () {
+
     this.startHTMLDoc();
+    
     var obj = hljs.highlight('1c', this.code);
-    this.doc.writeln('<pre><code>');
-    this.doc.writeln(obj.value);
-    this.doc.writeln('</code></pre>');
-    this.endHTMLDoc();
+    
+    if (this.showLineNumbers) 
+    {
+        this.doc.writeln('<pre><code><ol>');
+    
+        var a = obj.value.replace(/^\s+/, '').replace(/\s*$/,'').replace(/^\s*$/gm, "&nbsp;\n").split(/\n/);
+        for (var i=0; i<a.length; i++)
+            this.doc.writeln('<li><font>' + a[i] + '</font></li>');
+        this.doc.writeln('</ol></code></pre>');   
+    }
+    else
+    {
+        this.doc.writeln('<pre><code>');
+        this.doc.writeln(obj.value);
+        this.doc.writeln('</code></pre>');    
+    }
+    
+    this.endHTMLDoc(); 
+}
+
+Highlighter.prototype.reload = function () {
+    this.doc.getElementsByTagName('body')[0].innerHTML = '';
+    this.highlightCode();
 }
 
 Highlighter.prototype.OnOpen = function () {
@@ -101,9 +164,26 @@ Highlighter.prototype.OnOpen = function () {
 }
 
 Highlighter.prototype.CmdBarReload = function (Кнопка) {
-    this.doc.getElementsByTagName('body')[0].innerHTML = '';
-    this.highlightCode();
+    this.reload();
 }
+
+Highlighter.prototype.StyleOnChange = function (Элемент) {
+    this.style = this.form.Controls.Style.Value;
+    profileRoot.setValue(pflStyleSetting, this.style);    
+    this.reload();
+}
+
+Highlighter.prototype.ShowLineNumbersOnChange = function (Элемент) {
+	this.showLineNumbers = this.form.Controls.ShowLineNumbers.Value;
+    profileRoot.setValue(pflShowLineNumbers, this.showLineNumbers);
+    this.reload();
+}
+
+Highlighter.prototype.CmdBarShowHTML = function (Кнопка) {
+    Message(this.doc.getElementsByTagName('body')[0].innerHTML);
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ highlight.js by Ivan Sagalaev http://softwaremaniacs.org/soft/highlight/
@@ -756,10 +836,11 @@ hljs.LANGUAGES['1c'] = function(){
   
   var IDENT_RE_RU = '[a-zA-Zа-яА-Я_][a-zA-Z0-9_а-яА-Я]*';
   
-  var OneS_KEYWORDS = {'новый': 1, 'возврат':1,'для':1,'если':1,'и':1,'или':1,'иначе':1,'иначеесли':1,
-    'исключение':1,'конецесли':1,'конецпопытки':1,'конецпроцедуры':1,'конецфункции':1,'конеццикла':1,
-    'не':1,'перейти':1,'перем':1,'перечисление':1,'по':1,'каждого':1, 'пока':1,'попытка':1,'прервать':1,
-    'продолжить':1, 'процедура':1, 'строка':1,'тогда':1,'функция':1,'цикл':1,'число':1,'экспорт':1};
+  var OneS_KEYWORDS = {'новый': 1, 'возврат':1,'для':1,'если':1,'и':1,'или':1, 'из':1, 'иначе':1,'иначеесли':1,
+    'исключение':1,'конецесли':1,'конецпопытки':1,'конецпроцедуры':1,'конецфункции':1,'конеццикла':1, 'каждого':1,
+    'новый':1, 'не':1,'перейти':1,'перем':1,'перечисление':1,'по':1,'каждого':1, 'пока':1,'попытка':1,'прервать':1,
+    'продолжить':1, 'процедура':1, 'строка':1,'тогда':1,'функция':1,'цикл':1,'число':1,'экспорт':1, 
+    'вызватьисключение':1, 'добавитьобработчик':1, 'удалитьобработчик':1, 'выполнить':1};
     
   var DQUOTE =  {className: 'dquote',  begin: '""'};
   var STR_START = {
