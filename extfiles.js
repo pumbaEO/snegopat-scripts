@@ -1017,6 +1017,7 @@ profileRoot.createValue(pflExtFilesPathBase, false, pflBase)
 profileRoot.createValue(pflExtOpen1CExtensions, СформироватьТзРасширенияФайловПоУмолчанию(), pflSnegopat)
 profileRoot.createValue(pflExtRunConsoleCommand, 'cmd.exe /K cd /D "%1"', pflSnegopat)
 profileRoot.createValue(pflExtViewSearchInList, false, pflSnegopat)
+profileRoot.createValue(pflVersionControl, false, pflSnegopat)
 profileRoot.createValue(pfColorModiefed, false, pflSnegopat)
 profileRoot.createValue(pfColorDeleted, false, pflSnegopat)
 profileRoot.createValue(pfColorNotVersioned, false, pflSnegopat)
@@ -1042,7 +1043,6 @@ var КэшКартинокТиповФайлов = {};
 var DvcsBackends = {};
 var DiffBackends = {}; 
 var СоответствиеКаталоговИDvcs = {};
-var СоответсвиеЦветовИСтатусов = {"DELETED":мЦветФонаУдаленный, "NOTVERSIONED":мЦветФонаНеВерсионный, "EDITED":мЦветФонаИзмененные}
 
 var МассивФайловДляСравнения = [];
 
@@ -1051,9 +1051,11 @@ var Path2 = null
 
 global.connectGlobals(SelfScript)
 
-if ((мЦветФонаИзмененные.R + мЦветФонаИзмененные.G +мЦветФонаИзмененные.B) == 0)  мЦветФонаИзмененные = v8New("Цвет", 255, 255, 0);
-if ((мЦветФонаУдаленный.R + мЦветФонаУдаленный.G +мЦветФонаУдаленный.B) == 0)  мЦветФонаУдаленный = v8New("Цвет", 255, 0, 0);
-if ((мЦветФонаНеВерсионный.R + мЦветФонаНеВерсионный.G +мЦветФонаНеВерсионный.B) == 0)  мЦветФонаНеВерсионный = v8New("Цвет", 192, 192, 192);
+if (!мЦветФонаИзмененные)  мЦветФонаИзмененные = v8New("Цвет", 255, 255, 0);
+if (!мЦветФонаУдаленный)  мЦветФонаУдаленный = v8New("Цвет", 255, 0, 0);
+if (!мЦветФонаНеВерсионный)  мЦветФонаНеВерсионный = v8New("Цвет", 192, 192, 192);
+
+var СоответсвиеЦветовИСтатусов = {"DELETED":мЦветФонаУдаленный, "NOTVERSIONED":мЦветФонаНеВерсионный, "EDITED":мЦветФонаИзмененные}
 
 мТзКаталогиОбщие = ТзКаталоговИнициализировать(мТзКаталогиОбщие)
 мТзКаталогиБазы = ТзКаталоговИнициализировать(мТзКаталогиБазы)
