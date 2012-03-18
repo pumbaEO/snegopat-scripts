@@ -211,7 +211,11 @@ function fossil_getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                         СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]="ADDED"
                         continue;
                     }
-                
+                if (r.indexOf('tags')!=-1){
+					filename = r.substr(14)
+                    СоответствиеСтатусов[pathToCatalog]=filename;
+                    continue;
+				}
                 if (r.indexOf('NOTVERSIONED')!=-1)  //Тут вручную указываем, просто читаем список файлов.
                     {
                         isNotVers = true;
@@ -226,6 +230,7 @@ function fossil_getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
                     };
                     СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, r.replace(/\//g, '\\'))]= "NOTVERSIONED"
                     }
+				
             }
     
         return true
