@@ -12,7 +12,7 @@ global.connectGlobals(SelfScript)
 
 var pfFossilPath                    = "ExtFilesDVCS/fossilpath"
 var pfFossilPathBase                = "ExtFilesDVCS/fossilpathbase"
-profileRoot.createValue(pfFossilPath, "fossil.exe", pflSnegopat)
+profileRoot.createValue(pfFossilPath, ".\\fossil.exe", pflSnegopat) //по умолчанию будем указывать путь к fossil относительно корня. 
 profileRoot.createValue(pfFossilPathBase, "", pflBase)
 
 // Настройки для fossil 
@@ -25,7 +25,7 @@ var мPathToFossil  = "";
 var FSO = new ActiveXObject("Scripting.FileSystemObject");
 
 if (мPathToFossilBase!=''){
-    if (мPathToFossilBase.substr(0,2) == "..") {
+    if (мPathToFossilBase.substr(0,1) == ".") {
         var мPathToFossilBase = FSO.GetAbsolutePathName(FSO.buildPath(mainFolder, мPathToFossilBase))
         }
     var f = v8New("File", мPathToFossilBase); 
@@ -34,7 +34,7 @@ if (мPathToFossilBase!=''){
     }
 }
 if (PathToFossil=='' && мPathToFossil!='') { //прочтем настройки снегопата
-    if (мPathToFossil.substr(0,2) == "..") {
+    if (мPathToFossil.substr(0,1) == ".") {
         var мPathToFossil = FSO.GetAbsolutePathName(FSO.buildPath(mainFolder, мPathToFossil))
         }
     var f = v8New("File", мPathToFossil); 
@@ -60,7 +60,7 @@ var СоответствиеФайловИСтатусов = [];
 
 var мФормаНастройки=null
 
-function macrosНастройкиFossil(){
+function macrosНастрокаFossil(){
     var pathToForm=SelfScript.fullPath.replace(/js$/, 'ssf')
     мФормаНастройки=loadScriptForm(pathToForm, SelfScript.self) // Обработку событий формы привяжем к самому скрипту
     мФормаНастройки.ОткрытьМодально()
@@ -350,18 +350,20 @@ function fossil_add(pathToFile, param2) {
 }
 
 function fossil_run(pathToFile){
-    var rootCatalog = fossil_getRootCatalog();
-    //
+    var rootCatalog = fossil_getRootCatalog(pathToFile);
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
     var TextDoc = v8New("TextDocument");
-    //TextDoc.AddLine('PATH = %PATH%;'+fossilpath+'"')
+	var abspath = FSO.GetAbsolutePathName(PathToFossil);
+	var f = v8New('File', abspath);
+	if (f.Exist()) {
+		TextDoc.AddLine('PATH = %PATH%;'+f.Path+'"');
+	}
     TextDoc.AddLine('cd /d "'+rootCatalog+'"')
     TextDoc.AddLine('start cmd.exe')
     TextDoc.Write(PathToBatFossil, 'cp866');
-    ЗапуститьПриложение(PathToBatFossil)
-    
-    //ЗапуститьПриложение("cmd.exe", pathToCatalog); //сюда можно придумать какой либо gui для работы с fossil
+	ЗапуститьПриложение(PathToBatFossil, "", true);
+	TextDoc = null;
 }
 
 function fossil_getFileStatus(pathToCatalog, pathToFile){
@@ -459,16 +461,14 @@ function fossil_commit(pathToFile, message) {
 
 function fossil_showlog(pathToFile) { //временно, надо нарисовать красивю форму. 
     
-    var rootCatalog = fossil_getRootCatalog();
-    //
+    var rootCatalog = fossil_getRootCatalog(pathToFile);
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
     var TextDoc = v8New("TextDocument");
-    //TextDoc.AddLine('PATH = %PATH%;'+fossilpath+'"')
     TextDoc.AddLine('cd /d "'+rootCatalog+'"')
     TextDoc.AddLine(PathToFossil+' ui')
     TextDoc.Write(PathToBatFossil, 'cp866');
-    ЗапуститьПриложение("cmd.exe " + PathToBatFossil)
+    ЗапуститьПриложение(PathToBatFossil);
 }
 
 function Backend_fossil(command, param1, param2) {
@@ -498,7 +498,7 @@ function Backend_fossil(command, param1, param2) {
         result = fossil_run(param1, param2)
         break;
     case "SHOWLOG":
-        result = fossil_showlog;
+        result = fossil_showlog(param1);
         break
     case "SHOWDIFF":
         result = fossil_getFilePathToDiff(param1, param2);
@@ -524,4 +524,7 @@ function Backend_fossil(command, param1, param2) {
 function GetBackend() {
     return Backend_fossil
 }
-//extfiles.registerDvcsBackend("fossil", Backend_fossil)
+
+function getDefaultMacros() {
+	return 'НастрокаFossil'
+}

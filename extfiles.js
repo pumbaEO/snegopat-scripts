@@ -300,7 +300,6 @@ function КонтекстноеМенюКнDvcsCommit(Кнопка) {
     if (ТекущаяСтрока) {
         caller = getDvcsBackendForPath(ТекущаяСтрока.ИмяФайла);
         var message = "тестовый комментарий";
-        //res = InputString(message, "Введите комментарий для commit", 0, true)
         if (InputString(message, "Введите комментарий", 0, false)) {
             if (caller!=null) {caller("COMMIT", ТекущаяСтрока.ИмяФайла, message);}
         }
