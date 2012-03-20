@@ -6,10 +6,9 @@ $addin global
 global.connectGlobals(SelfScript)
 
 var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
-//Исправь, на правильный путь. 
+
 var pathTo1C = mainFolder + "\\core\\starter.exe";
 var pathToBase = mainFolder + "\\scripts\\dvcs\\basediff";
-
 
 function diff_v8Reader(Path1, Path2) {
     sBaseDoc = Path1.replace(/\//g, '\\');
@@ -22,11 +21,13 @@ function diff_v8Reader(Path1, Path2) {
     var FSO = new ActiveXObject("Scripting.FileSystemObject");
     var cmd = '"'+pathTo1C+'" enterprise /RunModeOrdinaryApplication  /F"'+pathToBase+'" /C"'+FSO.GetAbsolutePathName(tmpfile)+'" ' ;
     ЗапуститьПриложение(cmd);
-}
+} //diff_v8Reader
 
 function GetExtension() {
     return "ssf|cf";
-}
+} //GetExtension
+
 function GetBackend() {
     return diff_v8Reader
-}
+} //GetBackend
+

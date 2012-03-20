@@ -1,12 +1,10 @@
 ﻿$engine JScript
 $uname dvcs_fossil
-$dname Backend к fossil
+$dname Backend к dvcs fossil
 $addin global
 
 // (c) Сосна Евгений shenja at sosna.zp.ua
 // Скрипт - Backend к fossil для отображения версионного контроля. 
-//
-//
 
 global.connectGlobals(SelfScript)
 
@@ -21,7 +19,9 @@ var мPathToFossilBase = "";
 var мPathToFossil  = "";
 мPathToFossilBase = profileRoot.getValue(pfFossilPathBase)
 мPathToFossil = profileRoot.getValue(pfFossilPath)
-
+// если не создаеться fso, необходимо в сделать в c:\windows\system32 
+// regsvr32.exe scrrun.dll 
+// после этого fso заработает. Во всем виновата корпорация добра http://social.technet.microsoft.com/Forums/ru/windowsserverru/thread/28d55900-145b-466b-93d4-74e08006c72f
 var FSO = new ActiveXObject("Scripting.FileSystemObject");
 
 if (мPathToFossilBase!=''){
@@ -150,7 +150,7 @@ function fossil_getRootCatalog(path){
         }
     }
     return result
-}
+} //fossil_getRootCatalog
 
 function fossil_test(pathToCatalog) {
     
@@ -161,7 +161,7 @@ function fossil_test(pathToCatalog) {
         return false
     }
     return true
-}
+} //fossil_test
 
 function fossil_getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
 
@@ -234,7 +234,7 @@ function fossil_getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
             }
     
         return true
-}
+} //fossil_getStatusForCatalog
 
 function fossil_getFileAtRevision(pathToFile, rev){
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
@@ -264,7 +264,7 @@ function fossil_getFileAtRevision(pathToFile, rev){
         return filerev;
     }
     return null
-}
+} //fossil_getFileAtRevision
 
 function fossil_getFilePathToDiff(param1, param2) { //текущая версия файла с предыдущей...
     
@@ -347,7 +347,7 @@ function fossil_add(pathToFile, param2) {
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
-}
+} //fossil_add
 
 function fossil_run(pathToFile){
     var rootCatalog = fossil_getRootCatalog(pathToFile);
@@ -364,7 +364,7 @@ function fossil_run(pathToFile){
     TextDoc.Write(PathToBatFossil, 'cp866');
 	ЗапуститьПриложение(PathToBatFossil, "", true);
 	TextDoc = null;
-}
+} //fossil_run
 
 function fossil_getFileStatus(pathToCatalog, pathToFile){
     var лКаталог = pathToCatalog
@@ -406,7 +406,7 @@ function fossil_getFileStatus(pathToCatalog, pathToFile){
     
     return (СоответсвиеФайлов[pathToFile] == undefined) ? null : СоответсвиеФайлов[pathToFile]
     
-}
+} //fossil_getFileStatus
 
 function fossil_revert(pathToFile, ver) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
@@ -420,7 +420,7 @@ function fossil_revert(pathToFile, ver) {
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
-}
+} //fossil_revert
 
 function fossil_delete(pathToFile) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
@@ -437,7 +437,7 @@ function fossil_delete(pathToFile) {
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
-}
+} //fossil_delete
 
 function fossil_commit(pathToFile, message) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
@@ -457,7 +457,7 @@ function fossil_commit(pathToFile, message) {
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
-}
+} //fossil_commit
 
 function fossil_showlog(pathToFile) { //временно, надо нарисовать красивю форму. 
     
@@ -469,7 +469,7 @@ function fossil_showlog(pathToFile) { //временно, надо нарисо�
     TextDoc.AddLine(PathToFossil+' ui')
     TextDoc.Write(PathToBatFossil, 'cp866');
     ЗапуститьПриложение(PathToBatFossil);
-}
+} //fossil_showlog
 
 function Backend_fossil(command, param1, param2) {
     var result = false;
@@ -519,12 +519,12 @@ function Backend_fossil(command, param1, param2) {
         break
     }
     return result
-}
+} //Backend_fossil
 
 function GetBackend() {
     return Backend_fossil
-}
+} //GetBackend
 
 function getDefaultMacros() {
 	return 'НастрокаFossil'
-}
+} //getDefaultMacros

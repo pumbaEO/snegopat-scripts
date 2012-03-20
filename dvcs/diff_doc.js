@@ -1,7 +1,7 @@
 $engine JScript
 $uname diff_doc_file
-$dname Backend к diff просмотру
-//$addin extfiles
+$dname Backend к diff просмотру (doc,docx)
+
 
 var objArgs,num,sBaseDoc,sNewDoc,sTempDoc,objScript,word,destination;
 // Microsoft Office versions for Microsoft Windows OS
@@ -218,14 +218,14 @@ if (parseInt(word.Version) >= vOffice2002)
 {
     destination.Close(wdDoNotSaveChanges);
 }
-}
+} //diff
 
 function GetExtension () {
     return "doc|docx";
-}
+} //GetExtension
+
 function GetBackend() {
     return diff
-}
-//extfiles.registerDiffBackend("doc", diff)
-//extfiles.registerDiffBackend("docx", diff)
+} //GetBackend
+
 
