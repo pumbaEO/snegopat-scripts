@@ -155,11 +155,10 @@ function fossil_getRootCatalog(path){
 function fossil_test(pathToCatalog) {
     
     var f = v8New("File", pathToCatalog);
-    if (!f.IsDirectory()) return false
-    if (!FSO.FileExists(FSO.BuildPath(pathToCatalog, '_FOSSIL_')))
-    {
-        return false
-    }
+	if (!f.Exist()) return false; 
+    if (!f.IsDirectory()) return false;
+    if (!FSO.FileExists(FSO.BuildPath(pathToCatalog, '_FOSSIL_'))) return false; //есть файл, тогда пробуем. Возможна проблема с тем, что _FOSSIL_ указывает у себя путь к несуществющему репозитарию.
+    
     return true
 } //fossil_test
 
