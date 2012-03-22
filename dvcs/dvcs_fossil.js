@@ -482,11 +482,9 @@ function fossil_getLog(pathToFile) { //если каталог, тогда ин�
 	if (!f.IsDirectory()) {
 		var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
 		var PathToBatFossil = TempDir + "fossilTrue.bat"
-		Message(" 0" + pathToFile + " root "+rootCatalog); 
 		var TextDoc = v8New("TextDocument");
 		TextDoc.AddLine('cd /d "'+rootCatalog+'"')
 		var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
-		Message(" 0" + pathToFile + " root "+rootCatalog +" относит "+ПутьОтносительноКорневогоКаталога); 
 		TextDoc.AddLine(PathToFossil+' finfo -b '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
 		TextDoc.Write(PathToBatFossil, 'cp866');
 		//TextDoc.Clear();
@@ -495,7 +493,7 @@ function fossil_getLog(pathToFile) { //если каталог, тогда ин�
 		//ЗапуститьПриложение(PathToBatFossil,"", true);
 		TextDoc.Read(PathToFossilOutput, "UTF-8");
 		if (TextDoc.LineCount() == 0) {
-			Message(" 0");
+			//Message(" 0");
 			return result 
 		}
 		var index=0;
@@ -505,9 +503,9 @@ function fossil_getLog(pathToFile) { //если каталог, тогда ин�
 			if (r.indexOf("file outside of")!=-1) return result
 			re = new RegExp(/(\S*)\s(\S*)\s(\S*)\s(.*)/);
 			var mathes = r.match(re);
-			Message(" 1"); 
+			//Message(" 1"); 
 			if (mathes && mathes.length) {
-				Message(" 2" + mathes[1]);
+				//Message(" 2" + mathes[1]);
 				result[index] = {"version":mathes[1], "comment":''+mathes[4], "date":mathes[2], "author":mathes[3]}
 				index++;
 			}
@@ -515,6 +513,55 @@ function fossil_getLog(pathToFile) { //если каталог, тогда ин�
 	}
 	
 return result;	
+} // fossil_getLog
+
+function fossil_getInfo(pathToFile, ver) {
+	var result = {"comment":"", "files":[]}
+	var rootCatalog = fossil_getRootCatalog(pathToFile);
+	var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+	var PathToBatFossil = TempDir + "fossilTrue.bat"
+	var TextDoc = v8New("TextDocument");
+	TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+	//var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+	TextDoc.AddLine(PathToFossil+' info  '+ver +' > "'+PathToFossilOutput+'"')
+	TextDoc.Write(PathToBatFossil, 'cp866');
+	ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+	TextDoc.Clear();
+	TextDoc.Read(PathToFossilOutput, "UTF-8");
+	result["comment"] = TextDoc.GetText();
+	TextDoc.Clear();
+	TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+	TextDoc.AddLine(PathToFossil+' timeline '+ver +' -n 1 -showfiles -t ci > "'+PathToFossilOutput+'"')
+	TextDoc.Write(PathToBatFossil, 'cp866');
+	ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+	TextDoc.Clear();
+	TextDoc.Read(PathToFossilOutput, "UTF-8");
+	if (TextDoc.LineCount() == 0) {
+		//Message(" 0");
+		return result 
+	}
+	var index=0;
+	for (var i=1; i<=TextDoc.LineCount(); i++)
+	{
+		var r = TextDoc.GetLine(i);
+		/* if (r.length > 0) && (r[0]=='F') { //файл
+			var ar = r.split(' ');
+		} */
+		//if (r.indexOf("file outside of")!=-1) return result
+		//re = new RegExp(/(F)\s(\S*)\s(\S*)/);
+		re = new RegExp(/\s*(EDITED|ADDED|DELETED)\s(.*)/);
+		var mathes = r.match(re);
+		//Message(" 1"); 
+		if (mathes && mathes.length) {
+			//Message(" 2" + mathes[1]);
+			 //млКаталог.replace(/\//g, '\\')
+			fullpathfile = mathes[2].replace(/\\s/g, ' ') //пробел так fossil отображает.
+			//fullpathfile = fullpathfile.replace(/\//g, '\\');
+			result['files'][index] = {"version":ver, "file":''+fullpathfile, "status":mathes[1], "fullpath":FSO.BuildPath(rootCatalog, fullpathfile.replace(/\//g, '\\'))}
+			index++;
+		}
+	}
+	return result
 }
 
 function Backend_fossil(command, param1, param2) {
@@ -564,6 +611,9 @@ function Backend_fossil(command, param1, param2) {
     case "GETLOG":
 		result = fossil_getLog(param1);
         break
+	case "GETINFO":
+		result = fossil_getInfo(param1, param2);
+		break
     }
     return result
 } //Backend_fossil

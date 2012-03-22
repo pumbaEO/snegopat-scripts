@@ -261,8 +261,15 @@ function КонтекстноеМенюКнDvcsПоказатьЖурнал(Кн
         if (caller!=null){
 			var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
 			var pathToLog = mainFolder + "\\scripts\\dvcs\\logview.js";
-			Message(""+ТекущаяСтрока.ИмяФайла);
-			var КэшРасширений = stdlib.require(pathToLog).мОбновитьДанные(caller, ТекущаяСтрока.ИмяФайла);
+			var f = v8New("File", pathToLog);
+			if (!f.Exist()) return
+			
+			logViewAddin = stdlib.require(f.FullName);
+			if (logViewAddin) {
+				var logView = logViewAddin.CreateLogViewForm();
+				logView.open(caller, ТекущаяСтрока.ИмяФайла);
+			}
+			// var КэшРасширений = stdlib.require(pathToLog).мОбновитьДанные(caller, ТекущаяСтрока.ИмяФайла);
 		}
 		//caller("SHOWLOG", ТекущаяСтрока.ИмяФайла, "");
     }
