@@ -130,7 +130,7 @@ function fossil_getRootCatalog(path){
             TextDoc.Read(PathToFossilOutput, "UTF-8");
             if (TextDoc.LineCount() == 0) {
                 Message ("комманда отработала, но вывод не записался, надо отладить!")
-                return undefined //что то пошло не так. 
+                return "" //что то пошло не так. 
             }
         
             var i=0;
@@ -442,7 +442,7 @@ function fossil_commit(pathToFile, message) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
     var f = v8New("File", pathToFile);
     if (f.IsDirectory()) {
-        pathToFile = '.'
+        pathToFile = ''
     } else {
         pathToFile = '"'+pathToFile+'"'
     }
@@ -469,6 +469,53 @@ function fossil_showlog(pathToFile) { //временно, надо нарисо�
     TextDoc.Write(PathToBatFossil, 'cp866');
     ЗапуститьПриложение(PathToBatFossil);
 } //fossil_showlog
+
+function fossil_getLog(pathToFile) { //если каталог, тогда информация для каталога, если файл, тогда лог для файла. 
+	//Возвращаем массив со стурктурой:
+	// arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
+	var result = []
+	f = v8New("File", pathToFile);
+	if (!f.Exist()) return result
+	//Проверим, есть ли он под версионным контролем у нас.
+	var rootCatalog = fossil_getRootCatalog(pathToFile);
+	//пока будем нормально возвращать только для файла, надо спросить совета про парсинг общей истории...
+	if (!f.IsDirectory()) {
+		var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+		var PathToBatFossil = TempDir + "fossilTrue.bat"
+		Message(" 0" + pathToFile + " root "+rootCatalog); 
+		var TextDoc = v8New("TextDocument");
+		TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+		var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+		Message(" 0" + pathToFile + " root "+rootCatalog +" относит "+ПутьОтносительноКорневогоКаталога); 
+		TextDoc.AddLine(PathToFossil+' finfo -b '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
+		TextDoc.Write(PathToBatFossil, 'cp866');
+		//TextDoc.Clear();
+		ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+		TextDoc.Clear();
+		//ЗапуститьПриложение(PathToBatFossil,"", true);
+		TextDoc.Read(PathToFossilOutput, "UTF-8");
+		if (TextDoc.LineCount() == 0) {
+			Message(" 0");
+			return result 
+		}
+		var index=0;
+		for (var i=1; i<=TextDoc.LineCount(); i++)
+		{
+			var r = TextDoc.GetLine(i);
+			if (r.indexOf("file outside of")!=-1) return result
+			re = new RegExp(/(\S*)\s(\S*)\s(\S*)\s(.*)/);
+			var mathes = r.match(re);
+			Message(" 1"); 
+			if (mathes && mathes.length) {
+				Message(" 2" + mathes[1]);
+				result[index] = {"version":mathes[1], "comment":''+mathes[4], "date":mathes[2], "author":mathes[3]}
+				index++;
+			}
+		}
+	}
+	
+return result;	
+}
 
 function Backend_fossil(command, param1, param2) {
     var result = false;
@@ -514,7 +561,8 @@ function Backend_fossil(command, param1, param2) {
     case "GETFILEATREVISION":
         result = fossil_getFileAtRevision(param1, param2)
         break
-    case "GETFILELOG":
+    case "GETLOG":
+		result = fossil_getLog(param1);
         break
     }
     return result

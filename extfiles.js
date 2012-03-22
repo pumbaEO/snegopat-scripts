@@ -258,8 +258,13 @@ function КонтекстноеМенюКнDvcsПоказатьЖурнал(Кн
     var ТекущаяСтрока = мФормаСкрипта.ЭлементыФормы.ДеревоФайлов.ТекущиеДанные;
     if (ТекущаяСтрока) {
         caller = getDvcsBackendForPath(ТекущаяСтрока.ИмяФайла);
-        
-        if (caller!=null) caller("SHOWLOG", ТекущаяСтрока.ИмяФайла, "");
+        if (caller!=null){
+			var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
+			var pathToLog = mainFolder + "\\scripts\\dvcs\\logview.js";
+			Message(""+ТекущаяСтрока.ИмяФайла);
+			var КэшРасширений = stdlib.require(pathToLog).мОбновитьДанные(caller, ТекущаяСтрока.ИмяФайла);
+		}
+		//caller("SHOWLOG", ТекущаяСтрока.ИмяФайла, "");
     }
 } //КонтекстноеМенюКнDvcsПоказатьЖурнал
 
