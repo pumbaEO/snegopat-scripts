@@ -259,19 +259,17 @@ function КонтекстноеМенюКнDvcsПоказатьЖурнал(Кн
     if (ТекущаяСтрока) {
         caller = getDvcsBackendForPath(ТекущаяСтрока.ИмяФайла);
         if (caller!=null){
-			var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
-			var pathToLog = mainFolder + "\\scripts\\dvcs\\logview.js";
-			var f = v8New("File", pathToLog);
-			if (!f.Exist()) return
-			
-			logViewAddin = stdlib.require(f.FullName);
-			if (logViewAddin) {
-				var logView = logViewAddin.CreateLogViewForm();
-				logView.open(caller, ТекущаяСтрока.ИмяФайла);
-			}
-			// var КэшРасширений = stdlib.require(pathToLog).мОбновитьДанные(caller, ТекущаяСтрока.ИмяФайла);
-		}
-		//caller("SHOWLOG", ТекущаяСтрока.ИмяФайла, "");
+            var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
+            var pathToLog = mainFolder + "\\scripts\\dvcs\\logview.js";
+            var f = v8New("File", pathToLog);
+            if (!f.Exist()) return
+            
+            logViewAddin = stdlib.require(f.FullName);
+            if (logViewAddin) {
+                var logView = logViewAddin.CreateLogViewForm();
+                logView.open(caller, ТекущаяСтрока.ИмяФайла);
+            }
+        }
     }
 } //КонтекстноеМенюКнDvcsПоказатьЖурнал
 
@@ -506,21 +504,19 @@ function dvcsGetMissingFiles (лКаталог, лСтрокаДереваФай
                         НоваяСтрока.ИмяФайла = ""; //Оставим пустым, т.е. файл удалили теперь 
                     }
                 }
-                
-                
             }
         }
 } //dvcsGetMissingFiles
 
 function dvcsGetFileStatus(pathToFile) {
-	var result = "";
-	for (var key in СоответствиеКаталоговИDvcs) {
-		if (pathToFile.indexOf(key) >=0) {
-			var result = СоответствиеКаталоговИDvcs[key]("FILESTATUS", key, pathToFile);
-			break
-		}
-	}
-	return result;
+    var result = "";
+    for (var key in СоответствиеКаталоговИDvcs) {
+        if (pathToFile.indexOf(key) >=0) {
+            var result = СоответствиеКаталоговИDvcs[key]("FILESTATUS", key, pathToFile);
+            break
+        }
+    }
+    return result;
 }
 
 function мДобавитьФайлы(пПуть, пУзел) { 
@@ -575,8 +571,8 @@ function мДобавитьФайлы(пПуть, пУзел) {
             }
             else{
                 if (мИспользоватьВерисонирование) {
-					лСтрокаДереваФайлов.Статус = dvcsGetFileStatus(лСтрокаДереваФайлов.ИмяФайла);
-				}
+                    лСтрокаДереваФайлов.Статус = dvcsGetFileStatus(лСтрокаДереваФайлов.ИмяФайла);
+                }
                 лСтрокаДереваФайлов.Тип=лФайл.Расширение.substr(1)
                 if (лНадоРазвернутьДерево) ExpandTreeForFile(лСтрокаДереваФайлов, true)
             }
@@ -618,11 +614,11 @@ function ДобавитьКаталоги(пТзКаталоги) {
         лСтрокаДереваФайлов.ИмяФайла=лКаталог
         лСтрокаДереваФайлов.Развернуть=пТзКаталоги.Получить(лИнд).Развернуть
         
-		if (мИспользоватьВерисонирование){
-			dvcsGetCatalogStatus(лКаталог);
-			dvcsGetMissingFiles(лКаталог, лСтрокаДереваФайлов);
-			лСтрокаДереваФайлов.Статус = dvcsGetFileStatus(лСтрокаДереваФайлов.ИмяФайла);
-		}
+        if (мИспользоватьВерисонирование){
+            dvcsGetCatalogStatus(лКаталог);
+            dvcsGetMissingFiles(лКаталог, лСтрокаДереваФайлов);
+            лСтрокаДереваФайлов.Статус = dvcsGetFileStatus(лСтрокаДереваФайлов.ИмяФайла);
+        }
         
         мДобавитьФайлы(лКаталог, лСтрокаДереваФайлов)
         if (лСтрокаДереваФайлов.Родитель!=undefined){
@@ -930,7 +926,7 @@ function мЗаписатьНастройки() {
     мОткрыватьПриСтарте=мФормаНастройки.ОткрыватьФормуПриЗагрузке
     мТзРасширенияФайлов = мФормаНастройки.РасширенияФайлов.Скопировать();
     мКомандаЗапускаКонсоли = мФормаНастройки.КомандаЗапускаКонсоли;
-	мОтображатьРасширениеФайлаВПредставлении = мФормаНастройки.ОтображатьРасширениеФайлаВПредставлении;
+    мОтображатьРасширениеФайлаВПредставлении = мФормаНастройки.ОтображатьРасширениеФайлаВПредставлении;
     мИспользоватьВерисонирование = мФормаНастройки.ИспользоватьВерисонирование;
     мЦветФонаИзмененные        = мФормаНастройки.ЦветФонаИзмененные
     мЦветФонаУдаленный        = мФормаНастройки.ЦветФонаУдаленный
