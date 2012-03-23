@@ -408,13 +408,16 @@ function fossil_getFileStatus(pathToCatalog, pathToFile){
 } //fossil_getFileStatus
 
 function fossil_revert(pathToFile, ver) {
+
     var rootCatalog = fossil_getRootCatalog(pathToFile);
     var f = v8New("File", pathToFile);
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
-    var TextDoc = v8New("TextDocument");
-    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
-    (ver.length>0) ? TextDoc.AddLine(PathToFossil +' revert -r '+ver+' "' +pathToFile+'"') : TextDoc.AddLine(PathToFossil +' revert  "' +pathToFile+'"')
+	var TextDoc = v8New("TextDocument");
+    TextDoc.Записать(PathToFossilOutput, "UTF-8");
+	TextDoc.AddLine('cd /d"' +rootCatalog +'"')
+	var cmd = (ver.length>0) ? ''+PathToFossil +' revert -r '+ver+' "' +pathToFile+'"' : ''+PathToFossil +' revert  "' +pathToFile+'"';
+	TextDoc.AddLine(cmd);
     TextDoc.Write(PathToBatFossil, 'cp866');
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)

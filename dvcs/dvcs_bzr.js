@@ -259,10 +259,11 @@ function bzr_remove(pathToFile) {
 
 function bzr_revert(pathToFile, ver) {
     var rootCatalog = bzr_getRootCatalog(pathToFile);
-    //var f = v8New("File", pathToFile);
     var TextDoc = v8New("TextDocument");
-    TextDoc.AddLine('cd /d "'+rootCatalog+'"');
-    (ver.length>0) ? TextDoc.AddLine('bzr revert -r '+ver+' "' +pathToFile+'"') : TextDoc.AddLine('bzr revert  "' +pathToFile+'"')
+    TextDoc.Записать(PathToBat, "UTF-8");
+	TextDoc.AddLine('cd /d"' +rootCatalog +'"')
+	var cmd = (ver.length>0) ? 'bzr revert -r '+ver+' "' +pathToFile+'"' : 'bzr revert  "' +pathToFile+'"';
+	TextDoc.AddLine(cmd);
     TextDoc.Write(PathToBat, 'cp866');
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBat+'"', 0, 1)
