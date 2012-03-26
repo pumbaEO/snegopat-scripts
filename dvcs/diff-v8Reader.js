@@ -49,37 +49,37 @@ function мВыбратьКаталог()
 }
 
 function КнНастройкаПоУмолчаниюНажатие (Кнопка) {
-	var мpathToBase = мФормаНастройки.pathToBase;
-	if (мpathToBase.length <1) {
-		var мpathToBase = mainFolder + "\\basediff";
-		try {
-			СоздатьКаталог(мpathToBase);
-			Message("Создан каталог " + мpathToBase);
-		} catch (e) {
-			Message("Ошибка при созаднии каталога " + мpathToBase + " описание ошибки " + e.description) ;
-			return;
-		}
-	}
-	try {
-		КопироватьФайл(mainFolder + "\\scripts\\dvcs\\basediff\\1Cv8.1CD", мpathToBase + "\\1Cv8.1CD");
-		мФормаНастройки.pathToBase = мpathToBase;
-		//var cmd = '"'+pathTo1C+'" CREATEINFOBASE  File="'+pathToBase+'"; /AddInList diff1Cv8Reader ' ;
-		//ЗапуститьПриложение(cmd);
-		var cmd = '"'+pathTo1C+'" DESIGNER /F"'+pathToBase+'" /RestoreIB "'+mainFolder + "\\scripts\\dvcs\\basediff\\v8reader.dt" ;
-		ЗапуститьПриложение(cmd);
-	} catch (e) {
-		Message("Ошибка при создании базы. Загрузите dt вручную и укажите путь к базе. " + mainFolder + "\\scripts\\dvcs\\basediff\\v8reader.dt " +e.description);
-		return;
-	}
+    var мpathToBase = мФормаНастройки.pathToBase;
+    if (мpathToBase.length <1) {
+        var мpathToBase = mainFolder + "\\basediff";
+        try {
+            СоздатьКаталог(мpathToBase);
+            Message("Создан каталог " + мpathToBase);
+        } catch (e) {
+            Message("Ошибка при созаднии каталога " + мpathToBase + " описание ошибки " + e.description) ;
+            return;
+        }
+    }
+    try {
+        КопироватьФайл(mainFolder + "\\scripts\\dvcs\\basediff\\1Cv8.1CD", мpathToBase + "\\1Cv8.1CD");
+        мФормаНастройки.pathToBase = мpathToBase;
+        //var cmd = '"'+pathTo1C+'" CREATEINFOBASE  File="'+pathToBase+'"; /AddInList diff1Cv8Reader ' ;
+        //ЗапуститьПриложение(cmd);
+        var cmd = '"'+pathTo1C+'" DESIGNER /F"'+pathToBase+'" /RestoreIB "'+mainFolder + "\\scripts\\dvcs\\basediff\\v8reader.dt" ;
+        ЗапуститьПриложение(cmd);
+    } catch (e) {
+        Message("Ошибка при создании базы. Загрузите dt вручную и укажите путь к базе. " + mainFolder + "\\scripts\\dvcs\\basediff\\v8reader.dt " +e.description);
+        return;
+    }
 }
 
 function diff_v8Reader(Path1, Path2) {
 
-	if (pathToBase.length<1) {
-		Message("Необходимо настроить путь к служебной базе для сравнения.")
-		Message("Откройте настройки для скрипта Backend к diff просмотру (ssf, cf) и заполните их.")
-		return 
-	}
+    if (pathToBase.length<1) {
+        Message("Необходимо настроить путь к служебной базе для сравнения.")
+        Message("Откройте настройки для скрипта Backend к diff просмотру (ssf, cf) и заполните их.")
+        return
+    }
     sBaseDoc = Path1.replace(/\//g, '\\');
     sNewDoc = Path2.replace(/\//g, '\\');
     var tmpfile = ПолучитьИмяВременногоФайла("txt");
