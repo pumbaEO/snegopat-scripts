@@ -41,12 +41,15 @@ function _LogView() {
     this.listfiles = this.form.СписокИзминенийФайлов;
 
     this.listtocompare = [];
+    this.LimitRevisions = мКвоРевизийПоУмолчанию;
 
 }
 
 _LogView.prototype.open = function (caller, path) {
     this.backend = caller;
     this.rootpath = path;
+    this.form.КвоРевизийПоУмолчанию = this.LimitRevisions;
+    
     if ((this.backend) && (this.rootpath))
         this.init()
 
@@ -56,7 +59,7 @@ _LogView.prototype.open = function (caller, path) {
 _LogView.prototype.init = function () {
 
     this.timeline.Очистить();
-    result = this.backend("GETLOG", this.rootpath);
+    result = this.backend("GETLOG", this.rootpath, this.LimitRevisions);
     for (var i=0; i<result.length; i++) {
         НоваяСтрока = this.timeline.Добавить();
         НоваяСтрока.Версия = result[i]['version']
@@ -160,7 +163,22 @@ _LogView.prototype.КПСравненияКПСравнить = function (Эле
     }
 }
 
+_LogView.prototype.КнОбновитьНажатие = function (Элемент) {
+    this.LimitRevisions = this.form.КвоРевизийПоУмолчанию; //Надо придумать настройку для сохранения.
+    this.init(); 
+}
+
 function getDefaultMacros() {
     return 'Журнал'
 } //getDefaultMacros
 
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Инициализация скрипта
+////
+
+var pflLogViewLimitOfRevisions         = "LogView/LimitRevisions"
+profileRoot.createValue(pflLogViewLimitOfRevisions, 30, pflSnegopat);
+
+var мКвоРевизийПоУмолчанию = profileRoot.getValue(pflLogViewLimitOfRevisions)
+////} Инициализация скрипта

@@ -413,11 +413,11 @@ function fossil_revert(pathToFile, ver) {
     var f = v8New("File", pathToFile);
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
-	var TextDoc = v8New("TextDocument");
+    var TextDoc = v8New("TextDocument");
     TextDoc.Записать(PathToFossilOutput, "UTF-8");
-	TextDoc.AddLine('cd /d"' +rootCatalog +'"')
-	var cmd = (ver.length>0) ? ''+PathToFossil +' revert -r '+ver+' "' +pathToFile+'"' : ''+PathToFossil +' revert  "' +pathToFile+'"';
-	TextDoc.AddLine(cmd);
+    TextDoc.AddLine('cd /d"' +rootCatalog +'"')
+    var cmd = (ver.length>0) ? ''+PathToFossil +' revert -r '+ver+' "' +pathToFile+'"' : ''+PathToFossil +' revert  "' +pathToFile+'"';
+    TextDoc.AddLine(cmd);
     TextDoc.Write(PathToBatFossil, 'cp866');
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
@@ -473,7 +473,7 @@ function fossil_showlog(pathToFile) { //временно, надо нарисо�
     ЗапуститьПриложение(PathToBatFossil);
 } //fossil_showlog
 
-function fossil_getLog(pathToFile) { //если каталог, тогда информация для каталога, если файл, тогда лог для файла. 
+function fossil_getLog(pathToFile, limit) { //если каталог, тогда информация для каталога, если файл, тогда лог для файла. 
     //Возвращаем массив со стурктурой:
     // arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
     var result = []
@@ -481,73 +481,67 @@ function fossil_getLog(pathToFile) { //если каталог, тогда ин�
     if (!f.Exist()) return result
     //Проверим, есть ли он под версионным контролем у нас.
     var rootCatalog = fossil_getRootCatalog(pathToFile);
-	var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
-	var PathToBatFossil = TempDir + "fossilTrue.bat"
-	var TextDoc = v8New("TextDocument");
-	TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    var TextDoc = v8New("TextDocument");
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
     //пока будем нормально возвращать только для файла, надо спросить совета про парсинг общей истории...
-	if (!f.IsDirectory()) { //Для файлов оставляем старый вариант, в timeline нет возможности отфильтровать сразу по файлам. 
-		var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
-		//TextDoc.AddLine(PathToFossil+' finfo -b '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
-		TextDoc.AddLine(PathToFossil+' finfo -b '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
+    if (!f.IsDirectory()) { //Для файлов оставляем старый вариант, в timeline нет возможности отфильтровать сразу по файлам. 
+        var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+        TextDoc.AddLine(PathToFossil+' finfo -l --limit '+limit+' '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
         TextDoc.Write(PathToBatFossil, 'cp866');
-		
+        
         ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
         TextDoc.Clear();
-        //ЗапуститьПриложение(PathToBatFossil,"", true);
+
         TextDoc.Read(PathToFossilOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
-            //Message(" 0");
             return result 
         }
+        
+        re = new RegExp(/(\d{4}-\d{2}-\d{2})\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+),\s+artifact/g);
+        
+        var r = TextDoc.ПолучитьТекст();
+        Message(r)
+        var matches;
         var index=0;
-        for (var i=1; i<=TextDoc.LineCount(); i++)
+        while ((matches = re.exec(r)) != null)
         {
-            var r = TextDoc.GetLine(i);
-            if (r.indexOf("file outside of")!=-1) return result
-            re = new RegExp(/(\S*)\s(\S*)\s(\S*)\s(.*)/);
-            var mathes = r.match(re);
-            //Message(" 1"); 
-            if (mathes && mathes.length) {
-                //Message(" 2" + mathes[1]);
-                result[index] = {"version":mathes[1], "comment":''+mathes[4], "date":mathes[2], "author":mathes[3]}
+            result[index] = {"version":matches[2], "comment":''+matches[3], "date":matches[1], "author":matches[5]}
+            index++;
+        }
+    } else { 
+        TextDoc.AddLine(PathToFossil+' timeline -t ci -n '+limit+'  >'+' "'+PathToFossilOutput+'"')
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        TextDoc.Clear();
+        TextDoc.Read(PathToFossilOutput, "UTF-8");
+        if (TextDoc.LineCount() == 0) {
+            return result 
+        }
+        
+        var re = new RegExp(/===\s((20\d\d)-(0[1-9]|2[012])-(0[1-9]|[12][0-9]|3[01]))\s===((\n(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\))+)/g)
+        var re_comment = new RegExp(/(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\)/g);
+        var r = TextDoc.ПолучитьТекст();
+        var matches;
+        var index=0;
+        //debugger;
+        while ((matches = re.exec(r)) != null)
+        {
+            var matches_comment;
+            var text = matches[5]
+            while ((matches_comment = re_comment.exec(r)) != null)
+            {
+                var cmd = "";
+                for (var i=1; i < matches_comment.length; i++)
+                    var cmd = cmd + " "+i+" - "+matches_comment[i]
+                
+                result[index] = {"version":matches_comment[5], "comment":'('+matches_comment[9]+')'+' '+matches_comment[6], "date":'' +matches[1]+' '+matches_comment[1], "author":matches_comment[8]}
                 index++;
             }
         }
-	} else { 
-		TextDoc.AddLine(PathToFossil+' timeline -t ci -n 30  >'+' "'+PathToFossilOutput+'"')
-        TextDoc.Write(PathToBatFossil, 'cp866');
-		
-        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-		TextDoc.Clear();
-        TextDoc.Read(PathToFossilOutput, "UTF-8");
-		if (TextDoc.LineCount() == 0) {
-            return result 
-        }
-		
-		var re = new RegExp(/===\s((20\d\d)-(0[1-9]|2[012])-(0[1-9]|[12][0-9]|3[01]))\s===((\n(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\))+)/g)
-		var re_comment = new RegExp(/(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\)/g);
-		var r = TextDoc.ПолучитьТекст();
-		var matches;
-		var index=0;
-		//debugger;
-		while ((matches = re.exec(r)) != null)
-		{
-			var matches_comment;
-			var text = matches[5]
-			while ((matches_comment = re_comment.exec(r)) != null)
-			{
-				var cmd = "";
-				for (var i=1; i < matches_comment.length; i++)
-					var cmd = cmd + " "+i+" - "+matches_comment[i]
-				
-				result[index] = {"version":matches_comment[5], "comment":'('+matches_comment[9]+')'+' '+matches_comment[6], "date":'' +matches[1]+' '+matches_comment[1], "author":matches_comment[8]}
-				index++;
-			}
-			
-		}
-		
-	}
+    }
     
 return result;    
 } // fossil_getLog
@@ -646,7 +640,7 @@ function Backend_fossil(command, param1, param2) {
         result = fossil_getFileAtRevision(param1, param2)
         break
     case "GETLOG":
-        result = fossil_getLog(param1);
+        result = fossil_getLog(param1, param2);
         break
     case "GETINFO":
         result = fossil_getInfo(param1, param2);

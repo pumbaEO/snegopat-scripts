@@ -271,7 +271,7 @@ function bzr_revert(pathToFile, ver) {
 } //bzr_revert
 
 
-function bzr_getLog(pathToFile) { //если каталог, тогда информация для каталога, если файл, тогда лог для файла. 
+function bzr_getLog(pathToFile, limit) { //если каталог, тогда информация для каталога, если файл, тогда лог для файла. 
     //Возвращаем массив со стурктурой:
     // arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
     var result = []
@@ -279,13 +279,12 @@ function bzr_getLog(pathToFile) { //если каталог, тогда информация для каталога,
     if (!f.Exist()) return result
     //Проверим, есть ли он под версионным контролем у нас.
     var rootCatalog = bzr_getRootCatalog(pathToFile);
-    //пока будем нормально возвращать только для файла, надо спросить совета про парсинг общей истории...
     var TextDoc = v8New("TextDocument");
     TextDoc.AddLine('cd /d "'+rootCatalog+'"');
     if (!f.IsDirectory()) {
-        TextDoc.AddLine('bzr log -S --line -l 100 '+pathToFile +' > "'+PathToOutput+'"');
+        TextDoc.AddLine('bzr log -S --line -l '+limit+' '+pathToFile +' > "'+PathToOutput+'"');
     } else {
-        TextDoc.AddLine('bzr log -S --line -l 100 ' +' > "'+PathToOutput+'"');
+        TextDoc.AddLine('bzr log -S --line -l '+limit+' > "'+PathToOutput+'"');
     }
     TextDoc.Write(PathToBat, 'cp866');
     ErrCode = WshShell.Run('"'+PathToBat+'"', 0, 1)
@@ -296,7 +295,6 @@ function bzr_getLog(pathToFile) { //если каталог, тогда информация для каталога,
     }
     
     var index=0;
-    //var re = new RegExp(/(\d*):\s(.*)\s([0-9]{4}-[0-9]{2}-[0-9]{2})\s(.*)\n/);
     for (var i=1; i<=TextDoc.LineCount(); i++)
     {
         var r = TextDoc.GetLine(i);
@@ -390,7 +388,7 @@ function Backend_bzr(command, param1, param2) {
         result = bzr_getFileAtRevision(param1, param2)
         break
     case "GETLOG":
-        result = bzr_getLog(param1);
+        result = bzr_getLog(param1, param2);
         break
     case "GETINFO":
         result = bzr_getInfo(param1, param2);
