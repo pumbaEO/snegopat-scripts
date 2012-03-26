@@ -443,6 +443,7 @@ function fossil_delete(pathToFile) {
 
 function fossil_commit(pathToFile, message) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
+	var tempfile = GetTempFileName("txt");
     var f = v8New("File", pathToFile);
     if (f.IsDirectory()) {
         pathToFile = ''
@@ -453,10 +454,12 @@ function fossil_commit(pathToFile, message) {
     var PathToBatFossil = TempDir + "fossilTrue.bat"
     var TextDoc = v8New("TextDocument");
     TextDoc.AddLine('cd /d "'+rootCatalog+'"')
-    TextDoc.AddLine(PathToFossil +' commit ' +pathToFile+' -m "'+message+'"');
+    TextDoc.AddLine(PathToFossil +' commit ' +pathToFile+' -M "'+tempfile+'"');
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     TextDoc.Clear();
+	TextDoc.SetText(message);
+	TextDoc.Write(tempfile, 'cp866');
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
 } //fossil_commit
