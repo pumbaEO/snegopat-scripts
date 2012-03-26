@@ -51,7 +51,7 @@ function м¬ыбрать аталог()
 function  нЌастройкаѕо”молчаниюЌажатие ( нопка) {
     var мpathToBase = м‘ормаЌастройки.pathToBase;
     if (мpathToBase.length <1) {
-        var мpathToBase = mainFolder + "\\basediff";
+        var мpathToBase = mainFolder + "basediff";
         try {
             —оздать аталог(мpathToBase);
             Message("—оздан каталог " + мpathToBase);
@@ -61,14 +61,11 @@ function  нЌастройкаѕо”молчаниюЌажатие ( нопка) {
         }
     }
     try {
-         опировать‘айл(mainFolder + "\\scripts\\dvcs\\basediff\\1Cv8.1CD", мpathToBase + "\\1Cv8.1CD");
-        м‘ормаЌастройки.pathToBase = мpathToBase;
-        //var cmd = '"'+pathTo1C+'" CREATEINFOBASE  File="'+pathToBase+'"; /AddInList diff1Cv8Reader ' ;
-        //«апуститьѕриложение(cmd);
-        var cmd = '"'+pathTo1C+'" DESIGNER /F"'+pathToBase+'" /RestoreIB "'+mainFolder + "\\scripts\\dvcs\\basediff\\v8reader.dt" ;
-        «апуститьѕриложение(cmd);
+        var cmd = '"'+pathTo1C+'" CREATEINFOBASE File="'+мpathToBase+'"; /AddInList diff1Cv8Reader /UseTemplate "'+mainFolder + "scripts\\dvcs\\basediff\\v8reader.dt" +'"';
+        «апуститьѕриложение(cmd, "", true);
+		м‘ормаЌастройки.pathToBase = мpathToBase;
     } catch (e) {
-        Message("ќшибка при создании базы. «агрузите dt вручную и укажите путь к базе. " + mainFolder + "\\scripts\\dvcs\\basediff\\v8reader.dt " +e.description);
+        Message("ќшибка при создании базы. «агрузите dt вручную и укажите путь к базе. " + mainFolder + "scripts\\dvcs\\basediff\\v8reader.dt " +e.description);
         return;
     }
 }
