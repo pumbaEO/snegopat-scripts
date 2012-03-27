@@ -443,7 +443,7 @@ function fossil_delete(pathToFile) {
 
 function fossil_commit(pathToFile, message) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
-	var tempfile = GetTempFileName("txt");
+    var tempfile = GetTempFileName("txt");
     var f = v8New("File", pathToFile);
     if (f.IsDirectory()) {
         pathToFile = ''
@@ -458,8 +458,8 @@ function fossil_commit(pathToFile, message) {
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     TextDoc.Clear();
-	TextDoc.SetText(message);
-	TextDoc.Write(tempfile, 'cp866');
+    TextDoc.SetText(message);
+    TextDoc.Write(tempfile, 'cp866');
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
 } //fossil_commit
@@ -480,13 +480,13 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
     //Возвращаем массив со стурктурой:
     // arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
     var result = []
-	//{ FIXME: умножаем кво коммитов на 2, считаем приблизительно 2 строки на 1 коммит.
-	// в fossil есть ошибка вывода в коммандную строку кво. строк а не кво коммитов.
-	// есть, даже патч
-	// http://www.fossil-scm.org/index.html/info/3e58b8ceaf  
-	//}
-	limit = limit*2;
-	
+    //{ FIXME: умножаем кво коммитов на 2, считаем приблизительно 2 строки на 1 коммит.
+    // в fossil есть ошибка вывода в коммандную строку кво. строк а не кво коммитов.
+    // есть, даже патч
+    // http://www.fossil-scm.org/index.html/info/3e58b8ceaf  
+    //}
+    limit = limit*2;
+    
     f = v8New("File", pathToFile);
     if (!f.Exist()) return result
     //Проверим, есть ли он под версионным контролем у нас.
@@ -593,6 +593,7 @@ function fossil_getInfo(pathToFile, ver) {
         var mathes = r.match(re);
         //Message(" 1"); 
         if (mathes && mathes.length) {
+            
             //Message(" 2" + mathes[1]);
              //млКаталог.replace(/\//g, '\\')
             fullpathfile = mathes[2].replace(/\\s/g, ' ') //пробел так fossil отображает.
@@ -602,6 +603,51 @@ function fossil_getInfo(pathToFile, ver) {
         }
     }
     return result
+}
+
+function fossil_getListBranch(pathToFile, index) {
+    
+    result = {"valuelist":v8New("ValueList"), "index":-1}
+    //result = v8New("ValueList");
+    var rootCatalog = fossil_getRootCatalog(pathToFile);
+    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    var TextDoc = v8New("TextDocument");
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+    //var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+    TextDoc.AddLine(PathToFossil+' branch  > "'+PathToFossilOutput+'"')
+    TextDoc.Write(PathToBatFossil, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    TextDoc.Clear();
+    TextDoc.Read(PathToFossilOutput, "UTF-8");
+    var re = new RegExp(/(\s*|\*\s)(\S*)\n/g);
+    var r = TextDoc.ПолучитьТекст();
+    var matches;
+    var index=0;
+    //debugger;
+    while ((matches = re.exec(r)) != null)
+    {
+        result['valuelist'].add(matches[2], matches[2])
+        if (matches[1].indexOf("\*")!=-1) result["index"]=index;
+        index++;
+    }
+    return result;
+    
+}
+
+function fossil_swithBranch (pathToFile, branch) {
+
+    var rootCatalog = fossil_getRootCatalog(pathToFile);
+    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    var TextDoc = v8New("TextDocument");
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+    //var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+    TextDoc.AddLine(PathToFossil+' update '+ branch +' > "'+PathToFossilOutput+'"');
+    TextDoc.Write(PathToBatFossil, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    TextDoc.Clear();
+    return true;
 }
 
 function Backend_fossil(command, param1, param2) {
@@ -654,6 +700,12 @@ function Backend_fossil(command, param1, param2) {
     case "GETINFO":
         result = fossil_getInfo(param1, param2);
         break
+    case "GETLISTBRANCH":
+        result = fossil_getListBranch(param1); //возвращаем result {"valuelist":v8New("ValueList"), "index": индекс ветки текущей}
+        break
+    case "SWITHBRANCH":
+        result = fossil_swithBranch(param1, param2);
+        break;
     }
     return result
 } //Backend_fossil
