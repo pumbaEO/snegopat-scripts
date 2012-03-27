@@ -459,7 +459,7 @@ function fossil_commit(pathToFile, message) {
     
     TextDoc.Clear();
     TextDoc.SetText(message);
-    TextDoc.Write(tempfile, 'cp866');
+    TextDoc.Write(tempfile, 'utf-8');
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     return ErrCode
 } //fossil_commit
