@@ -155,6 +155,7 @@ function ДеревоФайловПриАктивизацииСтроки(пЭл
             Кнопки.КнDvcsУдалить.Доступность = false;
             Кнопки.КнDvcsCommit.Доступность = true;
             Кнопки.КнDvcsЗапустить.Доступность = true;
+            Кнопки.КнDvcsSwitchBranch.Доступность = true;
             
             if (!ТекущаяСтрока.ЭтоКаталог) {
                 switch (ТекущаяСтрока.Статус) 
@@ -300,6 +301,26 @@ function КонтекстноеМенюКнDvcsУдалить(Кнопка) {
     }
 } //КонтекстноеМенюКнDvcsУдалить
 
+function КонтекстноеМенюКнDvcsSwitchBranch() {
+
+    var ТекущаяСтрока = мФормаСкрипта.ЭлементыФормы.ДеревоФайлов.ТекущиеДанные;
+    if (ТекущаяСтрока) {
+        caller = getDvcsBackendForPath(ТекущаяСтрока.ИмяФайла);
+        if (caller!=null){
+            result = caller("GETLISTBRANCH", ТекущаяСтрока.ИмяФайла, "");
+            if (result==false) return;
+            if ((result["valuelist"].Count() > 0) && (result["index"] !=-1)) {
+                choice = result["valuelist"].ChooseItem("Выберете ветку ", result["valuelist"].Get(result["index"]));
+                if (choice!=undefined) {
+                    caller("SWITHBRANCH", ТекущаяСтрока.ИмяФайла, choice.value);
+                    
+                }
+            }
+        }
+        мОбновитьФайлыТекущейВетки();
+    }
+}
+
 function КонтекстноеМенюКнDvcsCommit(Кнопка) {
     var ТекущаяСтрока = мФормаСкрипта.ЭлементыФормы.ДеревоФайлов.ТекущиеДанные;
     if (ТекущаяСтрока) {
@@ -334,6 +355,7 @@ function УстановитьВидимость() {
         Кнопки.КнDvcsУдалить.Доступность = false;
         Кнопки.КнDvcsCommit.Доступность = false;
         Кнопки.КнDvcsЗапустить.Доступность = false;
+        Кнопки.КнDvcsSwitchBranch.Доступность = false;
     } else {
         Кнопки=мФормаСкрипта.ЭлементыФормы.КонтекстноеМеню.Кнопки.DVCS.Кнопки;
         Кнопки.КнDvcsОтменитьИзменения.Доступность = false;
@@ -343,6 +365,7 @@ function УстановитьВидимость() {
         Кнопки.КнDvcsУдалить.Доступность = false;
         Кнопки.КнDvcsCommit.Доступность = true;
         Кнопки.КнDvcsЗапустить.Доступность = true;
+        Кнопки.КнDvcsSwitchBranch.Доступность = true;
         
     }
 } //УстановитьВидимость

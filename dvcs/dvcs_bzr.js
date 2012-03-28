@@ -261,9 +261,9 @@ function bzr_revert(pathToFile, ver) {
     var rootCatalog = bzr_getRootCatalog(pathToFile);
     var TextDoc = v8New("TextDocument");
     TextDoc.Записать(PathToBat, "UTF-8");
-	TextDoc.AddLine('cd /d"' +rootCatalog +'"')
-	var cmd = (ver.length>0) ? 'bzr revert -r '+ver+' "' +pathToFile+'"' : 'bzr revert  "' +pathToFile+'"';
-	TextDoc.AddLine(cmd);
+    TextDoc.AddLine('cd /d"' +rootCatalog +'"')
+    var cmd = (ver.length>0) ? 'bzr revert -r '+ver+' "' +pathToFile+'"' : 'bzr revert  "' +pathToFile+'"';
+    TextDoc.AddLine(cmd);
     TextDoc.Write(PathToBat, 'cp866');
     TextDoc.Clear();
     ErrCode = WshShell.Run('"'+PathToBat+'"', 0, 1)
@@ -338,6 +338,50 @@ function bzr_getInfo(pathToFile, ver) {
     return result
 }
 
+function bzr_getListBranch(pathToFile, index) {
+    
+    result = {"valuelist":v8New("ValueList"), "index":-1}
+
+/*     var rootCatalog = fossil_getRootCatalog(pathToFile);
+    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    var TextDoc = v8New("TextDocument");
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+    //var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+    TextDoc.AddLine(PathToFossil+' branch  > "'+PathToFossilOutput+'"')
+    TextDoc.Write(PathToBatFossil, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    TextDoc.Clear();
+    TextDoc.Read(PathToFossilOutput, "UTF-8");
+    var re = new RegExp(/(\s*|\*\s)(\S*)\n/g);
+    var r = TextDoc.ПолучитьТекст();
+    var matches;
+    var index=0;
+    //debugger;
+    while ((matches = re.exec(r)) != null)
+    {
+        result['valuelist'].add(matches[2], matches[2])
+        if (matches[1].indexOf("\*")!=-1) result["index"]=index;
+        index++;
+    } */
+    return result;
+    
+}
+
+function bzr_swithBranch (pathToFile, branch) {
+
+    /* var rootCatalog = fossil_getRootCatalog(pathToFile);
+    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    var TextDoc = v8New("TextDocument");
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+    //var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
+    TextDoc.AddLine(PathToFossil+' update '+ branch +' > "'+PathToFossilOutput+'"');
+    TextDoc.Write(PathToBatFossil, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    TextDoc.Clear(); */
+    return true;
+}
 
 
 
@@ -393,6 +437,13 @@ function Backend_bzr(command, param1, param2) {
     case "GETINFO":
         result = bzr_getInfo(param1, param2);
         break
+    case "GETLISTBRANCH":
+        result = bzr_getListBranch(param1); //возвращаем result {"valuelist":v8New("ValueList"), "index": индекс ветки текущей}
+        break
+    case "SWITHBRANCH":
+        result = bzr_swithBranch(param1, param2); //выполняет действие... возвращает true & false
+        break;
+
     }
     return result
 } //Backend_bzr
