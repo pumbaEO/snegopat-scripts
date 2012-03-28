@@ -114,3 +114,13 @@ function macrosСдвинутьБлокВправоНаТаб() //hotkey: ctrl+s
 {
 	MoveBlock(false, "\t")
 }
+
+function getPredefinedHotkeys(predef)
+{
+    predef.setVersion(0)
+    predef.add("ВыровнятьЗнакиРавно", "Ctrl + =")
+    predef.add("СдвинутьБлокВлевоНаПробел", "Ctrl + ;")
+    predef.add("СдвинутьБлокВправоНаПробел", "Ctrl + '")
+    predef.add("СдвинутьБлокВлевоНаТаб", "Ctrl + Shift + ;")
+    predef.add("СдвинутьБлокВправоНаТаб", "Ctrl + Shift + '")
+}
