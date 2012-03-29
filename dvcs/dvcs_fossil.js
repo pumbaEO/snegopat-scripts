@@ -455,12 +455,13 @@ function fossil_commit(pathToFile, message) {
     var TextDoc = v8New("TextDocument");
     TextDoc.AddLine('cd /d "'+rootCatalog+'"')
     TextDoc.AddLine(PathToFossil +' commit ' +pathToFile+' -M "'+tempfile+'"');
+    TextDoc.AddLine('exit');
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     TextDoc.Clear();
     TextDoc.SetText(message);
     TextDoc.Write(tempfile, 'utf-8');
-    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
     return ErrCode
 } //fossil_commit
 

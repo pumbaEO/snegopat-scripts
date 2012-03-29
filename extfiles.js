@@ -864,8 +864,13 @@ function СравнитьФайлы (ПутьКФайлу1, ПутьКФайлу
         caller(Path1, Path2)
     } else {
         //для обработок 
-        events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
-        stdcommands.Frame.CompareFiles.send()
+        try { //сделаем возможность работы в демо режиме снегопата. 
+            events.connect(windows, "onDoModal", SelfScript.self, "hookCompareFiles")
+            stdcommands.Frame.CompareFiles.send()
+        } catch (e) {
+            Message("Возможно демо режим снегопата... все возможности извините не получиться использовать. ")
+        }
+        
     }
     Path1 = null; Path2 = null;
 } //СравнитьФайлы

@@ -90,7 +90,14 @@ function diff_v8Reader(Path1, Path2) {
 } //diff_v8Reader
 
 function GetExtension() {
-    return "ssf|cf";
+    var result = 'ssf|cf';
+    try { //сделаем возможность работы в демо режиме снегопата. 
+        events.connect(windows, "onDoModal", SelfScript.self, "GetExtension");
+        events.disconnect(windows, "onDoModal", SelfScript.self, "GetExtension");
+        } catch (e) {
+            result = "ssf|cf|epf|erf";
+        }
+    return result;
 } //GetExtension
 
 function GetBackend() {
