@@ -499,7 +499,7 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
     //пока будем нормально возвращать только для файла, надо спросить совета про парсинг общей истории...
     if (!f.IsDirectory()) { //Для файлов оставляем старый вариант, в timeline нет возможности отфильтровать сразу по файлам. 
         var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
-        TextDoc.AddLine(PathToFossil+' finfo -l --limit '+limit+' '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
+        TextDoc.AddLine(PathToFossil+' finfo -l --limit '+limit+' "'+ПутьОтносительноКорневогоКаталога +'" > "'+PathToFossilOutput+'"')
         TextDoc.Write(PathToBatFossil, 'cp866');
         
         ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
@@ -651,6 +651,10 @@ function fossil_swithBranch (pathToFile, branch) {
     return true;
 }
 
+function fossil_createBranch(pathToFile, branch) {
+    return true;
+}
+
 function Backend_fossil(command, param1, param2) {
     var result = false;
     switch (command) 
@@ -706,6 +710,9 @@ function Backend_fossil(command, param1, param2) {
         break
     case "SWITHBRANCH":
         result = fossil_swithBranch(param1, param2);
+        break;
+    case "CREATEBRANCH":
+        result = fossil_createBranch(param1, param2);
         break;
     }
     return result
