@@ -15,7 +15,7 @@ var pflTrayMessageInterval = "TrayMessage/Interval"
 // Для начала надо создать ключи в настройках, указав их дефолтные значения, а также
 // в каком хранилище их сохранять, иначе setValue не будет работать.
 // Будем сохранять в хранилище снегопата.
-profileRoot.createValue(pflTrayMessageEnable, false, pflSnegopat)
+//profileRoot.createValue(pflTrayMessageEnable, false, pflSnegopat)
 profileRoot.createValue(pflTrayMessageInterval, 2, pflSnegopat)
 // Теперь прочитаем актуальные значения из профайла
 var interval = profileRoot.getValue(pflTrayMessageInterval)
