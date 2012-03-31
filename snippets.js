@@ -633,27 +633,6 @@ function getDefaultTemplatesList() {
     return tplList;
 }
 
-function __convertSettingsFromValueListToValueTable() {
- 
-    /* Изначально настройки хранились в СпискеЗначений. 
-    Возникла необходимость переделать на ТаблицуЗначений.
-    Данная процедура выполняет конвертацию. */
-    
-    var pflSnippets = SelfScript.uniqueName + '/TemplateFilesList';
-    var defaultTplList = getDefaultTemplatesList();
-    
-    profileRoot.createValue(SelfScript.name, defaultTplList, pflSnegopat);    
-    var tplList = profileRoot.getValue(pflSnippets);
-    
-    if (toV8Value(tplList).typeName() == 'ValueList')
-    {
-        for(var i=0; i<tplList.Count(); i++)
-            defaultTplList.Add().Value = tplList.Get(i).Value; 
-    }
-    
-    profileRoot.setValue(pflSnippets, defaultTplList);
-
-}
 ////} Вспомогательные функции для работы с настройками. 
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -665,10 +644,6 @@ function GetSnippetsManager() {
         
     return SnippetsManager._instance;
 }
-
-//{ Конвертация значения настройки TemplateFilesList из списка значений в таблицу значений.
-__convertSettingsFromValueListToValueTable();
-//}
 
 events.connect(snegopat, "onProcessTemplate", GetSnippetsManager());
 
