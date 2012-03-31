@@ -106,6 +106,47 @@ function мВыбратьФайл()
     return ДиалогОткрытияФайла.ПолноеИмяФайла
 }
 
+function СоздатьРеопзиторийНажатие(Кнопка) { 
+    ДиалогОткрытияФайла=v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Save);
+    ДиалогОткрытияФайла.Заголовок = "Выберите файл, для создания репозитария ";
+    if(ДиалогОткрытияФайла.Выбрать()) {
+        var PathToBatFossil = TempDir + "fossilTrue.bat"
+        var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+        var TextDoc = v8New("TextDocument");
+        TextDoc.Записать(PathToFossilOutput, "UTF-8");
+        //var pathToCatalog = f.Path;
+        //TextDoc.AddLine('cd /d"' +млКаталог +'"')
+        TextDoc.AddLine(PathToFossil +' new "'+ДиалогОткрытияФайла.ПолноеИмяФайла+'"');
+        TextDoc.AddLine("exit")
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
+    }
+}
+
+function ОткрытьРепоНажатие(Кнопка) { 
+    лФайл=мВыбратьФайл()
+    if(лФайл=="") return
+    ДиалогОткрытияФайла=v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.ВыборКаталога);
+    ДиалогОткрытияФайла.Заголовок = "Выберите каталог, куда открыть репозиторий ";
+    if(ДиалогОткрытияФайла.Выбрать()) {
+        var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+        var PathToBatFossil = TempDir + "fossilTrue.bat"
+        var TextDoc = v8New("TextDocument");
+        TextDoc.Записать(PathToFossilOutput, "UTF-8");
+        //var pathToCatalog = f.Path;
+        TextDoc.AddLine('cd /d "' +ДиалогОткрытияФайла.Каталог +'"');
+        TextDoc.AddLine(PathToFossil +' open "'+лФайл+'"');
+        TextDoc.AddLine("exit")
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
+    }
+}
+
+function ЗапуститьFossilНажатие(Кнопка) { 
+    fossil_run(mainFolder);
+}
+
+
 function fossil_getRootCatalog(path){
     var result = "";
     for (var key in СоответствиеФайловИСтатусов){
