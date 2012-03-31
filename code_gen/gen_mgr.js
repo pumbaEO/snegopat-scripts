@@ -116,10 +116,7 @@ function TypeFinder()
 {
     var types = new VBArray(metadata.current.typeList(attrTypeCategory, 1)).toArray()
     for(var i in types)
-    {
-        var t = types[i].split(",")
-        this[t[1]] = t[0]
-    }
+        this[types[i].clsid] = types[i].name
 }
 
 TypeFinder.prototype.getTypeString = function(mdObj)
