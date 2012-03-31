@@ -106,6 +106,47 @@ function мВыбратьФайл()
     return ДиалогОткрытияФайла.ПолноеИмяФайла
 }
 
+function СоздатьРеопзиторийНажатие(Кнопка) { 
+    ДиалогОткрытияФайла=v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Save);
+    ДиалогОткрытияФайла.Заголовок = "Выберите файл, для создания репозитария ";
+    if(ДиалогОткрытияФайла.Выбрать()) {
+        var PathToBatFossil = TempDir + "fossilTrue.bat"
+        var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+        var TextDoc = v8New("TextDocument");
+        TextDoc.Записать(PathToFossilOutput, "UTF-8");
+        //var pathToCatalog = f.Path;
+        //TextDoc.AddLine('cd /d"' +млКаталог +'"')
+        TextDoc.AddLine(PathToFossil +' new "'+ДиалогОткрытияФайла.ПолноеИмяФайла+'"');
+        TextDoc.AddLine("exit")
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
+    }
+}
+
+function ОткрытьРепоНажатие(Кнопка) { 
+    лФайл=мВыбратьФайл()
+    if(лФайл=="") return
+    ДиалогОткрытияФайла=v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.ВыборКаталога);
+    ДиалогОткрытияФайла.Заголовок = "Выберите каталог, куда открыть репозиторий ";
+    if(ДиалогОткрытияФайла.Выбрать()) {
+        var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+        var PathToBatFossil = TempDir + "fossilTrue.bat"
+        var TextDoc = v8New("TextDocument");
+        TextDoc.Записать(PathToFossilOutput, "UTF-8");
+        //var pathToCatalog = f.Path;
+        TextDoc.AddLine('cd /d "' +ДиалогОткрытияФайла.Каталог +'"');
+        TextDoc.AddLine(PathToFossil +' open "'+лФайл+'"');
+        TextDoc.AddLine("exit")
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
+    }
+}
+
+function ЗапуститьFossilНажатие(Кнопка) { 
+    fossil_run(mainFolder);
+}
+
+
 function fossil_getRootCatalog(path){
     var result = "";
     for (var key in СоответствиеФайловИСтатусов){
@@ -455,12 +496,13 @@ function fossil_commit(pathToFile, message) {
     var TextDoc = v8New("TextDocument");
     TextDoc.AddLine('cd /d "'+rootCatalog+'"')
     TextDoc.AddLine(PathToFossil +' commit ' +pathToFile+' -M "'+tempfile+'"');
+    TextDoc.AddLine('exit');
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     TextDoc.Clear();
     TextDoc.SetText(message);
     TextDoc.Write(tempfile, 'utf-8');
-    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
     return ErrCode
 } //fossil_commit
 
@@ -498,7 +540,7 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
     //пока будем нормально возвращать только для файла, надо спросить совета про парсинг общей истории...
     if (!f.IsDirectory()) { //Для файлов оставляем старый вариант, в timeline нет возможности отфильтровать сразу по файлам. 
         var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
-        TextDoc.AddLine(PathToFossil+' finfo -l --limit '+limit+' '+ПутьОтносительноКорневогоКаталога +' > "'+PathToFossilOutput+'"')
+        TextDoc.AddLine(PathToFossil+' finfo -l --limit '+limit+' "'+ПутьОтносительноКорневогоКаталога +'" > "'+PathToFossilOutput+'"')
         TextDoc.Write(PathToBatFossil, 'cp866');
         
         ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
@@ -650,6 +692,10 @@ function fossil_swithBranch (pathToFile, branch) {
     return true;
 }
 
+function fossil_createBranch(pathToFile, branch) {
+    return true;
+}
+
 function Backend_fossil(command, param1, param2) {
     var result = false;
     switch (command) 
@@ -705,6 +751,9 @@ function Backend_fossil(command, param1, param2) {
         break
     case "SWITHBRANCH":
         result = fossil_swithBranch(param1, param2);
+        break;
+    case "CREATEBRANCH":
+        result = fossil_createBranch(param1, param2);
         break;
     }
     return result
