@@ -86,7 +86,7 @@ function SnippetsManager() {
 SnippetsManager.prototype.loadTemplates = function() {
     var stFiles = this.settings.current.TemplateFilesList;
     for(var i=0; i<stFiles.Count(); i++)
-        this.loadStFile(stFiles.Get(i).Value);
+        this.loadStFile(getAbsolutePath(stFiles.Get(i).Value));
 }
 
 SnippetsManager.prototype.reloadTemplates = function() {
@@ -626,14 +626,27 @@ SettingsManagerDialog.prototype.BeforeClose = function(Cancel, StandardHandler) 
 
 ////} SettingsManagerDialog 
 
-////{ Вспомогательные функции для работы с настройками. 
+////{ Вспомогательные функции. 
 function getDefaultTemplatesList() {
     var tplList = v8New('ValueTable');
     tplList.Columns.Add('Value');
     return tplList;
 }
 
-////} Вспомогательные функции для работы с настройками. 
+function getAbsolutePath(path) {
+
+    // Путь относительный?
+    if (path.match(/^\.{1,2}[\/\\]/))
+    {
+        // Относительные пути должны задаваться относительно главного каталога Снегопата.
+        var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
+        return mainFolder + path;
+    }
+    
+    return path;
+}
+
+////} Вспомогательные функции. 
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Startup
