@@ -7,7 +7,7 @@ $addin stdlib
 
 // (c) Александр Орефков
 // Небольшой скрипт, показывающий отчет по подпискам на события объектов метаданных.
-// Идея и схема компоновки данных взята из разработки Данилин Владислава "Анализ подписок на события"
+// Идея и схема компоновки данных взята из разработки Владислава Данилина "Анализ подписок на события"
 // http://infostart.ru/public/123745/
 
 global.connectGlobals(SelfScript)
@@ -51,7 +51,7 @@ function ТаблицаПодписок()
 	{
 	    var event = mdObj.childObject("ПодпискиНаСобытия", i)
 	    var typeString = ЗначениеВСтрокуВнутр(event.property("Источник"))
-	    var typesUUIDs = ЗначениеВСтрокуВнутр(event.property("Источник")).replace(/\n/g, "").replace(/\{"#",f5c65050-3bbb-11d5-b988-0050bae0a95d,\{"Pattern",|\}\}|"#",/g, '').split(',')
+	    var typesUUIDs = typeString.replace(/\n/g, "").replace(/\{"#",f5c65050-3bbb-11d5-b988-0050bae0a95d,\{"Pattern",|\}\}|"#",/g, '').split(',')
 	    for(var idx in typesUUIDs)
 	    {
     	    var obj = container.findByTypeUUID(typesUUIDs[idx])
