@@ -17,6 +17,7 @@ var form, schema
 (function()
 {
     form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+    form.Результат.Columns.Add("mdobj")
     // Получим текст схемы
     var readXml = v8New("ЧтениеXML")
     readXml.OpenFile(SelfScript.fullPath.replace(/\js$/, 'xml'))
@@ -25,49 +26,68 @@ var form, schema
 
 function ТаблицаПодписок()
 {
-	vt	= v8New("ТаблицаЗначений")
-	vt.Колонки.Добавить("Имя");
-	vt.Колонки.Добавить("Событие");
-	vt.Колонки.Добавить("Обработчик");	
-	vt.Колонки.Добавить("Объект");
-	vt.Колонки.Добавить("Метаданные");
-	
-	choice = v8New("СписокЗначений")
-	for(var i = 0, c = metadata.openedCount; i < c; i++)
-	{
-	    var container = metadata.getContainer(i)
-	    try{
-	        if(container.rootObject.childObjectsCount("ПодпискиНаСобытия") > 0)
-	            choice.Add(container, container.identifier)
-	    }catch(e){}
-	}
-	choice = choice.ChooseItem("Выберите конфигурацию для отчета")
-	if(!choice)
-	    return null
-	var container = choice.Value
-	var mdObj = container.rootObject
-	//debugger
-	for(var i = 0, c = mdObj.childObjectsCount("ПодпискиНаСобытия"); i < c; i++)
-	{
-	    var event = mdObj.childObject("ПодпискиНаСобытия", i)
-	    var typeString = ЗначениеВСтрокуВнутр(event.property("Источник"))
-	    var typesUUIDs = typeString.replace(/\n/g, "").replace(/\{"#",f5c65050-3bbb-11d5-b988-0050bae0a95d,\{"Pattern",|\}\}|"#",/g, '').split(',')
-	    for(var idx in typesUUIDs)
-	    {
-    	    var obj = container.findByTypeUUID(typesUUIDs[idx])
-    	    if(obj)
-    	    {
-    	        var row = vt.Add()
-	            row.Имя = event.name
-	            row.Событие = toV8Value(event.property("Событие")).presentation()
-	            row.Обработчик = toV8Value(event.property("Обработчик")).presentation()
-	            row.Объект = obj.name
-	            row.Метаданные = obj.mdclass.name(1)
-    	    }
-    	}
-	}
-	form.ЭлементыФормы.Конфигурация.Заголовок = container.identifier
-	return vt
+    vt	= v8New("ТаблицаЗначений")
+    vt.Колонки.Добавить("Метаданные");
+    vt.Колонки.Добавить("Объект");
+    vt.Колонки.Добавить("Имя");
+    vt.Колонки.Добавить("Событие");
+    vt.Колонки.Добавить("Обработчик");
+    vt.Колонки.Добавить("mdobj");
+    vt.Колонки.Добавить("event");
+    
+    choice = v8New("СписокЗначений")
+    for(var i = 0, c = metadata.openedCount; i < c; i++)
+    {
+        var container = metadata.getContainer(i)
+        try{
+            if(container.rootObject.childObjectsCount("ПодпискиНаСобытия") > 0)
+                choice.Add(container, container.identifier)
+        }catch(e){}
+    }
+    if(choice.Count() == 0)
+    {
+        MessageBox("Нет конфигураций с подписками")
+        return null
+    }
+    else if(choice.Count() == 1)
+        choice = choice.Get(0)
+    else
+        choice = choice.ChooseItem("Выберите конфигурацию для отчета")
+    if(!choice)
+        return null
+    var container = choice.Value
+    var mdObj = container.rootObject
+    //debugger
+    for(var i = 0, c = mdObj.childObjectsCount("ПодпискиНаСобытия"); i < c; i++)
+    {
+        var event = mdObj.childObject("ПодпискиНаСобытия", i)
+        var typeString = ЗначениеВСтрокуВнутр(event.property("Источник"))
+        var typesUUIDs = typeString.replace(/\n/g, "").replace(/\{"#",f5c65050-3bbb-11d5-b988-0050bae0a95d,\{"Pattern",|\}\}|"#",/g, '').split(',')
+        for(var idx in typesUUIDs)
+        {
+            var obj = container.findByTypeUUID(typesUUIDs[idx])
+            var mdClassName = obj.mdclass.name(1, true)
+            if(!mdClassName.length)
+            {
+                obj = container.rootObject
+                mdClassName = " Конфигурация"
+            }
+            if(obj)
+            {
+                var row = vt.Add()
+                row.Имя = event.name
+                row.Событие = toV8Value(event.property("Событие")).presentation()
+                row.Обработчик = toV8Value(event.property("Обработчик")).presentation()
+                row.Объект = obj.name
+                row.Метаданные = mdClassName
+                row.mdobj = obj
+                row.event = event
+            }
+        }
+    }
+    vt.Sort("Метаданные,Объект,Имя")
+    form.ЭлементыФормы.Конфигурация.Заголовок = container.identifier
+    return vt
 }
 
 function makeReport()
@@ -75,26 +95,34 @@ function makeReport()
     var source = ТаблицаПодписок()
     if(!source)
         return
-    //Помещаем в переменную данные о расшифровке данных
-    ДанныеРасшифровки = v8New("ДанныеРасшифровкиКомпоновкиДанных")
-    //Формируем макет, с помощью компоновщика макета
-    КомпоновщикМакета = v8New("КомпоновщикМакетаКомпоновкиДанных")
-    //Передаем в макет компоновки схему, настройки и данные расшифровки
-    МакетКомпоновки = КомпоновщикМакета.Выполнить(schema, schema.НастройкиПоУмолчанию, ДанныеРасшифровки)
-    //Выполним компоновку с помощью процессора компоновки
-    ПроцессорКомпоновкиДанных = v8New("ПроцессорКомпоновкиДанных")
-	ВнешниеНаборыДанных = v8New("Структура")
-	ВнешниеНаборыДанных.Вставить("ТаблицаДанных", source)
+    var tree = form.Результат
+    tree.Rows.Clear()
+    var lastMdName, lastMdRow, lastObjName, lastObjRow
     
-    ПроцессорКомпоновкиДанных.Инициализировать(МакетКомпоновки, ВнешниеНаборыДанных, ДанныеРасшифровки)
-
-    //Очищаем поле табличного документа
-    Результат = form.ЭлементыФормы.Результат;
-    Результат.Очистить();
-    //Выводим результат в табличный документ
-    ПроцессорВывода = v8New("ПроцессорВыводаРезультатаКомпоновкиДанныхВТабличныйДокумент")
-    ПроцессорВывода.УстановитьДокумент(Результат);
-    ПроцессорВывода.Вывести(ПроцессорКомпоновкиДанных);
+    for(var rows = new Enumerator(source); !rows.atEnd(); rows.moveNext())
+    {
+        var row = rows.item()
+        if(row.Метаданные !== lastMdName)
+        {
+            lastMdName = row.Метаданные
+            lastMdRow = tree.Rows.Add()
+            lastMdRow.Событие = lastMdName
+            lastMdRow.mdobj = row.mdobj
+            lastObjName = undefined
+        }
+        if(row.Объект !== lastObjName)
+        {
+            lastObjName = row.Объект
+            lastObjRow = lastMdRow.Rows.Add()
+            lastObjRow.Событие = lastObjName
+            lastObjRow.mdobj = row.mdobj
+        }
+        var tr = lastObjRow.Rows.Add()
+        tr.Событие = row.Событие
+        tr.Имя = row.Имя
+        tr.Обработчик = row.Обработчик
+        tr.mdobj = row.event
+    }
 }
 
 function macrosОткрытьОтчет()
@@ -105,4 +133,41 @@ function macrosОткрытьОтчет()
 function CmdPanelСформировать(Кнопка)
 {
     makeReport()
+}
+
+function РезультатПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
+{
+    if(ДанныеСтроки.val.mdobj)
+        ОформлениеСтроки.val.Cells.Событие.УстановитьКартинку(ДанныеСтроки.val.mdobj.picture)
+}
+
+function РезультатВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+    СтандартнаяОбработка.val = false
+    var mdobj = ВыбраннаяСтрока.val.mdobj
+    
+    if(Колонка.val.Имя == "Обработчик")
+    {
+        var handler = ВыбраннаяСтрока.val.Обработчик.split(".")
+        try{
+        var modulMdObj = mdobj.container.rootObject.childObject("ОбщиеМодули", handler[0])
+        }catch(e){}
+        if(modulMdObj)
+        {
+            var txtEdt = modulMdObj.openModule("Модуль")
+            var text = txtEdt.text
+            var found = text.match(new RegExp("\\s*(процедура|функция|procedure|function)\\s+" + handler[1] + "\\s*\\(", "im"))
+            if(found)
+            {
+                var line = 1
+                text.substr(0, found.lastIndex).replace(/\n/g, function(){line++;return ''})
+                txtEdt.setCaretPos(line + 1, 1) // Чтобы процедура по-любому развернулась и окно проскроллилось
+                txtEdt.setSelection(line, 1, line, txtEdt.line(line).length + 1)
+            }
+        }
+    }
+    else
+    {
+        mdobj.activateInTree()
+    }
 }
