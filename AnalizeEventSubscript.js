@@ -12,17 +12,8 @@ $addin stdlib
 
 global.connectGlobals(SelfScript)
 
-var form, schema
-
-(function()
-{
-    form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
-    form.Результат.Columns.Add("mdobj")
-    // Получим текст схемы
-    var readXml = v8New("ЧтениеXML")
-    readXml.OpenFile(SelfScript.fullPath.replace(/\js$/, 'xml'))
-    schema = СериализаторXDTO.ReadXML(readXml)
-})()
+var form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+form.Результат.Columns.Add("mdobj")
 
 function ТаблицаПодписок()
 {
