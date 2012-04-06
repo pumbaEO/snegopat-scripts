@@ -203,7 +203,7 @@ function onTimer(timerID)
 function onTimerMessageBox(timerID) {
 
     var caption = ''+windows.caption;
-    var text = "Хозяин ожидаю от тебя подтвеждения реорагинзации базы!"
+    var text = "Хозяин ожидаю от тебя подтвеждения реорганизации базы!"
     TrayMessage(text, caption, timeout, "Warning");
     if (myTimerIDMessage) {
         killTimer(myTimerIDMessage);
