@@ -4,6 +4,7 @@ $dname Анализ подписок на события
 $addin vbs
 $addin global
 $addin stdlib
+$addin stdcommands
 
 // (c) Александр Орефков
 // Небольшой скрипт, показывающий отчет по подпискам на события объектов метаданных.
@@ -159,6 +160,10 @@ function РезультатВыбор(Элемент, ВыбраннаяСтро
     }
     else
     {
-        mdobj.activateInTree()
+        try{
+            if(mdobj.container == metadata.ib && !mdobj.container.treeVisible)
+                stdcommands.Config.OpenDBCfg.send()
+            mdobj.activateInTree()
+        }catch(e){}
     }
 }
