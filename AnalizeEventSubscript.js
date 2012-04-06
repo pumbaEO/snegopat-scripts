@@ -115,6 +115,8 @@ function makeReport()
         tr.Обработчик = row.Обработчик
         tr.mdobj = row.event
     }
+    for(var rows = new Enumerator(tree.Rows); !rows.atEnd(); rows.moveNext())
+        form.ЭлементыФормы.Результат.Развернуть(rows.item(), false)
 }
 
 function macrosОткрытьОтчет()
