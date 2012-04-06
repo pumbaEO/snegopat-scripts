@@ -339,7 +339,7 @@ copy test.txt > blabla.txt
     // Запусим shell и найдем версии файлов. 
     TextDoc.Clear();
     TextDoc.AddLine('cd /d "' +rootCatalog +'"')
-    TextDoc.AddLine(PathToFossil+' finfo -b --limit 1 "'+pathToFile+'" >> "' +PathToFossilOutput+'"');
+    TextDoc.AddLine(PathToFossil+' finfo -b --limit 1 "'+pathToFile+'" > "' +PathToFossilOutput+'"');
     TextDoc.Write(PathToBatFossil, 'cp866');
     
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
@@ -418,7 +418,7 @@ function fossil_getFileStatus(pathToCatalog, pathToFile){
     //if (лКаталог == '') { //определим текущий ROOT каталог для fossil 
     var млКаталог = pathToCatalog;
     TextDoc.AddLine('cd /d"' +млКаталог +'"')
-    TextDoc.AddLine(PathToFossil +' status >> "'+PathToFossilOutput+'"');
+    TextDoc.AddLine(PathToFossil +' status > "'+PathToFossilOutput+'"');
     TextDoc.Write(PathToBatFossil, 'cp866');
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
     TextDoc.Read(PathToFossilOutput, "UTF-8");
@@ -673,12 +673,17 @@ function fossil_getListBranch(pathToFile, index) {
         if (matches[1].indexOf("\*")!=-1) result["index"]=index;
         index++;
     }
+    //Добавим сюда комманды создания новой ветки...
+    result['valuelist'].add("NEWBRANCH", "Новая ветка");
+    result['valuelist'].add("NEWBRANCHPRIVATE", "Новая приватная ветка");
+    
     return result;
     
 }
 
 function fossil_swithBranch (pathToFile, branch) {
-
+    
+    if ((branch == "NEWBRANCH") || (branch == "NEWBRANCHPRIVATE")) return fossil_createBranch(pathToFile, branch);
     var rootCatalog = fossil_getRootCatalog(pathToFile);
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
@@ -692,7 +697,69 @@ function fossil_swithBranch (pathToFile, branch) {
     return true;
 }
 
-function fossil_createBranch(pathToFile, branch) {
+function fossil_createBranch(pathToFile, branch, type) {
+    
+    var name = "";
+    var checkin = "";
+    if (type == undefined) type = '';
+    if (branch == "NEWBRANCHPRIVATE") {
+        
+        type = "--private";
+    }
+    
+    if ((branch == "NEWBRANCH") || (branch == "NEWBRANCHPRIVATE")){
+        var vbs = addins.byUniqueName("vbs").object
+        vbs.var0 = ""; vbs.var1 = "Введите имя ветки"; vbs.var2 = 0, vbs.var3 = false;
+        if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
+            var message  = vbs.var0;
+            name = message;
+        }
+    } else {
+        name = branch;
+    }
+    
+    if (name.length==0) {
+        Message('Имя ветки для создания пустое.');
+        return false;
+    }
+    
+    var rootCatalog = fossil_getRootCatalog(pathToFile);
+    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    var TextDoc = v8New("TextDocument");
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"');
+    TextDoc.AddLine(PathToFossil +' status > "'+PathToFossilOutput+'"');
+    TextDoc.Write(PathToBatFossil, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+    TextDoc.Clear();
+    TextDoc.Read(PathToFossilOutput, "UTF-8");
+    var re = new RegExp(/^checkout:\s*(\w*)\s*/m);
+    var r = TextDoc.ПолучитьТекст();
+    var matches = r.match(re);
+    
+    if (matches && matches.length) {
+        checkin = matches[1];
+    }
+    
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"');
+    //TextDoc.AddLine(PathToFossil +' branch new '+name+' '+checkin+' '+type+' > "'+PathToFossilOutput+'"');
+    TextDoc.AddLine(PathToFossil +' branch new '+name+' '+checkin+' '+type);
+    TextDoc.AddLine('exit');
+    TextDoc.Write(PathToBatFossil, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
+    TextDoc.Clear();
+    fossil_swithBranch(pathToFile, name);
+    /* TextDoc.Read(PathToFossilOutput, "UTF-8");
+    var r = TextDoc.ПолучитьТекст();
+    var re = new RegExp(/^New\sbranch:\s*(\w*)/m);
+    var matches = r.match(re);
+    if (matches && matches.length) {
+        branch = matches[1];
+        fossil_swithBranch(pathToFile, branch);
+    } else {
+        Message(r);
+    } */
+    
     return true;
 }
 
@@ -751,9 +818,6 @@ function Backend_fossil(command, param1, param2) {
         break
     case "SWITHBRANCH":
         result = fossil_swithBranch(param1, param2);
-        break;
-    case "CREATEBRANCH":
-        result = fossil_createBranch(param1, param2);
         break;
     }
     return result
