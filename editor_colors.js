@@ -5,11 +5,9 @@ $addin global
 $addin stdlib
 
 /*
- * (c) Сосна Евгений 
- * для внутреннего пользования. 
- * По мотивам http://infostart.ru/public/122391/
- * Есть 3 схемы : типовая, темная, светлая. 
- * пока 3 макроса: применить схему 1, применить схему 2, применить схему 3... 
+ * (c) Сосна Евгений <shenja@sosna.zp.ua>
+ *  По мотивам http://infostart.ru/public/122391/
+ * Есть 3 схемы по умолчанию : типовая, темная, светлая. 
  */
 
 stdlib.require('SettingsManagement.js', SelfScript);
@@ -75,16 +73,16 @@ SelfScript.Self['macrosДобавить цветовую схему'] = function
         var ValueTable = v8New("ValueTable");
         ValueTable.Колонки.Добавить("Категория");
         ValueTable.Колонки.Добавить("Цвет");
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Keywords"; НоваяСтрока.Цвет = v8New("Цвет", 210, 76, 21);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Numerics"; НоваяСтрока.Цвет = v8New("Цвет", 182, 137, 0);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Strings"; НоваяСтрока.Цвет = v8New("Цвет", 76, 164, 156);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Dates"; НоваяСтрока.Цвет = v8New("Цвет", 133, 153, 0);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Identifiers"; НоваяСтрока.Цвет = v8New("Цвет", 37, 139, 211);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Operators"; НоваяСтрока.Цвет = v8New("Цвет", 212, 47, 51);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Comments"; НоваяСтрока.Цвет = v8New("Цвет", 147, 161, 161);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Preprocessor"; НоваяСтрока.Цвет = v8New("Цвет", 213, 53, 132);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Others"; НоваяСтрока.Цвет = v8New("Цвет", 137, 154, 51);
-        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Background"; НоваяСтрока.Цвет = v8New("Цвет", 255, 251, 240);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Keywords"; НоваяСтрока.Цвет = v8New("Цвет", 255, 0, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Numerics"; НоваяСтрока.Цвет = v8New("Цвет", 0, 0, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Strings"; НоваяСтрока.Цвет = v8New("Цвет", 0, 0, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Dates"; НоваяСтрока.Цвет = v8New("Цвет", 0, 0, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Identifiers"; НоваяСтрока.Цвет = v8New("Цвет", 0, 0, 255);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Operators"; НоваяСтрока.Цвет = v8New("Цвет", 255, 0, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Comments"; НоваяСтрока.Цвет = v8New("Цвет", 0, 128, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Preprocessor"; НоваяСтрока.Цвет = v8New("Цвет", 150, 50, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Others"; НоваяСтрока.Цвет = v8New("Цвет", 0, 0, 0);
+        НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Background"; НоваяСтрока.Цвет = v8New("Цвет", 255, 255, 255);
         form["ListForProfileColors"].add(ValueTable, name);
         
         settings.ReadFromForm(form);
@@ -120,8 +118,7 @@ function getDefaultMacros() {
 
 function ColorEditorForm(settings) {
     this.settings = settings;
-    //this.choice = choice;
-    this.form = loadScriptForm("scripts\\query_colors.ssf", this);
+    this.form = loadScriptForm("scripts\\editor_colors.ssf", this);
     
 }
 
