@@ -216,64 +216,49 @@ function fossil_getStatusForCatalog(pathToCatalog, ValueTablesFiles) {
     var TextDoc = v8New("TextDocument");
     TextDoc.AddLine('cd /d "' +pathToCatalog+'"');
     TextDoc.AddLine(PathToFossil +' status >> "'+PathToFossilOutput+'"');
-    TextDoc.AddLine('echo NOTVERSIONED >> "'+PathToFossilOutput+'"');
+    TextDoc.AddLine('echo NOTVERSIONED>> "'+PathToFossilOutput+'"');
     TextDoc.AddLine(PathToFossil+' extras >> "'+PathToFossilOutput+'"');
-    TextDoc.AddLine('echo ENDNOTVERSIONED >> "'+PathToFossilOutput+'"');
+    TextDoc.AddLine('echo ENDNOTVERSIONED>> "'+PathToFossilOutput+'"');
     TextDoc.Write(PathToBatFossil, "cp866");
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-            TextDoc.Read(PathToFossilOutput, "UTF-8");
-            if (TextDoc.LineCount() == 0) {
-                Message ("комманда отработала, но вывод не записался, надо отладить!")
-                return false //что то пошло не так. 
-            }
-            
-            var isNotVers = false;
-            var i=0;
-            for (var i=1; i<=TextDoc.LineCount(); i++)
-            {
-                var r = TextDoc.GetLine(i);
-                //FIXME: добавить регулярку. 
-                if (r.indexOf('EDITED')!=-1)
-                {
-                    filename = r.split('     ')[1]
-                    СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]= "EDITED"
-                    continue;
-                }
-                if (r.indexOf('MISSING')!=-1) 
-                    {
-                        filename = r.split('    ')[1]
-                        СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]="DELETED"
-                        continue;
-                    }
-                if (r.indexOf('ADDED')!=-1) 
-                    {
-                        filename = r.split('      ')[1]
-                        СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]="ADDED"
-                        continue;
-                    }
-                if (r.indexOf('tags')!=-1){
-                    filename = r.substr(14)
-                    СоответствиеСтатусов[pathToCatalog]=filename;
-                    continue;
-                }
-                if (r.indexOf('NOTVERSIONED')!=-1)  //Тут вручную указываем, просто читаем список файлов.
-                    {
-                        isNotVers = true;
-                    }
-                if (isNotVers==true){
-
-                    if (r.indexOf('fossil')!=-1) continue
-                
-                    if (r.indexOf('ENDNOTVERSIONED')!=-1) { //надеюсь пока, никто не назовет так обработку , может UUID
-                        isNotVers = false
-                        continue;
-                    };
-                    СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, r.replace(/\//g, '\\'))]= "NOTVERSIONED"
-                    }
-                
-            }
+    TextDoc.Read(PathToFossilOutput, "UTF-8");
+    if (TextDoc.LineCount() == 0) {
+        Message ("комманда отработала, но вывод не записался, надо отладить!")
+        return false //что то пошло не так. 
+    }
+    var re = new RegExp(/(ADDED_BY_MERGE|UPDATED_BY_MERGE|DELETED_BY_MERGE|ADDED|EDITED|ADDED|MISSING|tags:)\s*(.*)\n/g)
+    var r = TextDoc.ПолучитьТекст();
+    var matches;
+    var index=0;
+    while ((matches = re.exec(r)) != null)
+    {
+        filename = matches[2];
+        if (matches[1].indexOf('tags')!=-1){
+            СоответствиеСтатусов[pathToCatalog]=filename;
+            continue;
+        }
+        if (matches[1] == 'MISSING'){
+            СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]= "DELETED"
+            continue;
+        }
+        СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]= matches[1]
+    }
+    var re = new RegExp(/NOTVERSIONED\s*\n((.|\s)*?)ENDNOTVERSIONED/g);
+    var re_notversionet = new RegExp(/^(.*)\n/gm);
+    var matches;
+    var index=0;
+    while ((matches = re.exec(r)) != null)
+    {
+        var matches_comment;
+        var text = matches[1]
+        while ((matches_comment = re_notversionet.exec(text)) != null)
+        {
+            filename = matches_comment[1];
+            СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename.replace(/\//g, '\\'))]= "NOTVERSIONED"
+        }
+    }
     
-        return true
+    return true
 } //fossil_getStatusForCatalog
 
 function fossil_getFileAtRevision(pathToFile, rev){
@@ -410,35 +395,35 @@ function fossil_getFileStatus(pathToCatalog, pathToFile){
     var лКаталог = pathToCatalog
     if (СоответствиеФайловИСтатусов[лКаталог] == undefined) {
         Message("Get status for " + pathToCatalog + " "+СоответствиеФайловИСтатусов[лКаталог]);
-    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
-    var PathToBatFossil = TempDir + "fossilTrue.bat"
-    var TextDoc = v8New("TextDocument");
-    TextDoc.Записать(PathToFossilOutput, "UTF-8");
-    var лКаталог ="";
-    //if (лКаталог == '') { //определим текущий ROOT каталог для fossil 
-    var млКаталог = pathToCatalog;
-    TextDoc.AddLine('cd /d"' +млКаталог +'"')
-    TextDoc.AddLine(PathToFossil +' status > "'+PathToFossilOutput+'"');
-    TextDoc.Write(PathToBatFossil, 'cp866');
-    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-    TextDoc.Read(PathToFossilOutput, "UTF-8");
-    if (TextDoc.LineCount() == 0) {
-        Message ("комманда отработала, но вывод не записался, надо отладить!")
-        return null //что то пошло не так. 
-    }
-    var i=0;
-    for (var i=1; i<=TextDoc.LineCount(); i++)
-    {
-        var r = TextDoc.GetLine(i);
-        if (r.indexOf("local-root:")!=-1){ // все нашли, теперь 
-                млКаталог  = r.split('   ')[1];
-                лКаталог = млКаталог.replace(/\//g, '\\');
-                лКаталог = лКаталог.substr(0, лКаталог.length-1);
-                break;
+        var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+        var PathToBatFossil = TempDir + "fossilTrue.bat"
+        var TextDoc = v8New("TextDocument");
+        TextDoc.Записать(PathToFossilOutput, "UTF-8");
+        var лКаталог ="";
+        //if (лКаталог == '') { //определим текущий ROOT каталог для fossil 
+        var млКаталог = pathToCatalog;
+        TextDoc.AddLine('cd /d"' +млКаталог +'"')
+        TextDoc.AddLine(PathToFossil +' status > "'+PathToFossilOutput+'"');
+        TextDoc.Write(PathToBatFossil, 'cp866');
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        TextDoc.Read(PathToFossilOutput, "UTF-8");
+        if (TextDoc.LineCount() == 0) {
+            Message ("комманда отработала, но вывод не записался, надо отладить!")
+            return null //что то пошло не так. 
         }
-    }
-    TextDoc.Clear();
-    TextDoc.Write(PathToFossilOutput, "UTF-8");
+        var i=0;
+        for (var i=1; i<=TextDoc.LineCount(); i++)
+        {
+            var r = TextDoc.GetLine(i);
+            if (r.indexOf("local-root:")!=-1){ // все нашли, теперь 
+                    млКаталог  = r.split('   ')[1];
+                    лКаталог = млКаталог.replace(/\//g, '\\');
+                    лКаталог = лКаталог.substr(0, лКаталог.length-1);
+                    break;
+            }
+        }
+        TextDoc.Clear();
+        TextDoc.Write(PathToFossilOutput, "UTF-8");
     }
     
     СоответсвиеФайлов = СоответствиеФайловИСтатусов[лКаталог];
@@ -467,10 +452,7 @@ function fossil_revert(pathToFile, ver) {
 
 function fossil_delete(pathToFile) {
     var rootCatalog = fossil_getRootCatalog(pathToFile);
-    var f = v8New("File", pathToFile);
-    if (f.IsDirectory()) {
-        return false
-    }
+    //var f = v8New("File", pathToFile);
     var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
     var PathToBatFossil = TempDir + "fossilTrue.bat"
     var TextDoc = v8New("TextDocument");
@@ -582,11 +564,11 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
         {
             var matches_comment;
             var text = matches[5]
-            while ((matches_comment = re_comment.exec(r)) != null)
+            while ((matches_comment = re_comment.exec(text)) != null)
             {
-                var cmd = "";
+                /* var cmd = "";
                 for (var i=1; i < matches_comment.length; i++)
-                    var cmd = cmd + " "+i+" - "+matches_comment[i]
+                    var cmd = cmd + " "+i+" - "+matches_comment[i] */
                 
                 result[index] = {"version":matches_comment[5], "comment":'('+matches_comment[9]+')'+' '+matches_comment[6], "date":'' +matches[1]+' '+matches_comment[1], "author":matches_comment[8]}
                 index++;
@@ -749,19 +731,26 @@ function fossil_createBranch(pathToFile, branch, type) {
     ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 1, 1);
     TextDoc.Clear();
     fossil_swithBranch(pathToFile, name);
-    /* TextDoc.Read(PathToFossilOutput, "UTF-8");
-    var r = TextDoc.ПолучитьТекст();
-    var re = new RegExp(/^New\sbranch:\s*(\w*)/m);
-    var matches = r.match(re);
-    if (matches && matches.length) {
-        branch = matches[1];
-        fossil_swithBranch(pathToFile, branch);
-    } else {
-        Message(r);
-    } */
     
     return true;
 }
+
+function fossil_getMissingFiles(pathToFile) {
+    var лКаталог = pathToFile
+    var result = []
+    if (СоответствиеФайловИСтатусов[лКаталог] == undefined) return result
+    СоответсвиеФайлов = СоответствиеФайловИСтатусов[лКаталог];
+    if (СоответсвиеФайлов == undefined) return result
+    var index = 0;
+    for (var key in СоответсвиеФайлов){
+        if (СоответсвиеФайлов[key]=="DELETED") {
+            result[index] = key.replace(лКаталог+"\\", '');
+            index++;
+        }
+    }
+    return result
+}
+
 
 function Backend_fossil(command, param1, param2) {
     var result = false;
@@ -774,8 +763,8 @@ function Backend_fossil(command, param1, param2) {
     case "FILESTATUS":
         result = fossil_getFileStatus(param1, param2)
         break;
-    case "GETFILESMISSUNG":
-        result = {} //Заглушка. 
+    case "GETFILESDELETED":
+        result = fossil_getMissingFiles(param1);
         break;
     case "DIFF":
         result = fossil_getFilePathToDiff(param1, param2)
