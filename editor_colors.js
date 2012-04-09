@@ -71,6 +71,41 @@ SelfScript.Self['macrosПрименить цветовую схему'] = functi
     if (form["ListForProfileColors"].Count() > 0) {
         choice = form["ListForProfileColors"].ChooseItem("Выберете цветовую схему ");
         if (choice!=undefined) {
+            //Зададим вопрос о сохранения предыдущей схемы. 
+            var answ = DoQueryBox("Сохранить предыдущие настройки?", QuestionDialogMode.YesNoCancel);
+        
+            if (answ == DialogReturnCode.Cancel)
+            {
+                return;
+            }
+            if (answ == DialogReturnCode.Yes) {
+                var nameProfile = '';
+                var vbs = addins.byUniqueName("vbs").object
+                vbs.var0 = ""; vbs.var1 = "Введите новое имя схемы"; vbs.var2 = 0, vbs.var3 = false;
+                if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
+                        nameProfile  = vbs.var0;
+                }
+                if (nameProfile.length>0){
+                    var ValueTable = v8New("ValueTable");
+                    //По умолчанию типовая схема. 
+                    ValueTable.Колонки.Добавить("Категория");
+                    ValueTable.Колонки.Добавить("Цвет");
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Keywords"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Numerics"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Strings"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Dates"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Identifiers"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Operators"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Comments"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Preprocessor"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Others"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Background"; НоваяСтрока.Цвет = profileRoot.getValue("ModuleColorCategory/" + НоваяСтрока.Категория);
+                    form["ListForProfileColors"].add(ValueTable, nameProfile);
+                    
+                    settings.ReadFromForm(form);
+                    settings.SaveSettings();
+                }
+            }
             SetColorCategory(choice.value);
             updateOpenedWindows(windows.mdiView.enumChilds())
         }
@@ -95,17 +130,18 @@ SelfScript.Self['macrosРедактировать цветовую схему'] 
 
 SelfScript.Self['macrosДобавить цветовую схему'] = function () {
     
+    var nameProfile = '';
     var form = {"ListForProfileColors":v8New("ValueList")};
     settings.ApplyToForm(form);
     var vbs = addins.byUniqueName("vbs").object
     vbs.var0 = ""; vbs.var1 = "Введите новое имя схемы"; vbs.var2 = 0, vbs.var3 = false;
     if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
-            var message  = vbs.var0;
-            name = message;
+            nameProfile  = vbs.var0;
     }
     
-    if (name.length > 0 ) {
+    if (nameProfile.length > 0 ) {
         var ValueTable = v8New("ValueTable");
+        //По умолчанию типовая схема. 
         ValueTable.Колонки.Добавить("Категория");
         ValueTable.Колонки.Добавить("Цвет");
         НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Keywords"; НоваяСтрока.Цвет = v8New("Цвет", 255, 0, 0);
@@ -118,7 +154,7 @@ SelfScript.Self['macrosДобавить цветовую схему'] = function
         НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Preprocessor"; НоваяСтрока.Цвет = v8New("Цвет", 150, 50, 0);
         НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Others"; НоваяСтрока.Цвет = v8New("Цвет", 0, 0, 0);
         НоваяСтрока = ValueTable.Add(); НоваяСтрока.Категория = "Background"; НоваяСтрока.Цвет = v8New("Цвет", 255, 255, 255);
-        form["ListForProfileColors"].add(ValueTable, name);
+        form["ListForProfileColors"].add(ValueTable, nameProfile);
         
         settings.ReadFromForm(form);
         settings.SaveSettings();
