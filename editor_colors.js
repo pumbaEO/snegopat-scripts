@@ -3,6 +3,7 @@ $uname editor_colors
 $dname Настройка профилей цветов редактора
 $addin global
 $addin stdlib
+$addin stdcommands
 
 /*
  * (c) Сосна Евгений <shenja@sosna.zp.ua>
@@ -27,6 +28,41 @@ function SetColorCategory(ColorTable) {
 
 }
 
+// Метод для обновления цветовой схемы в уже открытых окнах
+// Для этого переберем все окна, и если окно обрабатывает команду "Список расширений", и активен
+// пункт (подкоманда) "Встроенный язык" - переключим на другое расширения, а потом обратно.
+function updateOpenedWindows(childs)
+{
+    // При посылке команды окно стает активным, чтобы не нарушить порядок окон, переберем их
+    // в обратном порядке
+    for(var i = childs.count; i-- ; )
+    {
+        var view = childs.item(i)
+        if(view.isContainer != vctNo)
+            updateOpenedWindows(view.enumChilds())
+        else
+        {
+            // Возможно, это окно формы, но не открыто на вкладке модуля
+            if(view.mdObj && view.mdProp && view.mdObj.isPropModule(view.mdProp.id))
+                view.mdObj.openModule(view.mdProp.id)  // переключим на вкладку модуля
+            var state = stdcommands.TextEdit.ExtendersList.getState(view)
+            if(state)
+            {
+                state = stdcommands.TextEdit.ExtendersList
+                for(var k in state.subStates)
+                {
+                    var ss = state.subStates[k]
+                    if(ss.checked)
+                    {
+                        if(ss.text == "Встроенный язык")
+                            stdcommands.TextEdit.ExtendersList.sendToView(view, k) // Пошлем опять эту команду
+                        break
+                    }
+                }
+            }
+        }
+    }
+}
 
 SelfScript.Self['macrosПрименить цветовую схему'] = function () {
     
@@ -36,8 +72,7 @@ SelfScript.Self['macrosПрименить цветовую схему'] = functi
         choice = form["ListForProfileColors"].ChooseItem("Выберете цветовую схему ");
         if (choice!=undefined) {
             SetColorCategory(choice.value);
-            MessageBox("Для вступления изменений в силу перезапустите Конфигуратор", mbOk | mbIconInformation, "Снегопат")
-            
+            updateOpenedWindows(windows.mdiView.enumChilds())
         }
     }
 }
