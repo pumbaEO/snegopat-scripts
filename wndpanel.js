@@ -4,6 +4,7 @@ $dname Панель окон
 $addin vbs
 $addin global
 $addin stdlib
+$addin stdcommands
 
 // (c) Александр Орефков
 // Скрипт для показа "панели окон".
@@ -15,7 +16,8 @@ global.connectGlobals(SelfScript)
 
 var form
 var listOfViews
-var clrActive = ЗначениеИзСтрокиВнутр('{"#",9cd510c7-abfc-11d4-9434-004095e12fc7,2,\n{3,1,\n{2}\n}\n}')
+var needActivate
+var boldFont
 
 function getFullMDName(mdObj, mdProp)
 {
@@ -40,6 +42,7 @@ WndListItem = stdlib.Class.extend(
     {
         this.view = view
         this.rowInVt = null
+        this.color = 0
         this.makeSortKey()
     },
     isAlive: function()
@@ -52,20 +55,20 @@ WndListItem = stdlib.Class.extend(
     },
     makeTitle: function()
     {
-        var result = ""
+        var result = {title : '', info: ''}
         if(this.isAlive())
         {
-            result = this.view.title
+            result.title = this.view.title
             var mdObj = this.view.mdObj
             if(mdObj)
             {
                 var mdname = mdObj.container.identifier
-                if(result.indexOf(mdname) < 0)
-                    result += " (" + mdname + ")"
+                if(result.title.indexOf(mdname) < 0)
+                    result.info += mdname + " "
             }
             var obj = this.view.getObject()
             if(obj)
-                result += " (" + toV8Value(obj).typeName(1) + ")"
+                result.info += toV8Value(obj).typeName(1) + " "
         }
         return result
     },
@@ -104,6 +107,7 @@ WndList = stdlib.Class.extend({
     // Функция для удаления устаревших, закрытых окон из нашего списка
     removeOldViews: function(vt)
     {
+        var removed = false
         for(var i = this.list.length; i--;)
         {
             var item = this.list[i]
@@ -113,8 +117,10 @@ WndList = stdlib.Class.extend({
                     vt.Delete(item.rowInVt)
                 delete this.find[item.view.id]
                 this.list.splice(i, 1)
+                removed = true
             }
         }
+        return removed
     },
     // Функция для добавления новых окон в список.
     // Перебирает все MDI-окна, и те, которых нет в списке, добавляет туда
@@ -162,11 +168,12 @@ WndList = stdlib.Class.extend({
     filterList: function(filterString, vtControl)
     {
         vt = vtControl.Value
-        this.removeOldViews(vt)
+        var needUpdateColors = this.removeOldViews(vt)
         filterString = filterString.toLowerCase()
         var addedResults = this.addNewViews()
         if(addedResults.added || filterString != this.lastFilter)
         {
+            needUpdateColors = true            
             this.lastFilter = filterString
             var filters = filterString.split(/\s+/)
             var idxInVt = 0
@@ -174,7 +181,7 @@ WndList = stdlib.Class.extend({
             {
                 var item = this.list[vidx]
                 var needAdd = true
-                var title = item.makeTitle().toLowerCase()
+                var title = item.makeTitle().title.toLowerCase()
                 for(var idx in filters)
                 {
                     if(title.indexOf(filters[idx]) < 0)
@@ -199,6 +206,31 @@ WndList = stdlib.Class.extend({
                 }
             }
         }
+        if(needUpdateColors && vt.Count())
+        {
+            //debugger
+            var prevItem = vt.Get(0).Окно
+            prevItem.color = 0
+            for(var k = 1; k < vt.Count(); k++)
+            {
+                var item = vt.Get(k).Окно
+                item.color = (prevItem.color + 1) % 2
+                var mdObj = item.view.mdObj
+                var prevMdObj = prevItem.view.mdObj
+                if(mdObj && prevMdObj)
+                {
+                    // Текущая строка - метаданные, и предыдущая строка - метаданные.
+                    // Если они относятся к одному объекту, то цвет должен совпадать.
+                    if(mdObj.container == prevMdObj.container)  // Находятся в одном контейнере
+                    {
+                        // Если это - внешняя обработка или принадлежат одному объекту первого уровня
+                        if(mdObj.container.masterContainer != mdObj.container || find1LevelMdObj(mdObj) == find1LevelMdObj(prevMdObj))
+                            item.color = prevItem.color
+                    }
+                }
+                prevItem = item
+            }
+        }
         // Теперь отследим активное окно
         oldActiveView = this.activeView
         if(addedResults.activeView != oldActiveView)
@@ -207,7 +239,10 @@ WndList = stdlib.Class.extend({
             if(oldActiveView && oldActiveView.rowInVt)
                 vtControl.RefreshRows(oldActiveView.rowInVt)
             if(addedResults.activeView && addedResults.activeView.rowInVt)
+            {
                 vtControl.RefreshRows(addedResults.activeView.rowInVt)
+                vtControl.ТекущаяСтрока = addedResults.activeView.rowInVt
+            }
         }
     }
 })
@@ -233,14 +268,18 @@ function onIdle()
 {
     //debugger
     updateWndList()
+    if(needActivate)
+    {
+        try{
+            needActivate.activate()
+        }catch(e){}
+        needActivate = null
+    }
 }
 
 function WndListВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
-    var item = ВыбраннаяСтрока.val.Окно
-    try{
-        item.view.activate()
-    }catch(e){}
+    needActivate = ВыбраннаяСтрока.val.Окно.view
 }
 
 function WndListПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
@@ -248,8 +287,16 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
     var cell = ОформлениеСтроки.val.Ячейки.Окно
     var item = ДанныеСтроки.val.Окно
     try{cell.УстановитьКартинку(item.view.icon)}catch(e){}
-    cell.УстановитьТекст(item.makeTitle())
-    cell.ЦветФона = item == listOfViews.activeView ? clrActive : ОформлениеСтроки.val.ЦветФона
+    var title = item.makeTitle()
+    cell.УстановитьТекст(title.title)
+    if(item == listOfViews.activeView)
+    {
+        if(!boldFont)
+            boldFont = v8New("Шрифт", cell.Шрифт, undefined, undefined, true)
+        cell.Шрифт = boldFont
+    }
+    ОформлениеСтроки.val.ЦветФона = item.color ?  Элемент.val.ЦветФонаЧередованияСтрок : Элемент.val.ЦветФонаПоля
+    ОформлениеСтроки.val.Ячейки.Инфо.УстановитьТекст(title.info)
 }
 
 function FilterРегулирование(Элемент, Направление, СтандартнаяОбработка)
@@ -278,9 +325,74 @@ function FilterРегулирование(Элемент, Направление
     СтандартнаяОбработка.val = false
 }
 
+function ПриОткрытии()
+{
+    updateWndList()
+    events.connect(Designer, "onIdle", SelfScript.self)
+}
+function ПриЗакрытии()
+{
+    events.disconnect(Designer, "onIdle", SelfScript.self)
+}
+
+function find1LevelMdObj(mdObj)
+{
+    if(mdObj.mdclass.name(1).length)
+    {
+        while(mdObj.parent && mdObj.parent.parent)
+            mdObj = mdObj.parent
+    }
+    return mdObj
+}
+
+function CmdsActivate(Кнопка)
+{
+    if(form.Controls.WndList.ТекущаяСтрока)    
+        needActivate = form.Controls.WndList.ТекущаяСтрока.Окно.view
+}
+
+function CmdsClose(Кнопка)
+{
+    if(form.Controls.WndList.ТекущаяСтрока)
+        form.Controls.WndList.ТекущаяСтрока.Окно.view.close()
+}
+
+function CmdsSave(Кнопка)
+{
+    if(form.Controls.WndList.ТекущаяСтрока)
+    {
+        stdcommands.Frame.FileSave.sendToView(form.Controls.WndList.ТекущаяСтрока.Окно.view)
+        form.Controls.WndList.ОбновитьСтроки(form.Controls.WndList.ТекущаяСтрока)
+    }
+}
+
+function CmdsFindInTree(Кнопка)
+{
+    if(form.Controls.WndList.ТекущаяСтрока)
+    {
+        var view = form.Controls.WndList.ТекущаяСтрока.Окно.view
+        if(view.mdObj)
+            view.mdObj.activateInTree()
+    }
+}
+
+function CmdsMinimizeAll(Кнопка)
+{
+    var views = windows.mdiView.enumChilds()
+    for(var k = 0; k < views.count; k++)
+        views.item(k).sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 6)
+}
+
+function CmdsPrint(Кнопка)
+{
+    if(form.Controls.WndList.ТекущаяСтрока)
+        stdcommands.Frame.Print.sendToView(form.Controls.WndList.ТекущаяСтрока.Окно.view)
+}
+
+
 // Инициализация скрипта
 listOfViews = new WndList
 form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
 form.КлючСохраненияПоложенияОкна = "wndpanel"
 form.WndList.Columns.Окно.ТипЗначения = v8New("ОписаниеТипов")
-events.connect(Designer, "onIdle", SelfScript.self)
+form.Controls.Cmds.Кнопки.Activate.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр('{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,0}\n}')
