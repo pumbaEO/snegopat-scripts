@@ -61,17 +61,17 @@ function getCurrentTemplates()
 
 function processTemplateFolder(templates, path)
 {
-	for(var filesArray = new Enumerator(НайтиФайлы(path, "*.st", true)); !filesArray.atEnd(); filesArray.moveNext())
-	{
-		var file = filesArray.item();
-		var fn = "file://" + file.ПолноеИмя.toLowerCase().replace(/\\/g, '/')
-		if(!file.ЭтоКаталог() && !templates.keys.hasOwnProperty(fn))
-		{
-		    templates.files.push(fn)
-		    templates.keys[fn] = 1
-		    templates.needUpdate = true
-		}
-	}
+    for(var filesArray = new Enumerator(НайтиФайлы(path, "*.st", true)); !filesArray.atEnd(); filesArray.moveNext())
+    {
+        var file = filesArray.item();
+        var fn = "file://" + file.ПолноеИмя.toLowerCase().replace(/\\/g, '/')
+        if(!file.ЭтоКаталог() && !templates.keys.hasOwnProperty(fn))
+        {
+            templates.files.push(fn)
+            templates.keys[fn] = 1
+            templates.needUpdate = true
+        }
+    }
 }
 
 function findTemplatesView()
