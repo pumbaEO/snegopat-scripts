@@ -16,7 +16,7 @@ global.connectGlobals(SelfScript)
 
 var form
 var listOfViews
-var needActivate
+var needActivate, needHide
 var boldFont
 
 function getFullMDName(mdObj, mdProp)
@@ -268,16 +268,20 @@ function onIdle()
 {
     //debugger
     updateWndList()
+    if(needHide)
+    {
+        needHide = false
+        // Теперь спрячем наше окно.
+        // Для прячущегося окна нельзя делать form.Close, т.к. тогда оно пропадет совсем, не оставив кнопки на панели
+        if(form.СостояниеОкна != ВариантСостоянияОкна.Прячущееся)
+            form.Close()
+    }
     if(needActivate)
     {
         try{
             needActivate.activate()
         }catch(e){}
         needActivate = null
-        // Теперь спрячем наше окно.
-        // Для прячущегося окна нельзя делать form.Close, т.к. тогда оно пропадет совсем, не оставив кнопки на панели
-        //if(form.СостояниеОкна != ВариантСостоянияОкна.Прячущееся)
-        //    form.Close()
     }
 }
 
@@ -393,6 +397,14 @@ function CmdsPrint(Кнопка)
         stdcommands.Frame.Print.sendToView(form.Controls.WndList.ТекущаяСтрока.Окно.view)
 }
 
+function InvisiblePanelSelectAndHide(Кнопка)
+{
+    if(form.Controls.WndList.ТекущаяСтрока)
+    {
+        needActivate = form.Controls.WndList.ТекущаяСтрока.Окно.view
+        needHide = true
+    }
+}
 
 // Инициализация скрипта
 listOfViews = new WndList
@@ -400,3 +412,4 @@ form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self
 form.КлючСохраненияПоложенияОкна = "wndpanel"
 form.WndList.Columns.Окно.ТипЗначения = v8New("ОписаниеТипов")
 form.Controls.Cmds.Кнопки.Activate.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр('{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,0}\n}')
+form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр('{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
