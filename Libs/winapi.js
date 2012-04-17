@@ -18,7 +18,10 @@ var api;
     {
         lib: "USER32.DLL",
         funcs:[
-            ["GetWindowRect", "i=lp", "r=l"]
+            ["GetWindowRect", "i=lp", "r=l"],
+            ["GetClientRect", "i=lp", "r=l"],
+            ["SetFocus", "i=l", "r=l"],
+            ["GetParent", "i=l", "r=l"]
         ]
     }
     ]
@@ -55,7 +58,7 @@ RectApi = stdlib.Class.extend(
     {
         this.mem = api.Space(16)
     },
-    toRect: function()
+    toRectJS: function()
     {
         return new Rect(api.NumGet(this.mem, 0, "l"), api.NumGet(this.mem, 4, "l"), api.NumGet(this.mem, 8, "l"), api.NumGet(this.mem, 12, "l"))
     }
@@ -65,5 +68,15 @@ function GetWindowRect(hwnd)
 {
     var rect = new RectApi()
     api.GetWindowRect(hwnd, rect.mem)
-    return rect.toRect()
+    return rect.toRectJS()
 }
+
+function GetClientRect(hwnd)
+{
+    var rect = new RectApi()
+    api.GetClientRect(hwnd, rect.mem)
+    return rect.toRectJS()
+}
+
+function SetFocus(hwnd)             { return api.SetFocus(hwnd) }
+function GetParentWindow(hwnd)      { return api.GetParent(hwnd) }

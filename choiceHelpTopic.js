@@ -29,9 +29,9 @@ function onDoModal(dlgInfo)
                 var choices = []
                 for(var rows = new Enumerator(vt); !rows.atEnd(); rows.moveNext())
                     choices.push(rows.item().Get(0))
-                //debugger
-                var rect = api.GetWindowRect(dlgInfo.form.getControl(-1).hwnd)
-                var choice = sel.FilterValue(choices.join("\r\n"), 1 | 8 | 32, 'Выберите главу', rect.left - 10, rect.top - 20, rect.width() + 20, rect.height() + 40)
+                var rect = api.GetWindowRect(api.GetParentWindow(api.GetParentWindow(dlgInfo.form.getControl(-1).hwnd)))  // -1 - это сама форма
+                var choice = sel.FilterValue(choices.join("\r\n"), 1 | 8 | 32, 'Выберите главу',
+                    rect.left, rect.top, rect.width(), rect.height())
                 if(choice.length)
                 {
                     var sk = ""
@@ -47,4 +47,3 @@ function onDoModal(dlgInfo)
         }
     }
 }
-
