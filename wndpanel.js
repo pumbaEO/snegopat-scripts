@@ -15,9 +15,7 @@ $addin stdcommands
 global.connectGlobals(SelfScript)
 
 var form
-var listOfViews
 var needActivate, needHide
-var boldFont
 
 function getFullMDName(mdObj, mdProp)
 {
@@ -66,6 +64,18 @@ WndListItem = stdlib.Class.extend(
                 if(result.title.indexOf(mdname) < 0)
                     result.info += mdname + " "
             }
+            if(result.title.length > 50)
+            {
+                var m = result.title.match(/\\[^\\]+$/)
+                if(m)
+                {
+                    var nt = "…" + m[0]
+                    if(nt.length < 50)
+                        nt = result.title.substr(0, 50 - nt.length) + nt
+                    result.title = nt
+                }
+            }
+            
             var obj = this.view.getObject()
             if(obj)
                 result.info += toV8Value(obj).typeName(1) + " "
@@ -267,7 +277,7 @@ function updateWndList()
     form.Controls.Filter.УстановитьГраницыВыделения(1, 1, 1, 10000)
     var newText = form.Controls.Filter.ВыделенныйТекст.replace(/^\s*|\s*$/g, '')
     form.Controls.Filter.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
-    listOfViews.filterList(newText, form.Controls.WndList)
+    WndList.One.filterList(newText, form.Controls.WndList)
 }
 
 function onIdle()
@@ -309,11 +319,11 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
     try{cell.УстановитьКартинку(item.view.icon)}catch(e){}
     var title = item.makeTitle()
     cell.УстановитьТекст(title.title)
-    if(item == listOfViews.activeView)
+    if(item == WndList.One.activeView)
     {
-        if(!boldFont)
-            boldFont = v8New("Шрифт", cell.Шрифт, undefined, undefined, true)
-        cell.Шрифт = boldFont
+        if(!arguments.callee.boldFont)
+            arguments.callee.boldFont = v8New("Шрифт", cell.Шрифт, undefined, undefined, true)
+        cell.Шрифт = arguments.callee.boldFont
     }
     ОформлениеСтроки.val.ЦветФона = item.color ?  Элемент.val.ЦветФонаЧередованияСтрок : Элемент.val.ЦветФонаПоля
     ОформлениеСтроки.val.Ячейки.Инфо.УстановитьТекст(title.info)
@@ -435,7 +445,7 @@ function WndListПередУдалением(Элемент, Отказ)
 
 (function(){
     // Инициализация скрипта
-    listOfViews = new WndList
+    WndList.One = new WndList
     form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
     form.КлючСохраненияПоложенияОкна = "wndpanel"
     form.WndList.Columns.Окно.ТипЗначения = v8New("ОписаниеТипов")
