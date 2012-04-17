@@ -16,6 +16,7 @@ global.connectGlobals(SelfScript)
 
 var form
 var listOfViews
+var clrActive = ЗначениеИзСтрокиВнутр('{"#",9cd510c7-abfc-11d4-9434-004095e12fc7,2,\n{3,1,\n{2}\n}\n}')
 var needActivate, needHide
 var boldFont
 
