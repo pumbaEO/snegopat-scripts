@@ -3,7 +3,7 @@ $uname traymessage
 $dname Индикация окончания сравнения конфигураций
 $addin stdcommands
 $addin global
-
+$addin stdlib
 // (c) Сосна Евгений
 // Скрипт определяет окна окончанием сравнения конфигураций: обновление, сравнение, сравнение с базой
 //  сравнение с конфигурацией хранилища и выводит в трай сообщение. 
@@ -14,68 +14,115 @@ $addin global
 
 global.connectGlobals(SelfScript)
 
+var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
+
 // Восстановим настройки
-var pflTrayTimeEvent = "TrayMessage/TimeEvent" // Зададим путь в профайле
 var pflTrayMessageInterval = "TrayMessage/Interval"
 profileRoot.createValue(pflTrayMessageInterval, 1, pflSnegopat)
-profileRoot.createValue(pflTrayTimeEvent, 20, pflSnegopat);
 
 // Теперь прочитаем актуальные значения из профайла
 var interval = profileRoot.getValue(pflTrayMessageInterval)
-var timeout = profileRoot.getValue(pflTrayTimeEvent);
-var myTimerID = 0
-var myTimerIDMessage = 0;
-var countTimer = 0;
-var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
-var cmdExist = false;
-var isUpdate = false;
 
 Init();
 
-function onCompare(cmd) {
-    if(myTimerID)
-    {
-        //Message("timer kill before new "+myTimerID);
-        killTimer(myTimerID)
-        myTimerID = 0
-    }
+function onSaveDB(cmd) {
     if(!cmd.isBefore)
-    {
-        countTimer = 0;
-        myTimerID = createTimer(interval * 1000, SelfScript.self, "onTimer")
-        //Message("start timer "+myTimerID);
-    } 
+    { 
+        try {
+                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxSaveDB");
+             } catch (e) { }
+            
+    } else {
+        events.connect(windows, "onDoModal", SelfScript.self, "onMessageBoxSaveDB");
+    }
 }
 
-// Для обноления, если полностью на поддержке, при окончании обнолвения спрашивает, хочешь обновить базу?
-// если забыли в течении минуты, тогда напомним. 
-function onCompareUpdate(cmd) {
-
-    if(myTimerID)
-    {
-        killTimer(myTimerID)
-        myTimerID = 0
-    }
-    if(!cmd.isBefore)
-    {
-        countTimer = 0;
-        myTimerID = createTimer(interval * 1000, SelfScript.self, "onTimer");
-        //isUpdate = false;
+function onMessageBoxSaveDB(dlgInfo) {
+    if ((dlgInfo.stage == openModalWnd) && (dlgInfo.Caption=="Конфигуратор")) {
+        var text = ''+windows.caption;
+        var caption = "Выгрузка базы завершенна!";
+        TrayMessage(caption, text);
         
     } else {
-        isUpdate = true;
-        events.connect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdate");
+        if ((dlgInfo.stage == afterDoModal) && (dlgInfo.Caption=="Конфигуратор")) {
+            
+            try {
+                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxSaveDB");
+             } catch (e) { }
+            }
+        }
+}
+
+function onSaveToFileCF(cmd) {
+    if(!cmd.isBefore)
+    { 
+        try {
+                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxSaveToFileCF");
+             } catch (e) { }
+            
+    } else {
+        events.connect(windows, "onDoModal", SelfScript.self, "onMessageBoxSaveToFileCF");
     }
 }
+
+function onMessageBoxSaveToFileCF(dlgInfo) {
+    if ((dlgInfo.stage == openModalWnd) && (dlgInfo.Caption=="Конфигуратор")) {
+        var text = ''+windows.caption;
+        var caption = "Выгрузка конфигурации завершенна!";
+        TrayMessage(caption, text);
+        
+    } else {
+        if ((dlgInfo.stage == afterDoModal) && (dlgInfo.Caption=="Конфигуратор")) {
+            
+            try {
+                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxSaveToFileCF");
+             } catch (e) { }
+            }
+        }
+}
+
+
+function onRestoreDB(cmd) {
+        if(!cmd.isBefore)
+    { 
+        try {
+             events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxRestoreDB");
+             } catch (e) { }
+            
+    } else {
+        events.connect(windows, "onDoModal", SelfScript.self, "onMessageBoxRestoreDB");
+    }
+}
+
+function onMessageBoxRestoreDB(dlgInfo) {
+    //Message("1 "+dlgInfo.stage +" capt "+dlgInfo.Caption)
+    if ((dlgInfo.stage == 1) && (dlgInfo.Caption=="")) {
+    
+        var text = ''+windows.caption;
+        var caption = "Загрузка базы завершенна!";
+        TrayMessage(caption, text);
+        
+    } else {
+        //Message("3 "+dlgInfo.stage +" capt "+dlgInfo.Caption)
+        if ((dlgInfo.stage == afterDoModal) && (dlgInfo.Caption=="")) {
+       //Message("4 "+dlgInfo.stage +" capt "+dlgInfo.Caption)
+       
+            try {
+                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxRestoreDB");
+             } catch (e) { }
+            }
+        }
+}
+// если забыли в течении минуты, тогда напомним. 
 
 function onUpdateDBCf(cmd) {
     if(cmd.isBefore)
     {
-        events.connect(windows, "onDoModal", SelfScript.self, "onMessageBox");
+        events.connect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdateDBCf");
     }
 }
 
-function onMessageBox(dlgInfo) {
+function onMessageBoxUpdateDBCf(dlgInfo) {
     
     if ((dlgInfo.stage == beforeDoModal) && (dlgInfo.Caption=="Реорганизация информации")) { 
         //Стартанем таймер в 5 сек, больше не имеет смысла, вдруг будут разбираться, а что там изменилось. 
@@ -87,80 +134,70 @@ function onMessageBox(dlgInfo) {
                 killTimer(myTimerIDMessage);
                 myTimerIDMessage = 0;
             }
-            events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBox");
+            events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdateDBCf");
         }
     }
     
-}
-
-function onMessageBoxUpdate(dlgInfo) {
-    if ((dlgInfo.stage == openModalWnd) && (dlgInfo.Caption=="Конфигуратор")) {
-        if(myTimerID)
-        {
-            //Message("timer kill before new "+myTimerID);
-            killTimer(myTimerID)
-            myTimerID = 0
-        }
-        myTimerID = createTimer(5 * 1000, SelfScript.self, "onTimerMessageBoxUpdate");
-        
-    } else {
-        if ((dlgInfo.stage == afterDoModal) && (dlgInfo.Caption=="Конфигуратор")) {
-            
-            if (myTimerID) {
-                killTimer(myTimerID);
-                myTimerID = 0;
-            }
-            if (isUpdate) { //Мы быстрее отреагировали
-                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdate");
-            }
-        }
-    
-    }
 }
 
 function Init(){
     
-    stdcommands.Config.CompareDBCfg.addHandler(SelfScript.self, "onCompare");
-    stdcommands.Config.Update.addHandler(SelfScript.self, "onCompareUpdate");
-    stdcommands.Config.LoadFromFile.addHandler(SelfScript.self, "onCompare");
-    stdcommands.CfgStore.MergeCfgStoreWithFile.addHandler(SelfScript.self, "onCompare");
-    stdcommands.CfgStore.MergeConfigWithCfgStore.addHandler(SelfScript.self, "onCompare");
+    var compare = new TrayCompareWatcher();
+    stdcommands.Config.CompareDBCfg.addHandler(compare, "onCompare");
+    var compareUdate = new CompareUdate()
+    stdcommands.Config.Update.addHandler(compareUdate, "onCompare");
+    stdcommands.Config.LoadFromFile.addHandler(compare, "onCompare");
+    stdcommands.CfgStore.MergeCfgStoreWithFile.addHandler(compare, "onCompare");
+    stdcommands.CfgStore.MergeConfigWithCfgStore.addHandler(compare, "onCompare");
     stdcommands.Config.UpdateDBCfg.addHandler(SelfScript.self, "onUpdateDBCf");
-    // Подпишемся на событие при выводе предупреждения/вопроса о реорганизации. 
-    //events.connect(windows, "onDoModal", SelfScript.self, "onMessageBox")
-    
-    var f = v8New("File", mainFolder+"scripts\\bin\\TrayTip.exe");
-    cmdExist = f.Exist();
-    
+    stdcommands.Config.SaveIBDataToFile.addHandler(SelfScript.self, "onSaveDB");
+    stdcommands.Config.LoadIBDataFromFile.addHandler(SelfScript.self, "onRestoreDB");
+    stdcommands.Config.SaveToFile.addHandler(SelfScript.self, "onSaveToFileCF");
+
 }
 
 function TrayMessage(Title, Text, Timeout, Type) {
-    
-    if (Timeout==undefined) Timeout = timeout
-    if (Text == undefined) Text = "";
-    if (Title == undefined) return
-    
-    if ((Title.length > 62) && (Text.length==0)) {
-        Text = Title.substr(62);
-        Title = Title.substr(0, 62);
-    }
-    if (Type == undefined) Type = "Info";
-    
-    Title = Title.replace(/\\/g, "\\\\").substr(0, 62);
-    Text = Text.replace(/\n/g, "~n").replace(/\t/g, "~t").replace(/"/g, "~q");
-    
-    if (!cmdExist) return 
-    
-    var cmd = mainFolder+'scripts\\bin\\TrayTip.exe "'+Title+'" "'+ Text +'" ' +Timeout+' '+Type;
-    ЗапуститьПриложение(cmd, "", false);
-    
-    
+    notifysend.Info(Title, Text);
 }
 
-// Всю работу будем делать во время простоя программы
-function onTimer(timerID)
-{
-    //Message("timer exes "+myTimerID);
+function onTimerMessageBox(timerID) {
+
+    var caption = ''+windows.caption;
+    var text = "Необходимо подтвеждение реорганизации базы!"
+    TrayMessage(text, caption, timeout, "Warning");
+    if (myTimerIDMessage) {
+        killTimer(myTimerIDMessage);
+        myTimerIDMessage = 0;
+    }
+}
+
+function TrayCompareWatcher() {
+     this.test1 = ""
+}
+TrayCompareWatcher.prototype.onCompare = function (cmd) {
+    
+    if(this.TimerID)
+    {
+        //Message("timer kill before new "+myTimerID);
+        killTimer(this.TimerID)
+        this.TimerID = 0
+    }
+    if(!cmd.isBefore)
+    {
+        
+        this.start();
+    } 
+}
+TrayCompareWatcher.prototype.start = function() {
+    this.countTimer = 0;
+    this.timerID = createTimer(interval * 1000, this, "onTimer")
+}
+TrayCompareWatcher.prototype.stop = function(){
+    killTimer(this.timerID)
+    this.countTimer = 0;
+}
+TrayCompareWatcher.prototype.onTimer = function (timerID) {
+
     view = windows.getActiveView();
     var id = view.id;
     var r = view.title;
@@ -169,62 +206,80 @@ function onTimer(timerID)
     if (mathes && mathes.length) {
         var caption = ''+windows.caption;
         TrayMessage(caption, 'Сравнение завершенно для ~n '+ mathes[2])
-        //var cmd = mainFolder+'scripts\\bin\\TrayTip.exe "'+caption+'" "'+ 'Сравнение завершенно для ~n '+ mathes[2]+'" ' +timeout+' Info';
-        //ЗапуститьПриложение(cmd, "", false); 
-        if(myTimerID)
-        {
-            //Message("timer kill "+myTimerID);
-            killTimer(myTimerID)
-            myTimerID = 0
-        }
-        if (isUpdate) {
-            isUpdate = false;
-            events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdate");
-        }
+        this.stop()
     }
-    countTimer++;
-    if (countTimer>5) { //Такая простинькая защита от бесконечного цикла. 
-        if(myTimerID)
-            {
-                
-                killTimer(myTimerID)
-                
-                myTimerID = 0;
-                countTimer = 0;
-            }
-        if (isUpdate) {
-            isUpdate = false;
-            events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdate");
-        }
+    this.countTimer++;
+    if (this.countTimer>5) { //Такая простинькая защита от бесконечного цикла. 
+        this.stop()
     }
+}
+
+// Для обноления, если полностью на поддержке, при окончании обнолвения спрашивает, хочешь обновить базу?
+function CompareUdate() {
+     this.test1 = ""
+}
+CompareUdate.prototype.onCompare = function (cmd) {
     
+    if(!cmd.isBefore)
+    {
+        this.start()
+    } else {
+        this.stop();
+        events.connect(windows, "onDoModal", this, "onMessageBox");
+    }
 }
+CompareUdate.prototype.start = function(time) {
+    //this.time = 
+    this.time = interval;
+    this.countTimer = 0;
+    this.timerID  = createTimer(this.time * 1000, this, "onTimer")
+}
+CompareUdate.prototype.stop = function(){
+    killTimer(this.timerID)
+    this.countTimer = 0;
+}
+CompareUdate.prototype.onTimer = function (timerID) {
 
-function onTimerMessageBox(timerID) {
-
-    var caption = ''+windows.caption;
-    var text = "Хозяин ожидаю от тебя подтвеждения реорганизации базы!"
-    TrayMessage(text, caption, timeout, "Warning");
-    if (myTimerIDMessage) {
-        killTimer(myTimerIDMessage);
-        myTimerIDMessage = 0;
+    view = windows.getActiveView();
+    var id = view.id;
+    var r = view.title;
+    var re = new RegExp(/(Сравнение, объединение|Сравнение|Обновление)(.*)/);
+    var mathes = r.match(re);
+    if (mathes && mathes.length) {
+        var caption = ''+windows.caption;
+        TrayMessage(caption, 'Сравнение завершенно для ~n '+ mathes[2])
+        this.stop()
+    }
+    this.countTimer++;
+    if (this.countTimer>5) { //Такая простинькая защита от бесконечного цикла. 
+        this.stop()
     }
 }
 
-function onTimerMessageBoxUpdate(timerID) {
+CompareUdate.prototype.onMessageBox = function(dlgInfo) {
+    if ((dlgInfo.stage == openModalWnd) && (dlgInfo.Caption=="Конфигуратор")) {
+        this.stop();
+        this.MessageBox()
+        
+    } else {
+        if ((dlgInfo.stage == afterDoModal) && (dlgInfo.Caption=="Конфигуратор")) {
+            
+            try {
+                events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBox");
+             } catch (e) { }
+            }
+        }
+}
+
+CompareUdate.prototype.MessageBox = function () {
     var caption = ''+windows.caption;
-    var text = "Хозяин жду от тебя подтвеждения обновления базы!"
+    var text = "Жду подтвеждения обновления базы!"
     TrayMessage(text, caption, timeout, "Warning");
-    if (myTimerID) {
-        killTimer(myTimerID);
-        myTimerID = 0;
-    }
-    isUpdate = false;
-    events.disconnect(windows, "onDoModal", SelfScript.self, "onMessageBoxUpdate");
+    events.disconnect(windows, "onDoModal", this, "onMessageBox");
 }
 
 // Макрос для вызова окна настройки
-function macrosНастройкаTraСообщений()
+function macrosНастройкаTrayСообщений()
 {
     var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
     // Обработку событий формы привяжем к самому скрипту
@@ -238,17 +293,12 @@ function macrosНастройкаTraСообщений()
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
-    return 'НастройкаTraСообщений';
+    return 'НастройкаTrayСообщений';
 }
 
 // Обработчики нажатий кнопок в форме
 function ОкНажатие(Элемент)
 {
-    if(form.ВремяСообщения != timeout)
-    {
-        timeout = form.ВремяСообщения
-        profileRoot.setValue(pflTrayTimeEvent, timeout)
-    }
     // Прочитаем значения из формы и если они изменились, сохраним их
     if(form.Интервал != interval)
     {
