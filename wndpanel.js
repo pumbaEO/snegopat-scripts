@@ -249,8 +249,14 @@ WndList = stdlib.Class.extend({
 
 function macrosПоказать()
 {
+    form.Filter = ""
     form.Открыть()
-    form.CurrentControl = form.Controls.Filter
+    form.CurrentControl = form.Controls.WndList
+}
+
+function macrosПереключитьВидимостьОкнаСвойств()
+{
+    windows.propsVisible = !windows.propsVisible
 }
 
 function updateWndList()
@@ -283,6 +289,12 @@ function onIdle()
         }catch(e){}
         needActivate = null
     }
+}
+
+function withSelected(func)
+{
+    for(var rows = new Enumerator(form.Controls.WndList.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext())
+        func(rows.item().Окно)
 }
 
 function WndListВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
@@ -359,19 +371,22 @@ function CmdsActivate(Кнопка)
         needActivate = form.Controls.WndList.ТекущаяСтрока.Окно.view
 }
 
+function closeSelected()
+{
+    withSelected(function(item){item.view.close()})
+}
+
 function CmdsClose(Кнопка)
 {
-    if(form.Controls.WndList.ТекущаяСтрока)
-        form.Controls.WndList.ТекущаяСтрока.Окно.view.close()
+    closeSelected()
 }
 
 function CmdsSave(Кнопка)
 {
-    if(form.Controls.WndList.ТекущаяСтрока)
-    {
-        stdcommands.Frame.FileSave.sendToView(form.Controls.WndList.ТекущаяСтрока.Окно.view)
-        form.Controls.WndList.ОбновитьСтроки(form.Controls.WndList.ТекущаяСтрока)
-    }
+    withSelected(function(item){
+        stdcommands.Frame.FileSave.sendToView(item.view)
+        form.Controls.WndList.ОбновитьСтроки(item.rowInVt)
+    })
 }
 
 function CmdsFindInTree(Кнопка)
@@ -393,8 +408,9 @@ function CmdsMinimizeAll(Кнопка)
 
 function CmdsPrint(Кнопка)
 {
-    if(form.Controls.WndList.ТекущаяСтрока)
-        stdcommands.Frame.Print.sendToView(form.Controls.WndList.ТекущаяСтрока.Окно.view)
+    withSelected(function(item){
+        stdcommands.Frame.Print.sendToView(item.view)
+    })
 }
 
 function InvisiblePanelSelectAndHide(Кнопка)
@@ -406,10 +422,33 @@ function InvisiblePanelSelectAndHide(Кнопка)
     }
 }
 
-// Инициализация скрипта
-listOfViews = new WndList
-form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
-form.КлючСохраненияПоложенияОкна = "wndpanel"
-form.WndList.Columns.Окно.ТипЗначения = v8New("ОписаниеТипов")
-form.Controls.Cmds.Кнопки.Activate.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр('{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,0}\n}')
-form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр('{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+function WndListПередНачаломДобавления(Элемент, Отказ, Копирование)
+{
+    Отказ.val = true
+}
+
+function WndListПередУдалением(Элемент, Отказ)
+{
+    Отказ.val = true
+    closeSelected()
+}
+
+(function(){
+    // Инициализация скрипта
+    listOfViews = new WndList
+    form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+    form.КлючСохраненияПоложенияОкна = "wndpanel"
+    form.WndList.Columns.Окно.ТипЗначения = v8New("ОписаниеТипов")
+    var hk = [
+    ["Activate", 13, 0],
+    ["Close", 115, 8],
+    ["Save", "S".charCodeAt(0), 8],
+    ["Print", "P".charCodeAt(0), 8],
+    ["FindInTree", "T".charCodeAt(0), 8]
+    ]
+    for(var k in hk)
+        form.Controls.Cmds.Кнопки.Найти(hk[k][0]).СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
+            '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,' + hk[k][1] + ',' + hk[k][2] + '}\n}')
+    form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
+        '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+})()
