@@ -254,6 +254,11 @@ CompareUdate.prototype.onTimer = function (timerID) {
         var caption = ''+windows.caption;
         TrayMessage(caption, 'Сравнение завершенно для ~n '+ mathes[2])
         this.stop()
+        try {
+            events.disconnect(windows, "onDoModal", this, "onMessageBox");
+        } catch (e) {
+        
+        }
     }
     this.countTimer++;
     //Message("CompareUdate onTimer "+this.countTimer + " timerID " +this.timerID)
@@ -270,7 +275,11 @@ CompareUdate.prototype.onMessageBox = function(dlgInfo) {
         var caption = ''+windows.caption;
         var text = "Жду подтвеждения обновления базы!"
         TrayMessage(text, caption);
-        events.disconnect(windows, "onDoModal", this, "onMessageBox");
+        try {
+            events.disconnect(windows, "onDoModal", this, "onMessageBox");
+        } catch (e) {
+        
+        }
         this.ConfigurationIsSupportet = true; //Конфигурация на поддержуке, формы диалога и сравнения не будет.
     }
 }
