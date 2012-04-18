@@ -16,6 +16,7 @@ global.connectGlobals(SelfScript)
 
 var form
 var needActivate, needHide
+var api = stdlib.require('winapi.js')
 
 function getFullMDName(mdObj, mdProp)
 {
@@ -64,18 +65,6 @@ WndListItem = stdlib.Class.extend(
                 if(result.title.indexOf(mdname) < 0)
                     result.info += mdname + " "
             }
-            if(result.title.length > 50)
-            {
-                var m = result.title.match(/\\[^\\]+$/)
-                if(m)
-                {
-                    var nt = "…" + m[0]
-                    if(nt.length < 50)
-                        nt = result.title.substr(0, 50 - nt.length) + nt
-                    result.title = nt
-                }
-            }
-            
             var obj = this.view.getObject()
             if(obj)
                 result.info += toV8Value(obj).typeName(1) + " "
@@ -312,21 +301,44 @@ function WndListВыбор(Элемент, ВыбраннаяСтрока, Ко�
     needActivate = ВыбраннаяСтрока.val.Окно.view
 }
 
+var boldFontV8, fontWin, boldFontWin
+
 function WndListПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
 {
     var cell = ОформлениеСтроки.val.Ячейки.Окно
     var item = ДанныеСтроки.val.Окно
     try{cell.УстановитьКартинку(item.view.icon)}catch(e){}
     var title = item.makeTitle()
-    cell.УстановитьТекст(title.title)
+    var hdc = api.GetDC(0)
+    // Приготовим шрифты.
+    if(!boldFontV8)
+    {
+        boldFontV8 = v8New("Шрифт", cell.Шрифт, undefined, undefined, true)
+        fontWin = api.CreateApiFontFromV8Font(cell.Шрифт, hdc)
+        boldFontWin = api.CreateApiFontFromV8Font(boldFontV8, hdc)
+    }
+    var widthOfColumn = form.Controls.WndList.Ширина * form.Controls.WndList.Колонки.Окно.Ширина /
+        (form.Controls.WndList.Колонки.Окно.Ширина + form.Controls.WndList.Колонки.Инфо.Ширина)
+        - 50 // Иконка окна и отступы от рамки
+    
+    var apiFont = fontWin
     if(item == WndList.One.activeView)
     {
-        if(!arguments.callee.boldFont)
-            arguments.callee.boldFont = v8New("Шрифт", cell.Шрифт, undefined, undefined, true)
-        cell.Шрифт = arguments.callee.boldFont
+        cell.Шрифт = boldFontV8
+        apiFont = boldFontWin
+        widthOfColumn -= 20
     }
     ОформлениеСтроки.val.ЦветФона = item.color ?  Элемент.val.ЦветФонаЧередованияСтрок : Элемент.val.ЦветФонаПоля
     ОформлениеСтроки.val.Ячейки.Инфо.УстановитьТекст(title.info)
+    // Рассчет ширины колонок и текста
+    // Прямого способа получить ширину колонок в пикселях нет, поэтому рассчитаем ширину колонки "Окно"
+    // пропорционально общей ширине в пикселах
+    var oldFont = api.SelectObject(hdc, apiFont)
+    var res = api.DrawText(hdc, title.title,
+	    new api.Rect(0, 0, widthOfColumn, 0), 0x20 | 0x4000 | 0x10000 | 0x400)// DT_CALCRECT | DT_SINGLELINE | DT_PATH_ELLIPSIS | DT_MODIFYSTRING
+    cell.УстановитьТекст(res.text)  // Если текст был шире колонки, то DrawText изменит его так, чтобы он влезал
+    api.SelectObject(hdc, oldFont)
+    api.ReleaseDC(0, hdc)
 }
 
 function FilterРегулирование(Элемент, Направление, СтандартнаяОбработка)
