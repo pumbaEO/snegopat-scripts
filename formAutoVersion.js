@@ -55,6 +55,6 @@ function onFileSave(cmd)
         }
     }
 }
-// Добавим обработчик команды синтакс-проверки
+// Добавим обработчик команды сохранения файла
 stdcommands.Frame.FileSave.addHandler(SelfScript.self, "onFileSave")
 
