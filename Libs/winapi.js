@@ -3,7 +3,7 @@ $uname winapi
 $dname Библиотека доступа к WinAPI посредством dynwrapx
 $addin stdlib
 
-var api;
+var api
 
 (function()
 {
@@ -25,7 +25,8 @@ var api;
             ["DrawTextW", "i=hWlpu", "r=l"],
             ["GetDC", "i=h", "r=h"],
             ["ReleaseDC", "i=hh", "r=l"],
-            ["GetDesktopWindow", "r=l"]
+            ["GetDesktopWindow", "r=l"],
+            ["GetWindow", "i=hl", "r=h"]
         ]
     },
     {
@@ -121,7 +122,7 @@ function CreateApiFontFromV8Font(font, hdc)
             if(arguments.callee[fontKey])
                 return arguments.callee[fontKey]
             var logpixelsy = api.GetDeviceCaps(hdc, 90) // LOGPIXELSY
-            var heightInPixels = -Math.floor(parseInt(s[3]) * logpixelsy / 720 + 0.5)
+            var heightInPixels = Math.floor(-parseInt(s[3]) * logpixelsy / 720 + 0.5)
             var fontName = s[16].substr(1, s[16].length - 2)
             var font = api.CreateFont(heightInPixels,
                 parseInt(s[4]),
@@ -159,3 +160,5 @@ function GetDesktopWindow()     { return api.GetDesktopWindow() }
 function SelectObject(hdc, obj) { return api.SelectObject(hdc, obj) }
 function DeleteObject(obj)      { return api.DeleteObject(obj) }
 function GetDeviceCaps(hdc, idx){ return api.GetDeviceCaps(hdc, idx) }
+function GetWindow(hwnd, cmd)   { return api.GetWindow(hwnd, cmd) }
+GetWindow.cmds = {GW_HWNDFIRST: 0, GW_HWNDLAST: 1, GW_HWNDNEXT: 2, GW_HWNDPREV: 3, GW_OWNER: 4, GW_CHILD: 5}

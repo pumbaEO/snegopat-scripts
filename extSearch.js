@@ -192,7 +192,8 @@ ExtSearch.prototype.addSearchResult = function (line, lineNo, matches, methodDat
     var resRow = this.results.Add();
     resRow.FoundLine = line;
     resRow.LineNo = lineNo;
-    resRow.Method = (methodData.IsProc ? "П" : "Ф") +" "+methodData.Name;
+    if(undefined != methodData)
+        resRow.Method = (methodData.IsProc ? "П" : "Ф") +" "+methodData.Name;
 
     if (this.form.WholeWords)
         resRow.ExactMatch = matches[0].replace(/^[^\w\dА-я]/, '').replace(/[^\w\dА-я]$/, '');
