@@ -5,6 +5,8 @@ $addin global
 $addin stdcommands
 $addin stdlib
 
+stdlib.require('SyntaxAnalysis.js', SelfScript);
+
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Cкрипт "Расширенный поиск" (extSearch.js) для проекта "Снегопат"
 ////
@@ -35,7 +37,10 @@ SelfScript.self['macrosНайти текст'] = function() {
     es.Show();
     
     if (selText == '')
+    {
         es.clearSearchResults();
+        es.setDefaultSearchQuery();
+    }
     else
         es.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
 }
@@ -58,6 +63,12 @@ SelfScript.self['macrosПерейти к предыдущему совпаден
     var es = GetExtSearch();
     es.Show();
     es.moveRowCursor(false);
+}
+
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Открыть окно поиска';
 }
 
 ////} Макросы
@@ -120,7 +131,9 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
             
     this.targetWindow = this.watcher.getActiveTextWindow();
     if (!this.targetWindow) return;
-    
+
+    var moduleData = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
+
     this.clearSearchResults();
     
     var pattern = this.form.Query;
@@ -150,7 +163,7 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
         var line = this.targetWindow.GetLine(lineNo);
         var matches = line.match(re);
         if (matches && matches.length)
-            this.addSearchResult(line, lineNo, matches);
+            this.addSearchResult(line, lineNo, matches, moduleData.getMethodByLineNumber(lineNo));
     }
     
     // Запомним строку поиска в истории.
@@ -175,10 +188,12 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
     }
 }
 
-ExtSearch.prototype.addSearchResult = function (line, lineNo, matches) {
+ExtSearch.prototype.addSearchResult = function (line, lineNo, matches, methodData) {
     var resRow = this.results.Add();
     resRow.FoundLine = line;
     resRow.LineNo = lineNo;
+    resRow.Method = (methodData.IsProc ? "П" : "Ф") +" "+methodData.Name;
+
     if (this.form.WholeWords)
         resRow.ExactMatch = matches[0].replace(/^[^\w\dА-я]/, '').replace(/[^\w\dА-я]$/, '');
     else
@@ -258,6 +273,10 @@ ExtSearch.prototype.moveRowCursor = function (forward) {
 
 ExtSearch.prototype.clearSearchResults = function () {
     this.results.Clear();
+}
+
+ExtSearch.prototype.setDefaultSearchQuery = function () {
+    this.form.CurrentControl=this.form.Controls.Query;
 }
 
 ExtSearch.prototype.addToHistory = function (query) {

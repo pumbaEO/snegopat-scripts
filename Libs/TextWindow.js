@@ -449,7 +449,7 @@ StringUtils = {
         var matches = code.match(/(^\s+?)(\S|\n|\r)/);
         
         if (matches)
-            return matches[1];
+            return matches[1].replace(/\n|\r/, '');
             
         return '';
     },

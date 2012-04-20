@@ -26,6 +26,12 @@ SelfScript.Self['macrosРедактировать регулярное выражение'] = function () {
     reEditor.open();
 }
 
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Редактировать регулярное выражение';
+}
+
 ////} Макросы
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -348,5 +354,3 @@ _RegExpEditor.prototype.CmdBarRemoveNewLines = function (Кнопка) {
     this.form.RegExSource = this.form.RegExSource.replace(/\r|\n/g, '');
 }
 ////} RegExpEditor - Обработчики событий формы
-
-
