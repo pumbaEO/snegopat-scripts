@@ -235,7 +235,7 @@ _1CModule.prototype.getMethodSource = function(methodName) {
 
 /* Возвращает таблицу значений с описаниями методов модуля. */
 _1CModule.prototype.getMethodsTable = function() {
-    return this.context._vtAllMethods;
+    return this.context._vtAllMethods.Copy();
 }
 
 /* Возвращает описание метода по номеру строки, находящейся внутри метода. */
