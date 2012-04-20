@@ -17,6 +17,7 @@ function tearDown() {
 //} setUp/tearDown
 
 //{ tests of AnalyseModule
+
 function macrosTestAnalyseModule1() {
 
     var moduleText = ""
@@ -239,6 +240,31 @@ function macrosTestAnalyseModule8_ОпределениеЛокальныхПер
     assertArrayEqualsIgnoringOrder(['АвтоматическаяПеременная'], proc.AutomaticVars);    
     
 }
+
+function macrosTestAnalyseModule9_ОпределениеМетодаНаРазныхСтроках() {
+    var moduleText = ""
+        + "Процедура \n"
+        + "    Проверки ( Перем1,Перем2, Перем3)\n"
+        + "КонецПроцедуры"
+
+    var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
+
+    assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
+    assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+}
+
+function macrosTestAnalyseModule10_ОпределениеМетодаНаРазныхСтроках2() {
+    var moduleText = ""
+        + "Процедура Проверки ( Перем1, \n"
+        + "    Перем2, Перем3)\n"
+        + "КонецПроцедуры"
+    
+    var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
+
+    assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
+    assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+}
+
 
 //} tests of AnalyseModule
 
