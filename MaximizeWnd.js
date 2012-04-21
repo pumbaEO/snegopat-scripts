@@ -10,6 +10,10 @@ function createTextWindow(textWnd) {
     if (textWnd.extName == "Язык запросов")
         return;
     
+    // различные диалоги из скриптов
+    if (!textWnd.extName.length || (textWnd.readOnly && !textWnd.text.length && textWnd.extName == "Встроенный язык"))
+        return;
+    
     try 
     {
         var wsh = new ActiveXObject("WScript.Shell");
