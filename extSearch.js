@@ -240,7 +240,10 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
     }
     else
     {
-        this.goToLine(this.results.Rows.Get(0).Rows.Get(0));
+        if (this.form.TreeView)
+            this.goToLine(this.results.Rows.Get(0).Rows.Get(0));
+        else
+            this.goToLine(this.results.Rows.Get(0));        
     }
 }
 
