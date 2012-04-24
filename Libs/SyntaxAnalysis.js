@@ -38,8 +38,10 @@ SyntaxAnalysis.Create1CMethodDescription = function(parentModule) {
 ////    - Описать индексы и назначения группировок, подобно тому, как сделано для RE_VAR.
 SyntaxAnalysis.RE_COMMENT       = new RegExp('^\\s*((?:(?:(?:"[^"]")*)|(?:[^/]*)|(?:[^/]+/))*)(//.*)?\\s*$', "");
 /* Группировки: 1: Объявление метода (процедура/функция), 2: Имя метода, 3: Список параметров метода строкой, 4: "Далее" - имеет смысл только для 7.7. */
-SyntaxAnalysis.RE_PROC          = new RegExp('^\\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\\s+([\\wА-яёЁ\\d]+)\\s*\\(([\\wА-яёЁ\\d\\s,.="\']*)\\)\\s*((?:forward)|(?:далее))?(.*)$', "i");
-SyntaxAnalysis.RE_PARAM         = new RegExp('(?:(?:Val)|(?:Знач)\\s+)?([\\wА-яёЁ\\d]+)(\\s*=\\s*(?:(?:"[^"]")|(?:[^,)]*))*)?', "ig");
+//SyntaxAnalysis.RE_PROC          = new RegExp('^\\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\\s+([\\wА-яёЁ\\d]+)\\s*\\(([\\wА-яёЁ\\d\\s,.="\']*)\\)\\s*((?:forward)|(?:далее))?(.*)$', "i");
+SyntaxAnalysis.RE_PROC              = new RegExp('^\\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\\s+([\wА-яёЁ\d]+)\\s*\\(', 'i');
+SyntaxAnalysis.RE_PARAM            = new RegExp('(?:(?:Val)|(?:Знач)\\s+)?([\\wА-яёЁ\\d]+)(\\s*=\\s*(?:(?:"[^"]")|(?:[^,)]*))*)?', "ig");
+SyntaxAnalysis.RE_PARAM_END     = new RegExp('([\\wА-яёЁ\\d\\s,.="\']*)\\)(.*)', 'i');
 SyntaxAnalysis.RE_PROC_END      = new RegExp('((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))', "i");
 SyntaxAnalysis.RE_VARS_DEF      = new RegExp('^\\s*(?:(?:Var)|(?:Перем))\\s*([\\wА-яёЁ\\d,=\\[\\]\\s]*)(\\s+экспорт\\s*)?([\\s;]*)(.*?)$', "i");
 /* Группировки: 1: Имя переменной, 2: Определение размерности массива, 3: Экспорт, 4: Конечный символ ("," или пусто - конец строки). */
@@ -47,20 +49,39 @@ SyntaxAnalysis.RE_VAR           = new RegExp('([\\wА-яёЁ\\d]+)\\s*(\\[[\\d\\
 SyntaxAnalysis.RE_VAR_ASSIGN    = new RegExp('([\\wА-яёЁ\\d.]+)\\s*=\\s*(([^;]*);)?', "g");
 SyntaxAnalysis.RE_CALL          = new RegExp('([\\wА-яёЁ\\d.]+)\\s*\\(', "g");
 SyntaxAnalysis.RE_SPACE         = new RegExp('\\s+', "g");
+//FIXME:RE_PROC_TORMOZIT  пока не используеться, т.к. нет определения НаКлиенте, НаСервере и т.д. для тонкого клиента. 
+SyntaxAnalysis.RE_PROC_TORMOZIT = new RegExp('((Процедура|Функция)(?://[^\\n]*\\n|\\s|^|$)*([А-Яа-я_A-Za-z][А-Яа-я_A-Za-z\\d]*)(?://[^\\n]*\\n|\\s|^|$)*\\(([^\\)]*)\\)((?://[^\\n]*\\n|\\s|^|$)*Экспорт)?)((?:(?:"(?:(?:"")|[^"\\n$])*(?:(?://[^\\n]*\\n|\\s|^|$)*\\|(?:(?:"")|[^"\\n$])*)*(?:"|$)|\\.Конец(?:Процедуры|Функции)|\\r|\\n|.)*?))[^А-Яа-я_A-Za-z0-9\\."]Конец(?:Процедуры|Функции)[^А-Яа-я_A-Za-z0-9]|#[^\\n]*\\n|(?://[^\\n]*\\n|\\s|^|$)', 'igm')
+SyntaxAnalysis.RE_PARAM_TORMOZIT = new RegExp('(?://[^\\n]*\\n|\\s|^|$)*(Знач\\s)?(?://[^\\n]*\\n|\\s|^|$)*([А-Яа-я_A-Za-z][А-Яа-я_A-Za-z0-9]+)(?://[^\\n]*\\n|\\s|^|$)*=?((?:(?://[^\\n]*\\n|\\s|^|$)*|("(?:(?:"")|[^"\\n$])*(?:(?://[^\\n]*\\n|\\s|^|$)*\\|(?:(?:"")|[^"\\n$])*)*(?:"|$))|(?:[^,\\n$]*))+)(?:,|$)','img');
+SyntaxAnalysis.RE_CONTEXT      = new RegExp('^\\s*&\\s*(AtClientAtServerNoContext|AtServerNoContext|AtClientAtServer|AtServer|AtClient|НаСервереБезКонтекста|НаКлиентеНаСервереБезКонтекста|НаКлиентеНаСервере|НаКлиенте|НаСервере)\\s*', 'i')
+//SyntaxAnalysis
 //SyntaxAnalysis.RE_CRLF          = new RegExp('[\\n]+', "");
 ////} Регулярные выражения для поиска конструкций встроенного языка 1С.
     
+
+SyntaxAnalysis.AnalyseParams = function(sourceCode, Meth) {
+    while( (Matches = SyntaxAnalysis.RE_PARAM_TORMOZIT.exec(sourceCode)) != null ) { 
+        Meth.Params.push(Matches[2]);
+    }
+}
+SyntaxAnalysis.AnalyseComments = function(sourceCode){
+     var result = sourceCode;
+     var Matches = SyntaxAnalysis.RE_COMMENT.exec(sourceCode);
+     if( Matches != null )
+        result = Matches[1];
+     
+     return result
+}
 SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
     
     var Meth;
     var stStart = 0, stInProc = 1, stInModule = 2, stInVarsDef;
     var state = stStart, PrevState;
     var Match;
+    var Context = "";
     
     var moduleContext = SyntaxAnalysis.Create1CModuleContextDescription(initValueTable);
         
     var proc_count = 0;
- //debugger;
     var Lines = sourceCode.split("\n");
     var n = Lines.length;
     var i = 0; 
@@ -75,34 +96,49 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
         }
         else
         {
-            str = Lines[i];
-            var Matches = SyntaxAnalysis.RE_COMMENT.exec(str);
-            if( Matches != null )
-                str = Matches[1];
+            str = this.AnalyseComments(Lines[i]);
         }
         
         switch( state )
         {
         case stStart:        
         case stInModule:
-        
+            var Matches = SyntaxAnalysis.RE_CONTEXT.exec(str);
+            if (Matches!=null) {
+                Context = Matches[1]
+            }
             Matches = SyntaxAnalysis.RE_PROC.exec(str);
             if( Matches != null )
             {
-                var forward = Matches[4];
-                var endproc = Matches[5];
-                if( forward == "" )
-                {
                     Meth = SyntaxAnalysis.Create1CMethodDescription(moduleContext);
                     Meth.Name = Matches[2];
                     Meth.StartLine = i;                    
                     Meth.IsProc = (Matches[1].toLowerCase() == 'процедура' || Matches[1].toLowerCase() == 'procedure');
                     
-                    str = Matches[3];
-                    while( (Matches = SyntaxAnalysis.RE_PARAM.exec(str)) != null )
-                        Meth.Params.push(Matches[1]);
+                    Meth.Context = (Context.length>0)?Context:"НаСервере"; //Пока только для тонкого клиента. 
+                    str = str.substr(Matches.lastIndex);
+                    var strParams = '';
+                    Matches = SyntaxAnalysis.RE_PARAM_END.exec(str);
+                    if (Matches!=null) {
+                        strParams = Matches[1]
+                    } else {
+                        strParams = ''+str;
+                        i++;
+                        while (i<n) { 
+                            str = this.AnalyseComments(Lines[i]);
+                            if ((Matches = SyntaxAnalysis.RE_PARAM_END.exec(str))!=null) {
+                                strParams = strParams+"\n"+Matches[1]
+                                break;
+                            } else {
+                                strParams = strParams+"\n"+str;
+                            }
+                            i++;
+                        }
+                    }
+                    this.AnalyseParams(strParams, Meth);
+                    endproc = Matches[2]
                     
-                    moduleContext.addMethod(Meth);
+                    moduleContext.addMethod(Meth); 
                     proc_count++;
                     state = stInProc;
                     if( (Match = SyntaxAnalysis.RE_PROC_END.exec(endproc)) != null )
@@ -112,7 +148,7 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
                         if (nextPart)
                             continue;
                     }
-                }
+                
             }
             else if ((Matches = SyntaxAnalysis.RE_VARS_DEF.exec(str)) != null)
             {
@@ -294,6 +330,8 @@ function _1CModuleContextDescription(initValueTable) {
         cols.Add('IsProc', v8Type_Boolean, 'Процедура');
         cols.Add('StartLine', v8Type_Number, 'N первой строки');
         cols.Add('EndLine', v8Type_Number, 'N последней строки');
+        cols.Add('Context', v8Type_String, 'Контекст компиляции модуля');
+        
         cols.Add('_method'); // _1CMethodDescription
     }
 }
@@ -314,6 +352,7 @@ _1CModuleContextDescription.prototype.addMethod = function (method) {
         methRow.IsProc = method.IsProc;
         methRow.StartLine = method.StartLine;
         methRow.EndLine = method.EndLine;
+        methRow.Context = method.Context;
         methRow._method = method;
     }
 }

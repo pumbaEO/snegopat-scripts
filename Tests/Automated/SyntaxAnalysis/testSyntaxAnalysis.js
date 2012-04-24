@@ -213,7 +213,7 @@ function macrosTestAnalyseModule8_ОпределениеЛокальныхПер
         + "КонецФункции\n\n"
         + "МояПроцедура(1, 2);\n"
         + "Результат = МояФункция();\n"
-//debugger;
+
     var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
     //Message(cnt.ModuleVars.join(','));
             
@@ -253,17 +253,82 @@ function macrosTestAnalyseModule9_ОпределениеМетодаНаРазн
     assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
 }
 
-function macrosTestAnalyseModule10_ОпределениеМетодаНаРазныхСтроках2() {
+function macrosTestAnalyseModule10_ОпределениеПараметровМетодаНаРазныхСтроках() {
     var moduleText = ""
         + "Процедура Проверки ( Перем1, \n"
         + "    Перем2, Перем3)\n"
+        + "КонецПроцедуры"
+    //debugger
+    var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
+
+    assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
+    assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+    var proc = cnt.getMethodByName('Проверки');
+    assertNotNull("Метод Проверки не найден", proc);    
+    assertArrayEqualsIgnoringOrder(['Перем1', 'Перем2', 'Перем3'], proc.Params);
+}
+
+function macrosTestAnalyseModule11_ОпределениеПеременныхМетодаПоУмолчанию() {
+    var moduleText = ""
+        + "Процедура Проверки (Знач Парам1, Парам2 = Ложь)\n"
+        + "КонецПроцедуры"
+    //debugger
+    var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
+
+    assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
+    assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+    var proc = cnt.getMethodByName('Проверки');
+    assertNotNull("Метод Проверки не найден", proc);    
+    assertArrayEqualsIgnoringOrder(['Парам1', 'Парам2'], proc.Params);
+    
+}
+
+function macrosTestAnalyseModule12_ОпределениеКонеткстаКомпиляции() {
+    var moduleText = ""
+        + "&НаКлиенте\n"
+        + "Процедура Проверки (Знач Парам1, Парам2 = Ложь)\n"
+        + "КонецПроцедуры"
+    var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
+
+    assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
+    assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+    var proc = cnt.getMethodByName('Проверки');
+    assertNotNull("Метод Проверки не найден", proc);    
+    assertEquals("Конетекст компиляции не обнаружен", "НаКлиенте", proc.Context)
+    assertArrayEqualsIgnoringOrder(['Парам1', 'Парам2'], proc.Params);
+    
+}
+function macrosTestAnalyseModule13_ОпределениеПараметровМетодаНаРазныхСтрокахСКомментариями() {
+    var moduleText = ""
+        + "Процедура Проверки ( Перем1, //Текстовый комментарий перемменной, да и такое может быть.  \n"
+        + "    Перем2, Перем3)\n"
+        + "КонецПроцедуры"
+    debugger
+    var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
+
+    assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
+    assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+    var proc = cnt.getMethodByName('Проверки');
+    assertNotNull("Метод Проверки не найден", proc);    
+    assertArrayEqualsIgnoringOrder(['Перем1', 'Перем2', 'Перем3'], proc.Params);
+}
+
+function macrosTestAnalyseModule14_ОпределениеПараметровМетодаНаРазныхСтрокахСКомментариямиИСкобками() {
+    var moduleText = ""
+        + "Процедура Проверки ( Перем1, //Текстовый комментарий перемменной, да и такое может быть.  \n"
+        + "    Перем2, // Любой текст и ссылка на процедуру или функцию МояПроцедура()\n"
+        + "    Перем3)\n"
         + "КонецПроцедуры"
     
     var cnt = SyntaxAnalysis.AnalyseModule(moduleText);
 
     assertEquals('Неправильно определено количество методов!', 1, cnt.Methods.length);    
     assertEquals('Неправильно определено количество переменных модуля!', 0, cnt.ModuleVars.length);
+    var proc = cnt.getMethodByName('Проверки');
+    assertNotNull("Метод Проверки не найден", proc);    
+    assertArrayEqualsIgnoringOrder(['Перем1', 'Перем2', 'Перем3'], proc.Params);
 }
+
 
 
 //} tests of AnalyseModule
