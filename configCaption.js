@@ -4,42 +4,61 @@ $dname Заголовок окна Конфигуратора
 $addin global
 
 global.connectGlobals(SelfScript)
+var captionExprPath = "ConfigCaption/Expression"
+profileRoot.createValue(captionExprPath, 'ibName() + $(metaDataVersion(), " (", ")") + " / " + cnnString() + " / " + mainTitleShort +  $(additionalTitle, " - [", "]")',
+    pflSnegopat)
+var captionExpr = profileRoot.getValue(captionExprPath)
+var form
 
-// Интервал проверки редактируемых файлов.
-var checkInterval = 1; 
+events.connect(windows, "onChangeTitles", SelfScript.self)
 
-// Время последней проверки
-var lastCheckTime = new Date().getTime() / 1000;
-
-events.connect(Designer, "onIdle", SelfScript.self)
-function onIdle()
+function setCaption(mainTitle, additionalTitle)
 {
-    var curTime = new Date().getTime() / 1000;
-    if (curTime - lastCheckTime > checkInterval) 
-    {
-        try{
-            УстановитьЗаголовокКонфигуратораСоСнегопатом()
-        }catch(e){}
-    }
-    return false;
+    var mainTitleShort = mainTitle.replace(/^Конфигуратор - /, "")
+    windows.caption = eval(captionExpr)
 }
 
-УстановитьЗаголовокКонфигуратораСоСнегопатом()
+function ibName()
+{
+    return profileRoot.getValue("CmdLine/IBName").replace(/^\s*|\s*$/g, '');
+}
+
+function metaDataVersion()
+{
+    return metadata.current.rootObject.property("Версия")
+}
+
+function cnnString()
+{
+    КаталогИБ = НСтр(СтрокаСоединенияИнформационнойБазы(), "File")
+    if(КаталогИБ)
+        return КаталогИБ
+    else
+        return НСтр(СтрокаСоединенияИнформационнойБазы(), "Srvr") + ":" + НСтр(СтрокаСоединенияИнформационнойБазы(), "Ref")
+}
+
+function $(str, prefix, suffix, repl)
+{
+    if(arguments.length < 4)
+        repl = ''
+    if(arguments.length < 3)
+        suffix = ''
+    if(arguments.length < 2)
+        prefix = ''
+    return str.length ? prefix + str + suffix : repl
+}
+
+function onChangeTitles(param)
+{
+    setCaption(param.mainTitle, param.additionalTitle)
+    param.cancel = true
+}
+
+setCaption(windows.mainTitle, windows.additionalTitle)
 
 function macrosПоказатьНаименованиеБазы()
 {
     Message("имя текущей базы = <" + ПолучитьНаименованиеБазы() + ">")
-}
-
-// при перезапуске скрипта заголовок будет двоиться - но это будет очень редко, что можно отложить
-function УстановитьЗаголовокКонфигуратораСоСнегопатом()
-{
-    УстановитьЗаголовокСистемы(ПолучитьЗаголовокКонфигуратора()  + " / База: " + ПолучитьНаименованиеБазы() + " / Снегопат " + sVersion)
-}
-
-function УстановитьЗаголовокКонфигуратораБезСнегопата()
-{
-    УстановитьЗаголовокСистемы(ПолучитьЗаголовокКонфигуратора() + " / База: " + ПолучитьНаименованиеБазы())
 }
 
 function ПолучитьНаименованиеБазы()
@@ -47,26 +66,11 @@ function ПолучитьНаименованиеБазы()
     return profileRoot.getValue("CmdLine/IBName").replace(/^\s*|\s*$/g, '');
 }
 
-function ПолучитьЗаголовокКонфигуратора()
-{
-    заголовокВЧистомВиде = ПолучитьЗаголовокСистемы().replace(/\s*\/\s*База\s*.+/ig, '')
-    return заголовокВЧистомВиде;
-}
-
 function macrosПоказатьНаименованиеБазыПоПутиКНей()
 {
     строкаСоединения = СтрокаСоединенияИнформационнойБазы();
     var baseName = ПолучитьНаименованиеБазы1CИзФайлаЗапуска(строкаСоединения)
     Message("имя текущей базы = <" + baseName + ">")
-}
-
-function УстановитьЗаголовокКонфигуратора_Старый()
-{
-    СтарыйЗаголовок = ПолучитьЗаголовокКонфигуратора()
-    строкаСоединения = СтрокаСоединенияИнформационнойБазы();
-    
-    наименованиеБазы = ПолучитьНаименованиеБазы1CИзФайлаЗапуска(строкаСоединения)
-    УстановитьЗаголовокСистемы(СтарыйЗаголовок  + " / " + наименованиеБазы + " / Снегопат " + sVersion)
 }
 
 function ПолучитьНаименованиеБазы1CИзФайлаЗапуска(строкаСоединения)
@@ -109,4 +113,45 @@ function macrosПоказатьСтрокуСоединенияИБ()
     else
         строкаСоединения = НСтр(СтрокаСоединенияИнформационнойБазы(), "Srvr") + ":" + НСтр(СтрокаСоединенияИнформационнойБазы(), "Ref")
     Message(строкаСоединения)
+}
+
+function macrosНастройка()
+{
+    form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+    form.Выражение = captionExpr
+    form.ЭлементыФормы.Помощь.Заголовок = "Можно использовать:\n" + 
+    "mainTitle - основной заголовок\n" +
+    "mainTitleShort - основной заголовок без слова Конфигуратор\n" +
+    "additionalTitle - дополнительный заголовок\n" +
+    "ibName() - имя базы данных\n" +
+    "metaDataVersion() - свойство \"Версия\" метаданных\n" +
+    "cnnString() - данные из строки соединения\n" +
+    "sVersion - версия Снегопата\n" +
+    "v8Version - релиз 1С\n" +
+    "Функция $(Строка, Префикс, Суффикс, ВместоПустой) - вывести Префикс + Строка + Суффикс если Строка не пустая, иначе вывести ВместоПустой\n"
+    if(form.ОткрытьМодально())
+    {
+        captionExpr = form.Выражение
+        profileRoot.setValue(captionExprPath, captionExpr)
+        setCaption(windows.mainTitle, windows.additionalTitle)
+    }
+    form = null
+}
+
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Настройка';
+}
+
+function КоманднаяПанель1Проверить(Кнопка)
+{
+    var mainTitle = windows.mainTitle, additionalTitle = windows.additionalTitle
+    var mainTitleShort = mainTitle.replace(/^Конфигуратор - /, "")
+    MessageBox(eval(form.Выражение))
+}
+
+function КоманднаяПанель1ОК(Кнопка)
+{
+    form.Закрыть(true)
 }

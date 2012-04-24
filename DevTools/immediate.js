@@ -1,6 +1,7 @@
 ﻿$engine JScript
 $uname immediate
 $dname Немедленное выполнение кода
+$addin stdlib
 
 // (c) Александр Орефков
 // Утилита для разработчиков скриптов. Позволяет сразу выполнить JScript код, введенный
@@ -12,6 +13,8 @@ var codeMarker		= ">>> Начало кода <<<"
 var oldCodeMarker	= "-------------------"
 var needMoveCaret = {br:2, bc:1, er:2, ec:1}
 
+var TD = null; // Активный текстовый документ.
+
 // Подключим глобальные контексты
 addins.byUniqueName("global").object.connectGlobals(SelfScript)
 
@@ -21,15 +24,40 @@ form.КлючСохраненияПоложенияОкна = "immediate.js"
 form.ЭлементыФормы.Код.ДобавитьСтроку(codeMarker + "\n")
 
 // Пользовательские макросы для открытия/закрытия окна, можно повесить на хоткеи
-function macrosОткрытьОкно()	{	form.Открыть()	}
+function macrosОткрытьОкно()	{	
+    try {
+        TD = stdlib.require('TextWindow.js').GetTextWindow();    
+    }
+    catch (e) {}
+    form.Открыть()	
+}
+
 function macrosЗакрытьОкно()	{	form.Закрыть()	}
 function macrosПереключитьОкно()
 {
     if(form.Открыта())
         form.Закрыть()
     else
+    {
+        try {
+            TD = stdlib.require('TextWindow.js').GetTextWindow();    
+        }
+        catch (e) {}
         form.Открыть()
+    }
 }
+
+function macrosЗапуститьОтладчикСкриптов()
+{
+    runDebugger();
+}
+
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'ОткрытьОкно';
+}
+
 
 /*
  *    Обработчики событий формы
@@ -55,8 +83,12 @@ function ПриЗакрытии()
     vbs.DoExecute("br=0:bc=0:er=0:ec=0:var1.GetTextSelectionBounds br, bc, er, ec:result.br=br:result.bc=bc:result.er=er:result.ec=ec")
 }
 
-// Собственно, само выполнение кода
-function КоманднаяПанельВыполнить(Кнопка)
+function runDebugger() 
+{
+    eval('debugger');
+}
+
+function runCode(inDebugger) 
 {
     var codeText
     // Получим код для выполнения и заменим маркер начала кода на маркер старого кода
@@ -72,6 +104,10 @@ function КоманднаяПанельВыполнить(Кнопка)
         codeText = text
         text = oldCodeMarker + "\n" + text
     }
+    
+    if (inDebugger)
+        codeText = "debugger;\n" + codeText;
+    
     // Добавим к тексту результат и маркер кода
     text += "\nРезультат: " + eval(codeText) + "\n" + codeMarker + "\n"
     form.ЭлементыФормы.Код.УстановитьТекст(text)
@@ -81,3 +117,20 @@ function КоманднаяПанельВыполнить(Кнопка)
     // Вернем фокус в окно
     form.ТекущийЭлемент = form.ЭлементыФормы.Код
 }
+
+// Собственно, само выполнение кода
+function КоманднаяПанельВыполнить(Кнопка)
+{
+    runCode(false);
+}
+
+function КоманднаяПанельОткрытьВОтладчике (Кнопка) {
+    runCode(true);
+}
+
+
+function КоманднаяПанельОткрытьОтладчик (Кнопка) {
+    runDebugger();
+}
+
+

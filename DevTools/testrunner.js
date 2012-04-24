@@ -5,18 +5,44 @@ $addin SnegopatMainScript
 $addin global
 $addin stdlib
 
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Cкрипт "Менеджер юнит-тестов скриптов" (testrunner.js) для проекта "Снегопат"
+////
+//// Описание: Реализует автоматический запуск юнит-тестов для сриптов проекта "Снегопат".
+//// Автор: Александр Кунташов <kuntashov@gmail.com>, http://compaud.ru/blog
+////}
+////////////////////////////////////////////////////////////////////////////////////////
+
 global.connectGlobals(SelfScript)
+
+stdlib.require("SettingsManagement.js", SelfScript);
 
 var jsUnitCore = stdlib.require("jsUnitCore.js");
 
-/* Анонимный обработчик, который мы передаем, позволяет обойти проблему 
-с отловом исключений, брошенных в контексте скрипта-библиотеки. */
-jsUnitCore.SetErrorHandler(function (exception) { throw exception; });
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Макросы
+////
 
-OpenTestRunner();
+function macrosПоказать()
+{
+    GetTestRunner().Show();
+}
+
+function macrosСкрыть()
+{
+    GetTestRunner().Close();
+}
+
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Показать';
+}
+
+//}
 
 ////////////////////////////////////////////////////////////////////////////////////////
-//// TestRunner
+////{ TestRunner
 ////
 
 function TestRunner()
@@ -28,7 +54,6 @@ function TestRunner()
     this.failureCount = 0;
     
     this.form = loadScriptForm("scripts\\DevTools\\testrunner.ssf", this)
-    this.form.Открыть();
         
     this.allTests = this.form.ЭлементыФормы.тпДеревоТестов.Значение;                     
     this.allTests.Колонки.Добавить("object");
@@ -47,7 +72,30 @@ function TestRunner()
         Green: this.form.ЭлементыФормы.ПолеКартинкиЗеленый.Картинка,
         Yellow: this.form.ЭлементыФормы.ПолеКартинкиЖелтый.Картинка,
         Red: this.form.ЭлементыФормы.ПолеКартинкиКрасный.Картинка
-    }                  
+    }                
+    
+    // Флаг, сигнализирующий, что тесты запускались.
+    this.testingDone = false;
+
+    this.defaultSettings = {
+        ReloadBeforeRunAll : false,
+        LogOnSuccess : false
+    };
+    
+    this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
+    this.settings.LoadSettings();
+    this.settings.ApplyToForm(this.form);    
+}
+
+TestRunner.prototype.Show = function ()
+{
+    this.form.Open();
+}
+
+TestRunner.prototype.Close = function ()
+{
+    if (this.form.IsOpen())
+        this.form.Close();
 }
 
 TestRunner.prototype.resetCounters = function()
@@ -102,6 +150,7 @@ TestRunner.prototype.unloadAllTests = function ()
     }
     
     this.loadedTestAddins = [];
+    this.testingDone = false;
 }
 
 TestRunner.prototype.loadTests = function(path)
@@ -123,6 +172,7 @@ TestRunner.prototype.loadTests = function(path)
         this.form.ЭлементыФормы.тпДеревоТестов.Развернуть(this.allTests.Строки.Получить(i), true);
         
     this.updateTotals();
+    this.testingDone = false;
 }
 
 TestRunner.prototype.isTestAddinFile = function(file)
@@ -263,6 +313,12 @@ TestRunner.prototype.addTest = function(parentNode, testName, testAddin)
 
 TestRunner.prototype.runAllTests = function()
 {    
+    jsUnitCore.SetErrorHandler(function (exception) { throw exception; });
+
+    /* Устанавливаем заранее, чтобы флаг был взведен даже если 
+    нас остановит какой-нибудь эксепшен. */
+    this.testingDone = true;
+
     for (var i = 0; i < this.allTests.Строки.Количество(); i++)
     {
         var ТекущаяСтрока = this.allTests.Строки.Получить(i);
@@ -272,7 +328,9 @@ TestRunner.prototype.runAllTests = function()
         ТекущаяСтрока.Состояние = this.runTest(ТекущаяСтрока);
         
         ТекущаяСтрока.ВремяВыполнения = (new Date() - beginTime) / 1000;        
-    }     
+    }  
+    
+    jsUnitCore.ResetErrorHandler();
 }
 
 TestRunner.prototype.runTest = function (СтрокаТестов)
@@ -342,7 +400,8 @@ TestRunner.prototype.setTestStatus = function(test, excep)
 
     test.message = message;
     
-    Message(message);    
+    if (test.status != this.STATE_SUCCESS || this.settings.current.LogOnSuccess)
+        Message(message);    
     
     return test.status;
 }
@@ -397,6 +456,25 @@ TestRunner.prototype.getDefaultTestsDir = function()
     return mainFolder;
 }
 
+TestRunner.prototype.SaveSettings = function ()
+{
+    this.settings.ReadFromForm(this.form);
+    this.settings.SaveSettings();
+    this.form.Модифицированность = false;
+    this.form.ЭлементыФормы.КнопкаПрименить.Доступность = false;
+}
+
+TestRunner.prototype.DiscardSettings = function ()
+{
+    this.settings.ApplyToForm(this.form);
+    this.form.Модифицированность = false;    
+}
+
+TestRunner.prototype.isTestsLoaded = function ()
+{
+    return (this.allTests.Rows.Count() > 0);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////
 //// ОБРАБОТЧИКИ СОБЫТИЙ ФОРМЫ И ЕЕ ЭЛЕМЕНТОВ.
 ////
@@ -428,24 +506,35 @@ TestRunner.prototype.КнопкаЗагрузитьТестыЗагрузить�
     }
 }
 
+TestRunner.prototype.reloadTests = function()
+{
+    if (this.isTestsLoaded())
+    {
+        this.switchProgressBar(false);
+        this.resetCounters();
+        this.loadTests(this.form.Путь);
+    }
+}
+
 TestRunner.prototype.КнопкаПерезагрузитьНажатие = function (Элемент)
 {
-    if (this.form.Путь == "")
+    if (!this.isTestsLoaded())
     {
         Предупреждение("Сначала загрузите тесты!");
         return;
     }
     
-    this.switchProgressBar(false);
-    this.resetCounters();
-    this.loadTests(this.form.Путь);
+    this.reloadTests();
 }
 
 TestRunner.prototype.КнопкаВыполнитьВсеТестыНажатие = function (Элемент)
 {
+    if (this.settings.current.ReloadBeforeRunAll && this.testingDone)
+        this.reloadTests();
+
     this.resetCounters();
     this.initProgressBar();
- 
+        
     this.runAllTests();
     
     this.updateTotals();
@@ -454,7 +543,11 @@ TestRunner.prototype.КнопкаВыполнитьВсеТестыНажати�
 
 TestRunner.prototype.КнопкаВыполнитьВыделенныйНажатие = function (Элемент)
 {
+    jsUnitCore.SetErrorHandler(function(e){ throw e; });
+    
     Message("Не реализовано");
+    
+    jsUnitCore.ResetErrorHandler();
 }
 
 TestRunner.prototype.тпДеревоТестовПриВыводеСтроки = function(Элемент, ОформлениеСтроки, ДанныеСтроки)
@@ -477,19 +570,70 @@ TestRunner.prototype.тпДеревоТестовПриВыводеСтроки 
         Ячейки.НазваниеТеста.УстановитьКартинку(this.StateIcons.Gray)
         
 }
-                     
-TestRunner.prototype.ПриОткрытии = function ()
+
+TestRunner.prototype.КнопкаНастройкиНажатие = function (Элемент)
 {
+    this.settings.ApplyToForm(this.form);
+    this.form.Панель.ТекущаяСтраница = this.form.Панель.Страницы.Настройки;
+}
+
+TestRunner.prototype.КнопкаНазадНажатие = function (Элемент)
+{
+    if (this.form.Модифицированность)
+    {
+        var answ = DoQueryBox("Настройки были изменены. Сохранить?", QuestionDialogMode.YesNoCancel);
+        var retCodes = DialogReturnCode;
+        
+        if (answ == retCodes.Cancel)
+            return;
+            
+        if (answ == retCodes.Yes)
+        {
+            this.SaveSettings();
+        }
+        else
+        {
+            // Откатим изменения настроек.
+            this.DiscardSettings();
+        }        
+    }
+    
+    this.form.Панель.ТекущаяСтраница = this.form.Панель.Страницы.Тестирование;        
+}
+
+TestRunner.prototype.КнопкаПрименитьНажатие = function (Элемент)
+{
+    this.SaveSettings();
+}
+
+TestRunner.prototype.АвтоматическиПерезагружатьПередВыполнениемПриИзменении = function (Элемент)
+{
+    this.form.Модифицированность = true;
+    this.form.ЭлементыФормы.КнопкаПрименить.Доступность = true;
+}
+           
+TestRunner.prototype.LogOnSuccessПриИзменении = function(Элемент)
+{
+    this.form.Модифицированность = true;
+    this.form.ЭлементыФормы.КнопкаПрименить.Доступность = true;
+}
+           
+TestRunner.prototype.ПриОткрытии = function ()
+{   
     this.resetCounters();
     this.switchProgressBar(false);
+    this.form.ЭлементыФормы.КнопкаПрименить.Доступность = false;    
+    this.form.Путь = "<Тесты не загружены>";
 }
 
 TestRunner.prototype.ПриЗакрытии = function ()
 {
     this.unloadAllTests();    
 }
+////} TestRunner
+
 ////////////////////////////////////////////////////////////////////////////////////////
-//// ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
+////{ ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
 ////
 
 function FindFiles(path, mask)
@@ -537,8 +681,12 @@ function Test(addin, testName)
     this.exeption = null;
     this.message = "";
 }
+////} ВСПОМОГАТЕЛЬНЫЕ ОБЪЕКТЫ И ФУНКЦИИ.
 
-function OpenTestRunner()
+////////////////////////////////////////////////////////////////////////////////////////
+////{ StartUp
+////
+function GetTestRunner()
 {
     if (!TestRunner._instance)
         new TestRunner();
@@ -546,6 +694,8 @@ function OpenTestRunner()
     return TestRunner._instance;
 }
 
+GetTestRunner().Show();
 
+////}
 
 

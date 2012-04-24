@@ -2,6 +2,8 @@
 $uname scriptdev
 $dname Разработка скриптов
 $addin global
+$addin stdlib
+$addin stdcommands
 $addin snegopatwnd
 
 /* Скрипт-помощник для разработчиков скриптов для Снегопата.
@@ -34,8 +36,8 @@ var runEditorCmd = "notepad.exe \"%1\"";
  *  Макросы.
  * ********************************************************* */
 
- function macrosНастройка()
- {
+function macrosНастройка()
+{
     var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
     // Обработку событий формы привяжем к самому скрипту
     form = loadScriptForm(pathToForm, SelfScript.self);
@@ -44,8 +46,41 @@ var runEditorCmd = "notepad.exe \"%1\"";
     form.runEditorCmd = runEditorCmd;
     form.ОткрытьМодально();
     form = null;
- }
+}
 
+function macrosСформироватьКодОбработчиковФормыНаJavaScript() {
+
+    var w = stdlib.require('TextWindow.js').GetTextWindow();
+    if (!w) return;
+    
+    // Если есть выделение - используем его, иначе конвертируем весь модуль.
+    var codeToConvert = w.GetSelectedText();
+    
+    if (codeToConvert == "")
+        codeToConvert = w.GetText();
+        
+    var className = snegopat.parseTemplateString('<?"Укажите имя класса (если не задано - создаются функции скрипта)">');
+        
+    var jsCode = codeToConvert;
+    
+    var rep = className ? className + ".prototype.$1 = function ($2) {" : "function $1 ($2) {";
+    
+    jsCode = jsCode.replace(/Процедура\s+([\wА-я\d_]+)\s*\((.*?)\)/ig, rep);
+    jsCode = jsCode.replace(/КонецПроцедуры/ig, "}");
+    
+    stdcommands.Frntend.ClearMessageWindow.send(); // Очистить окно сообщений.
+    Message(jsCode);
+    
+    return true;
+}
+ 
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Настройка';
+}
+
+ 
 /* **********************************************************
  *  Реализация функционала скрипта.
  * ********************************************************* */

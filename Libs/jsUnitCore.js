@@ -41,6 +41,11 @@ function SetErrorHandler(errorHandler)
     }
 }
 
+function ResetErrorHandler()
+{
+    _callerErrorHandler = null;
+}
+
 function SnegopatThrowException(exception)
 {
     if (_callerErrorHandler)
