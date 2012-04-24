@@ -1,15 +1,15 @@
-$engine JScript
+п»ї$engine JScript
 $uname funcprocpanel
-$dname Панель функ/проц с группировкой по контексту компиляции
+$dname РџР°РЅРµР»СЊ С„СѓРЅРє/РїСЂРѕС† СЃ РіСЂСѓРїРїРёСЂРѕРІРєРѕР№ РїРѕ РєРѕРЅС‚РµРєСЃС‚Сѓ РєРѕРјРїРёР»СЏС†РёРё
 $addin vbs
 $addin global
 $addin stdlib
 $addin stdcommands
 
-// (c) Сосна Евгений <shenja@sosna.zp.ua>
-// Скрипт для показа "списка процедур".
-// В отличии от штатной панели окон показывает список процедур/функций в табличном поле, 
-// сортируя в контексте выполенения процедур НаКлиенте/НаСервере
+// (c) РЎРѕСЃРЅР° Р•РІРіРµРЅРёР№ <shenja@sosna.zp.ua>
+// РЎРєСЂРёРїС‚ РґР»СЏ РїРѕРєР°Р·Р° "СЃРїРёСЃРєР° РїСЂРѕС†РµРґСѓСЂ".
+// Р’ РѕС‚Р»РёС‡РёРё РѕС‚ С€С‚Р°С‚РЅРѕР№ РїР°РЅРµР»Рё РѕРєРѕРЅ РїРѕРєР°Р·С‹РІР°РµС‚ СЃРїРёСЃРѕРє РїСЂРѕС†РµРґСѓСЂ/С„СѓРЅРєС†РёР№ РІ С‚Р°Р±Р»РёС‡РЅРѕРј РїРѕР»Рµ, 
+// СЃРѕСЂС‚РёСЂСѓСЏ РІ РєРѕРЅС‚РµРєСЃС‚Рµ РІС‹РїРѕР»РµРЅРµРЅРёСЏ РїСЂРѕС†РµРґСѓСЂ РќР°РљР»РёРµРЅС‚Рµ/РќР°РЎРµСЂРІРµСЂРµ
 
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
@@ -19,19 +19,26 @@ stdlib.require('SettingsManagement.js', SelfScript);
 global.connectGlobals(SelfScript)
 
 ////////////////////////////////////////////////////////////////////////////////////////
-////{ Макросы
+////{ РњР°РєСЂРѕСЃС‹
 ////
 
-SelfScript.self['macrosОткрыть окно'] = function() {
+SelfScript.self['macrosРћС‚РєСЂС‹С‚СЊ РѕРєРЅРѕ'] = function() {
     GetFuncProcPanel().Show();
 }
-/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
-дважды щелкает мышью по названию скрипта в окне Снегопата. */
-function getDefaultMacros() {
-    return 'Открыть окно';
+
+function getPredefinedHotkeys(predef)
+{
+    predef.setVersion(3)
+    predef.add("РћС‚РєСЂС‹С‚СЊ РѕРєРЅРѕ", "Ctrl + 3")
 }
 
-////} Макросы
+/* Р’РѕР·РІСЂР°С‰Р°РµС‚ РЅР°Р·РІР°РЅРёРµ РјР°РєСЂРѕСЃР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ - РІС‹Р·С‹РІР°РµС‚СЃСЏ, РєРѕРіРґР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ 
+РґРІР°Р¶РґС‹ С‰РµР»РєР°РµС‚ РјС‹С€СЊСЋ РїРѕ РЅР°Р·РІР°РЅРёСЋ СЃРєСЂРёРїС‚Р° РІ РѕРєРЅРµ РЎРЅРµРіРѕРїР°С‚Р°. */
+function getDefaultMacros() {
+    return 'РћС‚РєСЂС‹С‚СЊ РѕРєРЅРѕ';
+}
+
+////} РњР°РєСЂРѕСЃС‹
 
 
 function FuncProcPanel() {
@@ -39,21 +46,20 @@ function FuncProcPanel() {
     FuncProcPanel._instance = this;
     
     this.form = loadScriptForm("scripts\\FuncProcPanel.ssf", this);
-    this.form.КлючСохраненияПоложенияОкна = "FuncProcPanel.js"
+    this.form.РљР»СЋС‡РЎРѕС…СЂР°РЅРµРЅРёСЏРџРѕР»РѕР¶РµРЅРёСЏРћРєРЅР° = "FuncProcPanel.js"
     this.results = this.form.FunctionList;
     this.results.Columns.Add('_method');
-    //Таблица, на основании которой будет делать или дерево или просто список... 
+    //РўР°Р±Р»РёС†Р°, РЅР° РѕСЃРЅРѕРІР°РЅРёРё РєРѕС‚РѕСЂРѕР№ Р±СѓРґРµС‚ РґРµР»Р°С‚СЊ РёР»Рё РґРµСЂРµРІРѕ РёР»Рё РїСЂРѕСЃС‚Рѕ СЃРїРёСЃРѕРє... 
     this.methods = this.results.Copy();
     
     this.watcher = new TextWindowsWatcher();
     this.watcher.startWatch();
     
-    this.isForm = false;
+    this.isForm = false; //РџСЂРёР·РЅР°Рє С„РѕСЂРјС‹ Рё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё СЃС‚СЂРѕРёС‚СЊ РґРµСЂРµРІРѕ.
     this.defaultSettings = {
-        'TreeView'      : false // Группировать результаты поиска по контекстам.
+        'TreeView'      : false // Р“СЂСѓРїРїРёСЂРѕРІР°С‚СЊ СЂРµР·СѓР»СЊС‚Р°С‚С‹ РїРѕРёСЃРєР° РїРѕ РєРѕРЅС‚РµРєСЃС‚Р°Рј.
     };
-    //this.tc = new TextChangesWatcher(this.form.ЭлементыФормы.ТекстФильтра, 3, this.viewFunctionList);
-    
+        
     this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
     this.settings.LoadSettings();
     this.settings.ApplyToForm(this.form);
@@ -71,11 +77,8 @@ function FuncProcPanel() {
 }
 
 FuncProcPanel.prototype.Show = function () {
-    
+
     this.form.Open();
-    //this.tc.start();
-    //this.tc.stop();
-    
 }
 
 FuncProcPanel.prototype.Close = function () {
@@ -96,11 +99,11 @@ FuncProcPanel.prototype.GetList = function () {
     this.methods.Rows.Clear();
     this.targetWindow = this.watcher.getActiveTextWindow();
     
-    // Проверим, что это Форма.
-    // Свойство mdProp показывает, к какому свойству объекта метаданных относится окно
+    // РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ СЌС‚Рѕ Р¤РѕСЂРјР°.
+    // РЎРІРѕР№СЃС‚РІРѕ mdProp РїРѕРєР°Р·С‹РІР°РµС‚, Рє РєР°РєРѕРјСѓ СЃРІРѕР№СЃС‚РІСѓ РѕР±СЉРµРєС‚Р° РјРµС‚Р°РґР°РЅРЅС‹С… РѕС‚РЅРѕСЃРёС‚СЃСЏ РѕРєРЅРѕ
     //debugger
-    this.isForm = (this.targetWindow.textWindow.mdProp.name(1) == "Форма")
-
+    this.isForm = (this.targetWindow.textWindow.mdProp.name(1) == "Р¤РѕСЂРјР°")
+    var contextCache = v8New("Map");
     cnt = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
     vtModules = cnt.getMethodsTable();
     for (var i = 0; i<vtModules.Count(); i++) {
@@ -110,8 +113,14 @@ FuncProcPanel.prototype.GetList = function () {
         newRow.Method = thisRow.Name;
         newRow.Context =this.isForm?thisRow.Context:" ";
         newRow._method = thisRow._method;
+        contextCache.Insert(newRow.Context , "1"); 
     }
-    this.methods.Rows.Sort("Context, LineNo");
+    this.form.TreeView = (this.isForm && (contextCache.Count()>1))
+    
+    //FIXME: РґРѕР±Р°РІРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєСѓ СЃРѕСЂС‚РёСЂРѕРІРєРё РїРѕ Р°Р»С„Р°РІРёС‚Сѓ/РїРѕСЂСЏРґРєСѓ РѕР±СЉСЏРІР»РµРЅРёСЏ...
+    this.methods.Rows.Sort("Context, LineNo"); //РЎРѕСЂС‚РёСЂРѕРІРєР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РїРѕ РїРѕСЂСЏРґРєСѓ.
+    
+    this.form.CurrentControl=this.form.Controls.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°;
     
 }
 
@@ -120,20 +129,23 @@ FuncProcPanel.prototype.beforeExitApp = function () {
 }
 FuncProcPanel.prototype.OnOpen = function() {
     this.GetList();
-    this.viewFunctionList(this.ТекстФильтра);
+    this.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР° = this.lastFilter;
+    this.viewFunctionList(this.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°);
     events.connect(Designer, "onIdle", this)
 }
 FuncProcPanel.prototype.OnClose= function() {
     this.results.Rows.Clear();
+    this.methods.Rows.Clear();
+    this.groupsCache.Clear();
+    this.lastFilter='';
+    this.isForm=false;
     events.disconnect(Designer, "onIdle", this)
-    //this.tc.stop();
 }
 FuncProcPanel.prototype.CmdBarTreeView = function (Button) {
     this.form.TreeView = !this.form.TreeView;
     Button.val.Check = this.form.TreeView;
-    //this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
-    //this.switchView(this.form.TreeView);
-    this.viewFunctionList(this.ТекстФильтра);
+    this.form.Controls.FunctionList.Columns.Method.ShowHierarchy = this.form.TreeView;
+    this.viewFunctionList(this.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°);
 }
 FuncProcPanel.prototype.expandTree = function () {
     if (this.form.TreeView)
@@ -165,13 +177,11 @@ FuncProcPanel.prototype.Filter = function(filterString){
         this.viewFunctionList(filterString);
     }
 }
+
 FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
     
-    //FIXME: тут undefined не должно быть...
-    
-    currentFilter = (newFilter!=undefined)?newFilter:'' //Шаманство, надо у Орефкова спросить, почему тут undefined 
-    //Message(currentFilter)
-    //debugger;
+    //FIXME: С‚СѓС‚ undefined РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ... РЅРѕ РїРѕС‡РµРјСѓ-С‚Рѕ РµСЃС‚СЊ.
+    currentFilter = (newFilter!=undefined)?newFilter:'' //РЁР°РјР°РЅСЃС‚РІРѕ, РЅР°РґРѕ Сѓ РћСЂРµС„РєРѕРІР° СЃРїСЂРѕСЃРёС‚СЊ, РїРѕС‡РµРјСѓ С‚СѓС‚ undefined 
     
     this.results.Rows.Clear();
     this.groupsCache.Clear();
@@ -201,7 +211,7 @@ FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
         newRow.RowType = thisRow._method.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
     }
     this.expandTree();
-    this.form.Controls.FunctionList.Columns.Context.Visible = (!this.form.TreeView && this.isForm);
+    this.form.Controls.FunctionList.Columns.Context.Visible = !this.form.TreeView;
 }
 
 FuncProcPanel.prototype.CmdBarActivate = function(Button){
@@ -222,23 +232,17 @@ FuncProcPanel.prototype.goToLine = function (row) {
  
     if (!this.targetWindow.IsActive())
     {
-        DoMessageBox("Окно, для которого выполнялся поиск, было закрыто!\nОкно поиска с результатами стало не актуально и будет закрыто.");
-        //this.clearSearchResults();
+        DoMessageBox("РћРєРЅРѕ, РґР»СЏ РєРѕС‚РѕСЂРѕРіРѕ РїРѕРєР°Р·С‹РІР°Р»СЃСЏ СЃРїРёСЃРѕРє, Р±С‹Р»Рѕ Р·Р°РєСЂС‹С‚Рѕ!\nРћРєРЅРѕ СЃ СЂРµР·СѓР»СЊС‚Р°С‚Р°РјРё СЃС‚Р°Р»Рѕ РЅРµ Р°РєС‚СѓР°Р»СЊРЅРѕ Рё Р±СѓРґРµС‚ Р·Р°РєСЂС‹С‚Рѕ.");
         this.Close();
         return;
     }
  
-    // Переведем фокус в окно текстового редактора.
+    // РџРµСЂРµРІРµРґРµРј С„РѕРєСѓСЃ РІ РѕРєРЅРѕ С‚РµРєСЃС‚РѕРІРѕРіРѕ СЂРµРґР°РєС‚РѕСЂР°.
     this.activateEditor();
 
-    // Найдем позицию найденного слова в строке.
-    //var searchPattern = this.form.WholeWords ? "(?:[^\\w\\dА-я]|^)" + row.ExactMatch + "([^\\w\\dА-я]|$)" : StringUtils.addSlashes(row.ExactMatch); 
-    //var re = new RegExp(searchPattern, 'g');
-    //var matches = re.exec(row.FoundLine);
-    
-    // Установим выделение на найденное совпадение со строкой поиска.
-    this.targetWindow.SetCaretPos(row.LineNo, 1);
-    
+    // РЈСЃС‚Р°РЅРѕРІРёРј РІС‹РґРµР»РµРЅРёРµ РЅР° РЅР°Р№РґРµРЅРЅРѕРµ СЃРѕРІРїР°РґРµРЅРёРµ СЃРѕ СЃС‚СЂРѕРєРѕР№ РїРѕРёСЃРєР°.
+    this.targetWindow.SetCaretPos(row.LineNo+1, 1);
+    this.targetWindow.SetSelection(row.LineNo+1, 1, row.LineNo+1, 8);
 }
 
 FuncProcPanel.prototype.FuncProcOnRowOutput = function(Control, RowAppearance, RowData) {
@@ -263,9 +267,9 @@ FuncProcPanel.prototype.FuncProcOnRowOutput = function(Control, RowAppearance, R
     
 }
 
-FuncProcPanel.prototype.FuncProcOnSelection = function(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка) {
-    this.goToLine(ВыбраннаяСтрока.val);
-    СтандартнаяОбработка.val = false; // Это для того чтобы после нажатия на строку курсор не уходит с табличного поля, и при новой активизации формы можно было курсором посмотреть другие значения
+FuncProcPanel.prototype.FuncProcOnSelection = function(Р­Р»РµРјРµРЅС‚, Р’С‹Р±СЂР°РЅРЅР°СЏРЎС‚СЂРѕРєР°, РљРѕР»РѕРЅРєР°, РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏРћР±СЂР°Р±РѕС‚РєР°) {
+    this.goToLine(Р’С‹Р±СЂР°РЅРЅР°СЏРЎС‚СЂРѕРєР°.val);
+    РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏРћР±СЂР°Р±РѕС‚РєР°.val = false; // Р­С‚Рѕ РґР»СЏ С‚РѕРіРѕ С‡С‚РѕР±С‹ РїРѕСЃР»Рµ РЅР°Р¶Р°С‚РёСЏ РЅР° СЃС‚СЂРѕРєСѓ РєСѓСЂСЃРѕСЂ РЅРµ СѓС…РѕРґРёС‚ СЃ С‚Р°Р±Р»РёС‡РЅРѕРіРѕ РїРѕР»СЏ, Рё РїСЂРё РЅРѕРІРѕР№ Р°РєС‚РёРІРёР·Р°С†РёРё С„РѕСЂРјС‹ РјРѕР¶РЅРѕ Р±С‹Р»Рѕ РєСѓСЂСЃРѕСЂРѕРј РїРѕСЃРјРѕС‚СЂРµС‚СЊ РґСЂСѓРіРёРµ Р·РЅР°С‡РµРЅРёСЏ
 }
 
 FuncProcPanel.prototype.onIdle = function(){
@@ -274,74 +278,113 @@ FuncProcPanel.prototype.onIdle = function(){
 
 FuncProcPanel.prototype.updateList = function()
 {
-    // Получим текущий текст из поля ввода
+    // РџРѕР»СѓС‡РёРј С‚РµРєСѓС‰РёР№ С‚РµРєСЃС‚ РёР· РїРѕР»СЏ РІРІРѕРґР°
     FuncPanel = GetFuncProcPanel();
-    vbs.var0 = this.form.Controls.ТекстФильтра;
+    vbs.var0 = this.form.Controls.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°;
     vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
-    this.form.Controls.ТекстФильтра.УстановитьГраницыВыделения(1, 1, 1, 10000)
-    var newText = this.form.Controls.ТекстФильтра.ВыделенныйТекст.replace(/^\s*|\s*$/g, '')
-    this.form.Controls.ТекстФильтра.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
+    this.form.Controls.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°.РЈСЃС‚Р°РЅРѕРІРёС‚СЊР“СЂР°РЅРёС†С‹Р’С‹РґРµР»РµРЅРёСЏ(1, 1, 1, 10000)
+    var newText = this.form.Controls.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°.Р’С‹РґРµР»РµРЅРЅС‹Р№РўРµРєСЃС‚.replace(/^\s*|\s*$/g, '')
+    this.form.Controls.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°.РЈСЃС‚Р°РЅРѕРІРёС‚СЊР“СЂР°РЅРёС†С‹Р’С‹РґРµР»РµРЅРёСЏ(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
     this.Filter(newText);
 }
-// Класс для отслеживания изменения текста в поле ввода, для замены
-// события АвтоПодборТекста. Штатное событие плохо тем, что не возникает
-// - при установке пустого текста
-// - при изменении текста путем вставки/вырезания из/в буфера обмена
-// - при отмене редактирования (Ctrl+Z)
-// не позволяет регулировать задержку
-// Параметры конструктора
-// field - элемент управления поле ввода, чье изменение хотим отслеживать
-// ticks - величина задержки после ввода текста в десятых секунды (т.е. 3 - 300 мсек)
-// invoker - функция обратного вызова, вызывается после окончания изменения текста,
-//  новый текст передается параметром функции
-function TextChangesWatcher(field, ticks, invoker)
-{
-    this.ticks = ticks
-    this.invoker = invoker
-    this.field = field
-}
 
-// Начать отслеживание изменения текста
-TextChangesWatcher.prototype.start = function()
-{
-    this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
-    this.noChangesTicks = 0
-    this.timerID = createTimer(100, this, "onTimer")
-}
-// Остановить отслеживание изменения текста
-TextChangesWatcher.prototype.stop = function()
-{
-    killTimer(this.timerID)
-}
-// Обработчик события таймера
-TextChangesWatcher.prototype.onTimer = function()
-{
-    // Получим текущий текст из поля ввода
-    vbs.var0 = this.field
-    vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
-    this.field.УстановитьГраницыВыделения(1, 1, 1, 10000)
-    var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
-    this.field.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
-    // Проверим, изменился ли текст по сравению с прошлым разом
-    if(newText != this.lastText)
+FuncProcPanel.prototype.moveRowCursor = function (forward) {
+var curRow = this.form.Controls.FunctionList.РўРµРєСѓС‰Р°СЏРЎС‚СЂРѕРєР°
+    if (!this.results.Rows.Count())
+        return;
+     
+    var row;     
+    var curRow = this.form.Controls.FunctionList.CurrentRow;
+    
+    if (!curRow)
     {
-        // изменился, запомним его
-        this.lastText = newText
-        this.noChangesTicks = 0
+        row = this.results.Rows.Get(0);
+        if (this.form.TreeView)
+            row = row.Rows.Get(0);
+            
+        this.form.Controls.FunctionList.CurrentRow = row;     
+        return;
     }
-    else
-    {
-        // Текст не изменился. Если мы еще не сигнализировали об этом, то увеличим счетчик тиков
-        if(this.noChangesTicks <= this.ticks)
+
+    function getNextRow(curRow, rows) {
+        
+        var curIndex = rows.indexOf(curRow);
+        
+        // РћР±РµСЃРїРµС‡РёРј РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ РїСЂРѕР»РёСЃС‚С‹РІР°С‚СЊ СЂРµР·СѓР»СЊС‚Р°С‚С‹ РїРѕРёСЃРєР° РїРѕ РєСЂСѓРіСѓ.
+        if (forward && curIndex == rows.Count()-1)
+            curIndex = -1;
+        else if (!forward && curIndex == 0)
+            curIndex = rows.Count();
+            
+        return rows.Get(curIndex + (forward ? 1 : -1));
+    }
+    
+    if (this.form.TreeView)
+    {        
+        if (curRow.Parent)
         {
-            if(++this.noChangesTicks > this.ticks)  // Достигли заданного количества тиков.
-                this.invoker(newText)               // Отрапортуем
+            var rows = curRow.Parent.Rows;
+            var curIndex = rows.IndexOf(curRow);
+            
+            if (forward && curIndex == rows.Count()-1)
+            {
+                var groupRow = getNextRow(curRow.Parent, this.results.Rows);
+                row = groupRow.Rows.Get(0);
+            }
+            else if (!forward && curIndex == 0)
+            {
+                var groupRow = getNextRow(curRow.Parent, this.results.Rows);
+                row = groupRow.Rows.Get(groupRow.Rows.Count() - 1);            
+            }
+            else
+            {
+                row = getNextRow(curRow, rows);
+            }
+        }
+        else
+        {
+            if (forward)
+            {
+                row = curRow.Rows.Get(0); 
+            }
+            else 
+            {
+                var groupRow = getNextRow(curRow, this.results.Rows);
+                row = groupRow.Rows.Get(groupRow.Rows.Count() - 1);
+            }
         }
     }
+    else
+    {               
+        row = getNextRow(curRow, this.results.Rows);
+    }
+    
+    this.form.Controls.FunctionList.CurrentRow = row;     
+ }
+
+FuncProcPanel.prototype.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°Р РµРіСѓР»РёСЂРѕРІР°РЅРёРµ = function(Р­Р»РµРјРµРЅС‚, РќР°РїСЂР°РІР»РµРЅРёРµ, РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏРћР±СЂР°Р±РѕС‚РєР°) {
+    
+    var forward = (-1 == РќР°РїСЂР°РІР»РµРЅРёРµ.val);
+    this.moveRowCursor(forward);
+    
+    РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏРћР±СЂР°Р±РѕС‚РєР°.val = false
 }
 
+FuncProcPanel.prototype.РўРµРєСЃС‚Р¤РёР»СЊС‚СЂР°РћРєРѕРЅС‡Р°РЅРёРµР’РІРѕРґР°РўРµРєСЃС‚Р° = function(Р­Р»РµРјРµРЅС‚, РўРµРєСЃС‚, Р—РЅР°С‡РµРЅРёРµ, РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏРћР±СЂР°Р±РѕС‚РєР°){
+    //Message("Р­Р»РµРјРµРЅС‚, РўРµРєСЃС‚, Р—РЅР°С‡РµРЅРёРµ, РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏРћР±СЂР°Р±РѕС‚РєР°");
+    var curRow = this.form.Controls.FunctionList.РўРµРєСѓС‰Р°СЏРЎС‚СЂРѕРєР°;
+    if (curRow==undefined) return
+    if (!curRow)
+        this.goToLine(curRow)
+    
+}
+FuncProcPanel.prototype.FunctionListРџСЂРёРђРєС‚РёРІРёР·Р°С†РёРёРЎС‚СЂРѕРєРё = function(Р­Р»РµРјРµРЅС‚){
+    //Message("FunctionListРџСЂРёРђРєС‚РёРІРёР·Р°С†РёРёРЎС‚СЂРѕРєРё");
+}
+
+
 ////////////////////////////////////////////////////////////////33////////////////////////
-////{ TextWindowsWatcher - отслеживает активизацию текстовых окон и запоминает последнее.
+////{ TextWindowsWatcher - РѕС‚СЃР»РµР¶РёРІР°РµС‚ Р°РєС‚РёРІРёР·Р°С†РёСЋ С‚РµРєСЃС‚РѕРІС‹С… РѕРєРѕРЅ Рё Р·Р°РїРѕРјРёРЅР°РµС‚ РїРѕСЃР»РµРґРЅРµРµ.
 ////
 
 function TextWindowsWatcher() {
@@ -392,5 +435,6 @@ RowTypes = {
     'ProcGroup'     : 1,
     'FuncGroup'     : 2
 }
+
 events.connect(Designer, "beforeExitApp", GetFuncProcPanel());
 ////}
