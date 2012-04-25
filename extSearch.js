@@ -455,10 +455,7 @@ ExtSearch.prototype.OnOpen = function () {
     if (!this.getRegExpEditorScriptPath())
         this.form.Controls.Query.ChoiceButton = false;
     
-    var ctr = this.form.Controls;
-    ctr.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;    
-    ctr.CmdBar.Buttons.TreeView.Check = this.form.TreeView;
-    this.form.Controls.SearchResults.Columns.Method.Visible = !this.form.TreeView;
+    this.SetControlsVisible();
 }
 
 ExtSearch.prototype.OnClose = function () {
@@ -510,11 +507,15 @@ ExtSearch.prototype.beforeExitApp = function () {
 ExtSearch.prototype.IsRegExpChanged = function(Элемент) {
     if (this.form.IsRegExp)
         this.form.WholeWords = false;
+
+    this.SetControlsVisible()
 }
 
 ExtSearch.prototype.WholeWordsChanged = function(Элемент) {
     if (this.form.WholeWords)
         this.form.IsRegExp = false;
+
+    this.SetControlsVisible();
 }
 
 ExtSearch.prototype.QueryStartChoice = function (Control, DefaultHandler) {
@@ -586,7 +587,7 @@ ExtSearch.prototype.switchView = function (setTreeView) {
             }
         }
     }    
-    this.form.Controls.SearchResults.Columns.Method.Visible = !setTreeView;
+    this.SetControlsVisible()
 }
 
 ExtSearch.prototype.CmdBarTreeView = function (Button) {
@@ -594,6 +595,16 @@ ExtSearch.prototype.CmdBarTreeView = function (Button) {
     Button.val.Check = this.form.TreeView;
     this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
     this.switchView(this.form.TreeView);
+}
+
+ExtSearch.prototype.SetControlsVisible = function() {
+    
+    var ctr = this.form.Controls;
+    ctr.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;    
+    ctr.CmdBar.Buttons.TreeView.Check = this.form.TreeView;
+    this.form.Controls.SearchResults.Columns.Method.Visible = !this.form.TreeView;
+    this.form.Controls.SearchResults.Columns.ExactMatch.Visible = this.form.IsRegExp;
+
 }
 
 ////} ExtSearch
