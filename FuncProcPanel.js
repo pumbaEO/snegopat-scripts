@@ -74,6 +74,23 @@ function FuncProcPanel() {
         'Func': this.form.Controls.PicFunc.Picture,
         'Proc': this.form.Controls.PicProc.Picture
     }
+
+    //Возьмем пример у Орефкова из wndpanel
+    this.needHide = false;
+
+    this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
+        '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+
+}
+FuncProcPanel.prototype.InvisiblePanelSelectAndHide = function(Button) {
+
+    this.goToLine(this.form.Controls.FunctionList.CurrentRow)
+    this.needHide = true;
+}
+
+FuncProcPanel.prototype.FunctionListMethodПриИзменении = function(Элемент){
+    this.goToLine(this.form.Controls.FunctionList.CurrentRow);
+    this.needHide = true;
 }
 
 FuncProcPanel.prototype.Show = function () {
@@ -129,8 +146,8 @@ FuncProcPanel.prototype.beforeExitApp = function () {
 }
 FuncProcPanel.prototype.OnOpen = function() {
     this.GetList();
-    this.ТекстФильтра = this.lastFilter;
-    this.viewFunctionList(this.ТекстФильтра);
+    this.form.ТекстФильтра = '';
+    this.viewFunctionList(this.form.ТекстФильтра);
     events.connect(Designer, "onIdle", this)
 }
 FuncProcPanel.prototype.OnClose= function() {
@@ -270,10 +287,19 @@ FuncProcPanel.prototype.FuncProcOnRowOutput = function(Control, RowAppearance, R
 FuncProcPanel.prototype.FuncProcOnSelection = function(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка) {
     this.goToLine(ВыбраннаяСтрока.val);
     СтандартнаяОбработка.val = false; // Это для того чтобы после нажатия на строку курсор не уходит с табличного поля, и при новой активизации формы можно было курсором посмотреть другие значения
+    this.needHide = true; 
 }
 
 FuncProcPanel.prototype.onIdle = function(){
     this.updateList();
+    if(this.needHide)
+    {
+        this.needHide = false
+        // Теперь спрячем наше окно.
+        // Для прячущегося окна нельзя делать form.Close, т.к. тогда оно пропадет совсем, не оставив кнопки на панели
+        if(this.form.СостояниеОкна != ВариантСостоянияОкна.Прячущееся)
+            this.form.Close()
+    }
 }
 
 FuncProcPanel.prototype.updateList = function()
@@ -372,10 +398,10 @@ FuncProcPanel.prototype.ТекстФильтраРегулирование = fun
 
 FuncProcPanel.prototype.ТекстФильтраОкончаниеВводаТекста = function(Элемент, Текст, Значение, СтандартнаяОбработка){
     //Message("Элемент, Текст, Значение, СтандартнаяОбработка");
-    var curRow = this.form.Controls.FunctionList.ТекущаяСтрока;
-    if (curRow==undefined) return
-    if (!curRow)
-        this.goToLine(curRow)
+    //var curRow = this.form.Controls.FunctionList.ТекущаяСтрока;
+    //if (curRow==undefined) return
+    //if (!curRow)
+    //    this.goToLine(curRow)
     
 }
 FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = function(Элемент){
