@@ -258,6 +258,12 @@ function macrosПереключитьВидимостьОкнаСвойств()
     windows.propsVisible = !windows.propsVisible
 }
 
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Показать';
+}
+
 function updateWndList()
 {
     // Получим текущий текст из поля ввода
