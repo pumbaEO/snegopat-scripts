@@ -228,15 +228,15 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
             lastGroup.FoundLine = "Раздел основной программы";
     }
     
-    if(fromHotKey == true)
+    if (fromHotKey == true)
     { 
         // Для того чтобы курсор не прыгал при поиске текущего слова, 
         // тут бы еще добавить чтобы активизировалась именно текущая строка
         this.form.Open();
-        this.form.CurrentControl=this.form.Controls.SearchResults;              
-        var curLineRow = this.form.SearchResults.Rows.Find(this.targetWindow.GetCaretPos().beginRow, "LineNo");
+        this.form.CurrentControl=this.form.Controls.SearchResults;
+        var curLineRow = this.getRowForTheCurrentLine();  
         if (curLineRow)
-            this.form.Controls.SearchResults.CurrentRow = curLineRow;
+            this.form.Controls.SearchResults.CurrentRow = curLineRow;            
     }
     else
     {
@@ -245,6 +245,12 @@ ExtSearch.prototype.runSearch = function (fromHotKey) {
         else
             this.goToLine(this.results.Rows.Get(0));        
     }
+}
+
+ExtSearch.prototype.getRowForTheCurrentLine = function() {
+    var rows = this.results.Rows;
+    var curLineNo = this.targetWindow.GetCaretPos().beginRow;
+    return  this.form.TreeView ? rows.Find(curLineNo, "LineNo", true) : rows.Find(curLineNo, "LineNo", true);
 }
 
 RowTypes = {
