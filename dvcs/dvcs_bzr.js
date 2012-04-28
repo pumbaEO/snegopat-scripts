@@ -195,6 +195,7 @@ function bzr_getFileAtRevision(pathToFile, rev){
 
 function bzr_commit(pathToFile, message) {
     var rootCatalog = bzr_getRootCatalog(pathToFile);
+    var tempfile = GetTempFileName("txt");
     var f = v8New("File", pathToFile);
     if (f.IsDirectory()) {
         pathToFile = ''
@@ -203,11 +204,15 @@ function bzr_commit(pathToFile, message) {
     }
     var TextDoc = v8New("TextDocument");
     TextDoc.AddLine('cd /d "'+rootCatalog+'"')
-    TextDoc.AddLine('bzr commit ' +pathToFile+' -m "'+message+'"');
+    TextDoc.AddLine('bzr commit ' +pathToFile+' --file="'+tempfile+'"');
+    TextDoc.AddLine('exit');
+    
     TextDoc.Write(PathToBat, 'cp866');
     
     TextDoc.Clear();
-    ErrCode = WshShell.Run('"'+PathToBat+'"', 0, 1)
+    TextDoc.SetText(message);
+    TextDoc.Write(tempfile, 'utf-8');
+    ErrCode = WshShell.Run('"'+PathToBat+'"', 1, 1)
     return ErrCode
 } //bzr_commit
 
@@ -340,46 +345,22 @@ function bzr_getInfo(pathToFile, ver) {
 
 function bzr_getListBranch(pathToFile, index) {
     
-    result = {"valuelist":v8New("ValueList"), "index":-1}
-
-/*     var rootCatalog = fossil_getRootCatalog(pathToFile);
-    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
-    var PathToBatFossil = TempDir + "fossilTrue.bat"
+    // для bzr возвращать будет отмену, при этом вызывать bzr qcoloswitch для каталога. 
+    var result = false;
+    var rootCatalog = bzr_getRootCatalog(pathToFile);
     var TextDoc = v8New("TextDocument");
-    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
-    //var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
-    TextDoc.AddLine(PathToFossil+' branch  > "'+PathToFossilOutput+'"')
-    TextDoc.Write(PathToBatFossil, 'cp866');
-    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-    TextDoc.Clear();
-    TextDoc.Read(PathToFossilOutput, "UTF-8");
-    var re = new RegExp(/(\s*|\*\s)(\S*)\n/g);
-    var r = TextDoc.ПолучитьТекст();
-    var matches;
-    var index=0;
-    //debugger;
-    while ((matches = re.exec(r)) != null)
-    {
-        result['valuelist'].add(matches[2], matches[2])
-        if (matches[1].indexOf("\*")!=-1) result["index"]=index;
-        index++;
-    } */
+    TextDoc.AddLine('cd /d "'+rootCatalog+'"');
+    TextDoc.AddLine('bzr qcoloswitch');
+    TextDoc.AddLine('exit');
+    TextDoc.Write(PathToBat, 'cp866');
+    ErrCode = WshShell.Run('"'+PathToBat+'"', 0, 1)
+    
     return result;
     
 }
 
 function bzr_swithBranch (pathToFile, branch) {
-
-    /* var rootCatalog = fossil_getRootCatalog(pathToFile);
-    var PathToFossilOutput = TempDir + "fossilstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
-    var PathToBatFossil = TempDir + "fossilTrue.bat"
-    var TextDoc = v8New("TextDocument");
-    TextDoc.AddLine('cd /d "'+rootCatalog+'"')
-    //var ПутьОтносительноКорневогоКаталога = pathToFile.replace(rootCatalog+'\\', '');
-    TextDoc.AddLine(PathToFossil+' update '+ branch +' > "'+PathToFossilOutput+'"');
-    TextDoc.Write(PathToBatFossil, 'cp866');
-    ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
-    TextDoc.Clear(); */
+    
     return true;
 }
 
@@ -438,10 +419,10 @@ function Backend_bzr(command, param1, param2) {
         result = bzr_getInfo(param1, param2);
         break
     case "GETLISTBRANCH":
-        result = bzr_getListBranch(param1); //возвращаем result {"valuelist":v8New("ValueList"), "index": индекс ветки текущей}
+        result = bzr_getListBranch(param1); //возвращаем result {"valuelist":v8New("ValueList"), "index": индекс ветки текущей} или false...
         break
     case "SWITHBRANCH":
-        result = bzr_swithBranch(param1, param2); //выполняет действие... возвращает true & false
+        result = bzr_swithBranch(param1, param2); //выполняет действие... возвращает true || false
         break;
 
     }

@@ -86,7 +86,7 @@ function SnippetsManager() {
 SnippetsManager.prototype.loadTemplates = function() {
     var stFiles = this.settings.current.TemplateFilesList;
     for(var i=0; i<stFiles.Count(); i++)
-        this.loadStFile(stFiles.Get(i).Value);
+        this.loadStFile(getAbsolutePath(stFiles.Get(i).Value));
 }
 
 SnippetsManager.prototype.reloadTemplates = function() {
@@ -626,35 +626,27 @@ SettingsManagerDialog.prototype.BeforeClose = function(Cancel, StandardHandler) 
 
 ////} SettingsManagerDialog 
 
-////{ Вспомогательные функции для работы с настройками. 
+////{ Вспомогательные функции. 
 function getDefaultTemplatesList() {
     var tplList = v8New('ValueTable');
     tplList.Columns.Add('Value');
     return tplList;
 }
 
-function __convertSettingsFromValueListToValueTable() {
- 
-    /* Изначально настройки хранились в СпискеЗначений. 
-    Возникла необходимость переделать на ТаблицуЗначений.
-    Данная процедура выполняет конвертацию. */
-    
-    var pflSnippets = SelfScript.uniqueName + '/TemplateFilesList';
-    var defaultTplList = getDefaultTemplatesList();
-    
-    profileRoot.createValue(SelfScript.name, defaultTplList, pflSnegopat);    
-    var tplList = profileRoot.getValue(pflSnippets);
-    
-    if (toV8Value(tplList).typeName() == 'ValueList')
+function getAbsolutePath(path) {
+
+    // Путь относительный?
+    if (path.match(/^\.{1,2}[\/\\]/))
     {
-        for(var i=0; i<tplList.Count(); i++)
-            defaultTplList.Add().Value = tplList.Get(i).Value; 
+        // Относительные пути должны задаваться относительно главного каталога Снегопата.
+        var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
+        return mainFolder + path;
     }
     
-    profileRoot.setValue(pflSnippets, defaultTplList);
-
+    return path;
 }
-////} Вспомогательные функции для работы с настройками. 
+
+////} Вспомогательные функции. 
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Startup
@@ -665,10 +657,6 @@ function GetSnippetsManager() {
         
     return SnippetsManager._instance;
 }
-
-//{ Конвертация значения настройки TemplateFilesList из списка значений в таблицу значений.
-__convertSettingsFromValueListToValueTable();
-//}
 
 events.connect(snegopat, "onProcessTemplate", GetSnippetsManager());
 
