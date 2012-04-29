@@ -24,14 +24,12 @@ function macrosTestAnalyseText1() {
         + "Перем ПеременнаяМодуля;\n\n"
         + "Перем ЕщеОднаПеременная;\n"
         + "Результат = МояФункция();\n"
-    debugger;
-    var cnt = SyntaxSpell.SpellCheckerText(moduleText);
-        
-    //Message(cnt.ModuleVars.join(','));
-            
-    assertEquals('Неправильно определено количество слов!', 6, cnt.Words.length);
+    //debugger;
+    //var cnt = SyntaxSpell.SpellCheckerText(moduleText);
+	var cnt = GetSpellChecker()
+    var results = cnt.CheckWords({"ПеременнаяМодуля":false});
     
-    assertEquals('Неправильно определено количество словоформ!', 10, cnt.WordsWraps.length);
+    assertEquals('Неправильная проверка орфографии!', false, results["ПеременнаяМодуля"]);
     
 }
 

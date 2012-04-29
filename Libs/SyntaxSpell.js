@@ -16,29 +16,83 @@ $addin stdlib
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
-//// Пример работы:
-//// Для строки: Процедура МаяСуперПроцедура(Знач Тест) 
-//// должны на первых порах вернуть соответсвие
-//// [Процедура]
-////        [Процедура]
-////            {"Процедура"}  //будет результат проверки
-////[МаяСуперПроцедура]
-////    [Мая]
-////        {"Моя", "Мой"}
-////    [Супер]
-////        {"Супер"}
-////    [Процедура]
-////        {"Процедура"} и т.д. 
+stdlib.require('SettingsManagement.js', SelfScript);
+//global.connectGlobals(SelfScript)
+
+var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
+var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
+
+SelfScript.Self['macrosНастройка'] = function () {
+    var dsForm = new NotifySendSettingsForm(settings);
+    dsForm.ShowDialog();
+}
+
+function getDefaultMacros() {
+    return "Настройка";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ NotifySend
 ////
-// а дальше уже в форме нарисем дерево для выбора варианта и замены. 
+function GetSpellChecker() {
+    return new _SpellChecker(settings);
+}
 
-SyntaxSpell = {};
+function _SpellChecker(settings) {
+    this.settings = { 
+                    'provider': ""  
+                    }
+       settings.ApplyToForm(this.settings);
+	   
+	this.ServiceManager = null;
+	/* this.Парам=null;
+	this.ПроверкаОрфографии=null;
+	this.Локал=null; */
+	this.ПустойМассив = new Array();
+	this.Connect()
+}
+_SpellChecker.prototype.Connect = function(){
+	this.ServiceManager = new ActiveXObject('com.sun.star.ServiceManager');
+	this.Парам=this.ServiceManager.Bridge_GetStruct('com.sun.star.beans.PropertyValue');
+	this.ПроверкаОрфографии=this.ServiceManager.createInstance("com.sun.star.linguistic2.SpellChecker");
+	this.Локал=this.ServiceManager.Bridge_GetStruct('com.sun.star.lang.Locale');
+	this.Локал.Language = "ru";
+    this.Локал.Country = "RU";
+}
 
+_SpellChecker.prototype.CheckWords = function(words) {
+	var results = {};
+	this.ПустойМассив = new Array();
+	for (key in words){
+		results[key] = (this.ПроверкаОрфографии.isValid(key,this.Локал,this.ПустойМассив)==0)
+	}
+	return results
+}
+_SpellChecker.prototype.getAlternatives = function(words) {
+	var results = {};
+	for (key in words){
+		Альтернативы=new VBArray(this.ПроверкаОрфографии.spell(key,this.Локал,this.ПустойМассив).getAlternatives());
+		var alternative = new Array();
+        for(ii=Альтернативы.lbound(1); ii<Альтернативы.ubound(1); ii++) {
+			alternative.push(Альтернативы.getItem(ii));
+        }
+		results[key] = alternative;
+	}
+	return results
+	
+}
+
+
+_SpellChecker.prototype.ConnectLibreOffice = function(){
+	
+}
+/* SyntaxSpell = {};
+ */
 /* SyntaxSpell.AnalyseTextDocument = function (textWindow) {
     return new _1CModule(textWindow)
 } */
 
-SyntaxSpell.WrapWord = function(word, prefix) {
+/* SyntaxSpell.WrapWord = function(word, prefix) {
     var list = {}
     var str = word;
     if (prefix==undefined) 
@@ -61,8 +115,8 @@ SyntaxSpell.WrapWord = function(word, prefix) {
 SyntaxSpell.Create1CSpellDescription = function() {
     return new _1CSpellDescription()
 }
-//Возвращаем список слов неправильных...
-SyntaxSpell.SpellCheckerText = function (sourceCode) {
+ *///Возвращаем список слов неправильных...
+/* SyntaxSpell.SpellCheckerText = function (sourceCode) {
     
     var Lines = sourceCode.split("\n");
     
@@ -89,7 +143,7 @@ SyntaxSpell.SpellCheck = function(word) {
     analyse.push("Два")
     return analyse
 }
-
+ */
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ _1CWordWrap
 
@@ -280,3 +334,18 @@ if(!Array.prototype.indexOf) {
 КонецПроцедуры */
 
 /////}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Start up
+////
+
+settings = SettingsManagement.CreateManager('SpellChecker', { 
+                    'provider': "libreoffice"  //word, libreoffice, aspell, internet Yandex... 
+                    })
+settings.LoadSettings();
+
+////
+////} Start up
+////////////////////////////////////////////////////////////////////////////////////////
