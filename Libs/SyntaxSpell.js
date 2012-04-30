@@ -17,18 +17,29 @@ $addin stdlib
 
 
 stdlib.require('SettingsManagement.js', SelfScript);
-//global.connectGlobals(SelfScript)
+stdlib.require('TextWindow.js', SelfScript);
+global.connectGlobals(SelfScript)
 
 var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
-SelfScript.Self['macrosНастройка'] = function () {
-    var dsForm = new NotifySendSettingsForm(settings);
-    dsForm.ShowDialog();
+SelfScript.Self['macrosПроверкаВыделенногоТекста'] = function () {
+    //var dsForm = new NotifySendSettingsForm(settings);
+    //dsForm.ShowDialog();
+    var wnd = GetTextWindow();    
+    var text = "";
+    if (wnd) 
+        text = wnd.GetSelectedText();
+    //var  text ="Текст русский с ошибками \n"
+    //+"Процедура МояСупперПроцедура ( Знач ПеременнаяАшибка)";
+    //debugger;
+    spell = GetSpellChecker();
+    spell.SpellText(text);
+    
 }
 
 function getDefaultMacros() {
-    return "Настройка";
+    return "ПроверкаВыделенногоТекста";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -40,51 +51,199 @@ function GetSpellChecker() {
 
 function _SpellChecker(settings) {
     this.settings = { 
-                    'provider': ""  
+                    'provider': "" ,
+                    'dict':v8New("ValueList")
                     }
        settings.ApplyToForm(this.settings);
-	   
-	this.ServiceManager = null;
-	/* this.Парам=null;
-	this.ПроверкаОрфографии=null;
-	this.Локал=null; */
-	this.ПустойМассив = new Array();
-	this.Connect()
+       this.settingsManager = settings;
+    
+    /* this.Парам=null;
+    this.ПроверкаОрфографии=null;
+    this.Локал=null; */
+    
+    this.words= {};
+    this.provider = null
+    switch (this.settings.provider) 
+    {
+    case "libreoffice":
+        this.provider = new _SpellLibreOffice()
+        break;
+    case "word":
+        this.provider = new _SpellWord();
+        break;
+    }
+    var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
+    this.form = loadScriptForm(pathToForm, this) // Обработку событий формы привяжем к самому скрипту
+    this.form.КлючСохраненияПоложенияОкна = SelfScript.uniqueName;
+    
 }
-_SpellChecker.prototype.Connect = function(){
-	this.ServiceManager = new ActiveXObject('com.sun.star.ServiceManager');
-	this.Парам=this.ServiceManager.Bridge_GetStruct('com.sun.star.beans.PropertyValue');
-	this.ПроверкаОрфографии=this.ServiceManager.createInstance("com.sun.star.linguistic2.SpellChecker");
-	this.Локал=this.ServiceManager.Bridge_GetStruct('com.sun.star.lang.Locale');
-	this.Локал.Language = "ru";
-    this.Локал.Country = "RU";
-}
+
 
 _SpellChecker.prototype.CheckWords = function(words) {
-	var results = {};
-	this.ПустойМассив = new Array();
-	for (key in words){
-		results[key] = (this.ПроверкаОрфографии.isValid(key,this.Локал,this.ПустойМассив)==0)
-	}
-	return results
+    //var results = {};
+    this.ПустойМассив = new Array();
+    for (var key in words){
+        if (words[key]["spell"] && !words[key]["isValid"]) 
+        words[key]["isValid"] = this.provider.CheckWord(key);
+        words[key]["spell"] = false;
+    }
+    return words
 }
 _SpellChecker.prototype.getAlternatives = function(words) {
-	var results = {};
-	for (key in words){
-		Альтернативы=new VBArray(this.ПроверкаОрфографии.spell(key,this.Локал,this.ПустойМассив).getAlternatives());
-		var alternative = new Array();
-        for(ii=Альтернативы.lbound(1); ii<Альтернативы.ubound(1); ii++) {
-			alternative.push(Альтернативы.getItem(ii));
+    var results = {};
+    for (var key in words){
+        results[key] = this.provider.getAlternatives(key);
+    }
+    return results
+}
+
+_SpellChecker.prototype.WordJoin = function(word, prefix, suffix) {
+    var results = {};
+    if (prefix == undefined) prefix = {}
+    if (suffix == undefined) suffix = {}
+    
+    if (this.words[word]) 
+        return this.words[word];
+    
+    for (var key in prefix) {
+        var re = new RegExp('^('+key+')(.*)','');
+        var Matches = word.match(re);
+        
+        if (Matches && Matches.length) {
+            results[Matches[1]] = {"spell":false, "alternatives":new Array(), "isValid":true};
+            word = matches[2];
+            break;
         }
-		results[key] = alternative;
-	}
-	return results
-	
+    }
+    for (var key in suffix) {
+        var re = new RegExp('^(.*)('+key+')','');
+        var Matches = word.match(re);
+        
+        if (Matches && Matches.length) {
+            results[Matches[2]] = {"spell":false, "alternatives":new Array(), "isValid":true};
+            word = matches[1];
+            break;
+        }
+    }
+    var re = new RegExp('([А-Я])([а-я]*)', 'g');
+    var find = false
+    // debugger
+    var Matches = null
+            while( (Matches = re.exec(word)) != null ) {
+            if (Matches[0].length>0) {
+                find = true;
+                results[Matches[0].toString()] = {"spell":(Matches[0].toString().length>2), "alternatives":new Array(), "isValid":(Matches[0].toString().length<3)};
+                if (!(this.settings.dict.FindByValue(Matches[0].toString()) == undefined)) {
+                    results[Matches[0].toString()] = {"spell":false, "alternatives":new Array(), "isValid":true};
+                } 
+             }
+        }
+        if (!find && word.length>0) {
+            results[word] = {"spell":true, "alternatives":new Array(), "isValid":false};
+            if (!(this.settings.dict.FindByValue(word) == undefined)) {
+                    results[word] = {"spell":false, "alternatives":new Array(), "isValid":true};
+             }
+          }
+    return results;
+}
+_SpellChecker.prototype.SpellText = function(text) {
+    var re = new RegExp('([\wА-яёЁ\d]+)','gi');
+    wordsparse = new Array();
+    var i =  0;
+    while( (Matches = re.exec(text)) != null ) {
+        wordsparse.push(Matches[1]);
+    }
+    //this.words = {};
+    for (var i=0; i<wordsparse.length; i++){
+    //debugger;
+        if (!this.words[wordsparse[i]]) {
+            this.words[wordsparse[i]] = this.WordJoin(wordsparse[i])
+            // а теперь проверим текст... 
+            this.words[wordsparse[i]] = this.CheckWords(this.words[wordsparse[i]]);
+         }
+    }
+    
+    this.form.Open();
+    
+    
 }
 
 
-_SpellChecker.prototype.ConnectLibreOffice = function(){
-	
+_SpellChecker.prototype.КнЗаменитьНажатие = function (Элемент) {
+	// Вставить содержимое обработчика.
+    Message("еще не реализовано")
+}
+
+_SpellChecker.prototype.КнДобавитьНажатие = function (Элемент) {
+	// Вставить содержимое обработчика.
+    ТекСтрока  = this.form.Controls.ДеревоПроверки.CurrentRow;
+    if (!ТекСтрока) {
+        if (ТекСтрока.isValid > 0)
+            this.settings.dict.add(ТекСтрока.Слово);
+    }
+}
+
+_SpellChecker.prototype.КнНастройкиНажатие = function (Элемент) {
+	// Вставить содержимое обработчика.
+}
+
+_SpellChecker.prototype.КнЗакрытьНажатие = function (Элемент) {
+	// Вставить содержимое обработчика.
+    this.form.Close();
+}
+
+_SpellChecker.prototype.ДеревоПроверкиПриАктивизацииСтроки = function (Элемент) {
+	// Вставить содержимое обработчика.
+}
+
+_SpellChecker.prototype.ДеревоПроверкиПриВыводеСтроки = function (Элемент, ОформлениеСтроки, ДанныеСтроки) {
+	// Вставить содержимое обработчика.
+}
+
+_SpellChecker.prototype.ПриОткрытии = function () {
+    debugger;
+    for (var key in this.words) {
+       var isValid = true;
+        for (var keys in this.words[key]) {
+            if (!this.words[key][keys]["isValid"]) {
+                isValid = false;
+             }
+        }
+        if (!isValid){
+            //Message("Ошибка в слове "+key);
+            var НоваяСтрока = this.form.ДеревоПроверки.Строки.Добавить();
+            НоваяСтрока.Слово = key;
+            НоваяСтрока.isValid = 1;
+            for (var keys in this.words[key]) {
+                var НоваяСтрокаCamelCase = НоваяСтрока.Строки.Добавить();
+                НоваяСтрокаCamelCase.Слово = keys;
+                НоваяСтрокаCamelCase.isValid = this.words[key][keys]["isValid"] ? 0:1;
+                if (!this.words[key][keys]["isValid"]) { 
+                    var result = {}
+                    result[keys] = "";
+                    result = this.getAlternatives(result);
+                    this.words[key][keys]["alternatives"] = result[keys];
+                    for (var z=0; z< this.words[key][keys]["alternatives"].length; z++ ){
+                          var НоваяСтрокаАльтернатива = НоваяСтрокаCamelCase.Строки.Добавить();
+                          НоваяСтрокаАльтернатива.Слово = this.words[key][keys]["alternatives"][z];
+                          НоваяСтрокаCamelCase.isValid = 0;
+                    }
+                    
+                    
+                }
+            }
+       }
+       }
+       
+      if (this.form.ДеревоПроверки.Строки.Count()==0) {
+        Message("Ошибок не обнаруженно!")
+        this.form.Close();
+      }
+}
+
+_SpellChecker.prototype.ПриЗакрытии = function () {
+    this.settingsManager.ReadFromForm(this.settings);
+    this.settingsManager.SaveSettings();
 }
 /* SyntaxSpell = {};
  */
@@ -174,47 +333,86 @@ _1CWordWrap.prototype.Split = function(prefix) {
 }
 
 
-////} _1CWordWrap
-
-////////////////////////////////////////////////////////////////////////////////////////
-////{ _1CSpellDescription
-
-function _1CSpellDescription() {
-
-    
-    // Ассоциативный массив Слово -> Ассоциативный массив составляющих этого слова WordsWraps Пример: НовыйЭлемент -> ["Новый", "Элемент"]
-    this.Words = {};
-    
-    // Ассоциативный массив Слов -> Ассоциативный массив проверок для этого слова
-    this.WordsWraps = {};
-    
-    // Ассоциативный массив Слов проверок -> Ассоциативный массив вариантов для этого слова. 
-    this.WordsCheck = {};
-
+function _SpellLibreOffice() {
+    this.ServiceManager = null;
+    this.ПустойМассив = new Array();
+    this.Connect()
 }
 
-_1CSpellDescription.prototype.addWord = function (method) {
-
-    if (this.Words[method])
-        return;
-        // Message('Метод ' + method.name + 'уже был объявлен ранее в этом модуле!');
-        
-     if (!this.WordsWraps[method]) { 
-            this.WordsWraps[method] = SyntaxSpell.WrapWord(method)
-     }
-    
-    for (var key in this.WordsWraps) {
-            if (!this.WordsCheck[key]){
-                this.WordsCheck[key] = SyntaxSpell.SpellCheck(key);
-             }
-            this.WordsWraps[key] = this.WordsCheck[key]
+_SpellLibreOffice.prototype.Connect = function(){
+    try{
+       this.ServiceManager = new ActiveXObject('com.sun.star.ServiceManager');
+       this.Парам=this.ServiceManager.Bridge_GetStruct('com.sun.star.beans.PropertyValue');
+       this.ПроверкаОрфографии=this.ServiceManager.createInstance("com.sun.star.linguistic2.SpellChecker");
+       this.Локал=this.ServiceManager.Bridge_GetStruct('com.sun.star.lang.Locale');
+       this.Локал.Language = "ru";
+        this.Локал.Country = "RU";
+    }catch (e) {
+        Message("Не удалось создать объект");
     }
-    this.Words[method] = this.WordsWraps[method]
 }
 
-_1CSpellDescription.prototype.getWordSpell = function (name) {
-    return this.Words[name];
+_SpellLibreOffice.prototype.CheckWord = function(word) {
+    //var results = {};
+    this.ПустойМассив = new Array();
+    return this.ПроверкаОрфографии.isValid(word,this.Локал,this.ПустойМассив);
 }
+_SpellLibreOffice.prototype.getAlternatives = function(word) {
+    Альтернативы=new VBArray(this.ПроверкаОрфографии.spell(word,this.Локал,this.ПустойМассив).getAlternatives());
+    var alternative = new Array();
+    for(var ii=Альтернативы.lbound(1); ii<Альтернативы.ubound(1); ii++) {
+           alternative.push(Альтернативы.getItem(ii));
+    }
+    return alternative;
+}
+
+function _SpellWord() {
+    this.Word = null;
+    //this.ПустойМассив = new Array();
+    this.Connect()
+}
+
+_SpellWord.prototype.Connect = function(){
+    try{
+       this.Word =new ActiveXObject('Word.Application');
+    }catch (e) {
+       Message("Не удалось создать объект Word.Application");
+    }
+    
+}
+
+_SpellWord.prototype.CheckWord = function(word) {
+    //var results = {};
+    //this.ПустойМассив = new Array();
+    return !Word.CheckSpelling(word);
+    //return this.ПроверкаОрфографии.isValid(word,this.Локал,this.ПустойМассив);
+}
+_SpellWord.prototype.getAlternatives = function(word) {
+       var Док = this.Word.Documents.Add(); // Создадим новый документ   
+       var Область = Док.Range(0,0); // Получим пустую область в начале документа   
+      Область.InsertBefore(word); // Добавим в документ текст   
+      var alternative = new Array();
+      for (var key in Область.Words){
+         var Варианты = key.GetSpellingSuggestions( 0,1,0,0);
+         for (var keys in Варианты) {
+            alternative.push(keys.Name);
+         }
+    }   
+    Док.Close(0,0,0); // закроем документ без сохранения wdDoNotSaveChanges   
+    return alternative;
+}
+
+
+////} _1CWordWrap
+_SpellWord.prototype.Disconnect = function(){
+    try{
+       this.Word.Quit();
+    }catch (e) {
+       Message("Не удалось создать объект");
+    }
+    
+}
+
 
 
 
@@ -341,8 +539,11 @@ if(!Array.prototype.indexOf) {
 ////{ Start up
 ////
 
+var ValueList = v8New("ValueList");
+
 settings = SettingsManagement.CreateManager('SpellChecker', { 
-                    'provider': "libreoffice"  //word, libreoffice, aspell, internet Yandex... 
+                    'provider': "libreoffice",  //word, libreoffice, aspell, internet Yandex... 
+                    'dict': ValueList // структура с игнорируемыми словами. 
                     })
 settings.LoadSettings();
 
