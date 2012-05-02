@@ -125,7 +125,7 @@ _SpellChecker.prototype.WordJoin = function(word, prefix, suffix) {
             break;
         }
     }
-    var re = new RegExp('([А-Я])([а-я]*)', 'g');
+    var re = new RegExp('([А-ЯA-Z])([a-zа-я]*)', 'g');
     var find = false
     // debugger
     var Matches = null
@@ -133,14 +133,14 @@ _SpellChecker.prototype.WordJoin = function(word, prefix, suffix) {
             if (Matches[0].length>0) {
                 find = true;
                 results[Matches[0].toString()] = {"spell":(Matches[0].toString().length>2), "alternatives":new Array(), "isValid":(Matches[0].toString().length<3)};
-                if (!(this.settings.dict.FindByValue(Matches[0].toString()) == undefined)) {
+                if (!(this.settings.dict.FindByValue(Matches[0].toString().toLowerCase()) == undefined)) {
                     results[Matches[0].toString()] = {"spell":false, "alternatives":new Array(), "isValid":true};
                 } 
              }
         }
         if (!find && word.length>0) {
             results[word] = {"spell":true, "alternatives":new Array(), "isValid":false};
-            if (!(this.settings.dict.FindByValue(word) == undefined)) {
+            if (!(this.settings.dict.FindByValue(word.toLowerCase()) == undefined)) {
                     results[word] = {"spell":false, "alternatives":new Array(), "isValid":true};
              }
           }
@@ -157,6 +157,12 @@ _SpellChecker.prototype.SpellText = function(text) {
     for (var i=0; i<wordsparse.length; i++){
     //debugger;
         if (!this.words[wordsparse[i]]) {
+            if (!(this.settings.dict.FindByValue(wordsparse[i].toLowerCase()) == undefined)) {
+                var result = {}
+                result[wordsparse[i].toLowerCase()] = {"spell":false, "alternatives":new Array(), "isValid":true}
+                this.words[wordsparse[i]] = result;
+                continue;
+            }
             this.words[wordsparse[i]] = this.WordJoin(wordsparse[i])
             // а теперь проверим текст... 
             this.words[wordsparse[i]] = this.CheckWords(this.words[wordsparse[i]]);
@@ -176,15 +182,20 @@ _SpellChecker.prototype.КнЗаменитьНажатие = function (Элем�
 
 _SpellChecker.prototype.КнДобавитьНажатие = function (Элемент) {
 	// Вставить содержимое обработчика.
-    ТекСтрока  = this.form.Controls.ДеревоПроверки.CurrentRow;
-    if (!ТекСтрока) {
-        if (ТекСтрока.isValid > 0)
-            this.settings.dict.add(ТекСтрока.Слово);
+    //debugger
+    var ТекСтрока  = this.form.Controls.ДеревоПроверки.CurrentRow;
+    if (!(ТекСтрока==undefined)) {
+        //Message("Строка существует!" + ТекСтрока.Слово);
+        if (ТекСтрока.isValid > 0){
+            var word = ТекСтрока.Слово;
+            this.settings.dict.add(word.toLowerCase());
+        }
     }
 }
 
 _SpellChecker.prototype.КнНастройкиНажатие = function (Элемент) {
 	// Вставить содержимое обработчика.
+    Message("Еще не реализованно!");
 }
 
 _SpellChecker.prototype.КнЗакрытьНажатие = function (Элемент) {
@@ -194,14 +205,17 @@ _SpellChecker.prototype.КнЗакрытьНажатие = function (Элеме�
 
 _SpellChecker.prototype.ДеревоПроверкиПриАктивизацииСтроки = function (Элемент) {
 	// Вставить содержимое обработчика.
+    
 }
 
-_SpellChecker.prototype.ДеревоПроверкиПриВыводеСтроки = function (Элемент, ОформлениеСтроки, ДанныеСтроки) {
-	// Вставить содержимое обработчика.
+_SpellChecker.prototype.ДеревоПроверкиПриВыводеСтроки = function (пЭлемент, пОформлениеСтроки, пДанныеСтроки) {
+	
+    if (пДанныеСтроки.val.isValid>0 && пДанныеСтроки.val.Родитель!=undefined)
+        пОформлениеСтроки.val.Ячейки.Слово.ЦветФона = мЦвет;
 }
 
 _SpellChecker.prototype.ПриОткрытии = function () {
-    debugger;
+    //debugger;
     for (var key in this.words) {
        var isValid = true;
         for (var keys in this.words[key]) {
@@ -226,7 +240,7 @@ _SpellChecker.prototype.ПриОткрытии = function () {
                     for (var z=0; z< this.words[key][keys]["alternatives"].length; z++ ){
                           var НоваяСтрокаАльтернатива = НоваяСтрокаCamelCase.Строки.Добавить();
                           НоваяСтрокаАльтернатива.Слово = this.words[key][keys]["alternatives"][z];
-                          НоваяСтрокаCamelCase.isValid = 0;
+                          НоваяСтрокаАльтернатива.isValid = 0;
                     }
                     
                     
@@ -546,7 +560,7 @@ settings = SettingsManagement.CreateManager('SpellChecker', {
                     'dict': ValueList // структура с игнорируемыми словами. 
                     })
 settings.LoadSettings();
-
+var мЦвет = v8New("Цвет", 255, 0, 0);
 ////
 ////} Start up
 ////////////////////////////////////////////////////////////////////////////////////////
