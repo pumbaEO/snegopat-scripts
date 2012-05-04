@@ -2,6 +2,7 @@
 $uname SyntaxSpell
 $dname Класс SyntaxSpell
 $addin global
+$addin stdcommands
 $addin stdlib
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -99,6 +100,7 @@ function _SpellChecker(settings) {
     var pathToFormSettings = SelfScript.fullPath.replace(/js$/, 'param.ssf');
     this.formParams = loadScriptForm(pathToFormSettings, this) // Обработку событий формы привяжем к самому скрипту
     
+    this.extSearch = stdlib.require(mainFolder+'scripts\\extSearch.js').GetExtSearch();
     if (this.provider==null)
         this.form.Open();
 }
@@ -233,7 +235,39 @@ _SpellChecker.prototype.ДеревоПроверкиПриАктивизации
 	// Вставить содержимое обработчика.
     
 }
+_SpellChecker.prototype.ДеревоПроверкиПередНачаломИзменения = function(Элемент, Отказ) {
+    Отказ = false;
+    var ТекСтрока  = this.form.Controls.ДеревоПроверки.CurrentRow;
+    var selText = ТекСтрока.Слово;
+    this.activateEditor();
+    this.extSearch.setSimpleQuery(selText);
+    this.extSearch.Show();
+    
+    if (selText == '')
+    {
+        this.extSearch.clearSearchResults();
+        this.extSearch.setDefaultSearchQuery();
+    }
+    else
+        this.extSearch.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
+}
 
+_SpellChecker.prototype.ДеревоПроверкиВыбор = function(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка){
+    СтандартнаяОбработка = false;
+    var ТекСтрока  = ВыбраннаяСтрока;
+    var selText = ТекСтрока.Слово;
+    this.activateEditor();
+    this.extSearch.setSimpleQuery(selText);
+    this.extSearch.Show();
+    
+    if (selText == '')
+    {
+        this.extSearch.clearSearchResults();
+        this.extSearch.setDefaultSearchQuery();
+    }
+    else
+        this.extSearch.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
+}
 _SpellChecker.prototype.ДеревоПроверкиПриВыводеСтроки = function (пЭлемент, пОформлениеСтроки, пДанныеСтроки) {
 	
     if (пДанныеСтроки.val.isValid>0 && пДанныеСтроки.val.Родитель!=undefined)
@@ -356,7 +390,10 @@ _SpellChecker.prototype.ПараметрыКнОтменаНажатие = funct
     this.formParams.Close();
 }
 
-
+_SpellChecker.prototype.activateEditor = function () {
+    if (!snegopat.activeTextWindow())
+        stdcommands.Frame.GotoBack.send();
+}
 
 /* SyntaxSpell = {};
  */
