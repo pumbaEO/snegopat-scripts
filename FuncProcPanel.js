@@ -169,7 +169,8 @@ FuncProcPanel.prototype.GetList = function () {
                 try {
                     this.CreateTreeManagmentForm(text, this.tree); 
                    } catch (e) {
-                       Message("Ошибка парсинга "+e.description)
+                        // Ошибок, еще может быть много ...
+                       //Message("Ошибка парсинга "+e.description)
                    };
                 //this.form.Controls.TreeView.Контрол.Visible = true;
                 this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
@@ -212,7 +213,7 @@ FuncProcPanel.prototype.GetList = function () {
     //проанализруем управляемую форму...
 
     //FIXME: добавить настройку сортировки по алфавиту/порядку объявления...
-    this.methods.Rows.Sort("Контрол,Context, LineNo"); //Сортировка по умолчанию по порядку.
+    this.methods.Rows.Sort("Контрол, Context, LineNo"); //Сортировка по умолчанию по порядку.
     
     this.form.CurrentControl=this.form.Controls.ТекстФильтра;
     
@@ -356,7 +357,7 @@ FuncProcPanel.prototype.CreateTreeManagmentForm = function(text, tree){
                     НоваяСтрока.Контрол = ИсследуемыйУзел.Дочерниеузлы.Item(6+ДопИндекс).ТекстовоеСодержимое;
                 }
                 if (ТипЭлемента=="143c00f7-a42d-4cd7-9189-88e4467dc768" || ТипЭлемента=="a9f3b1ac-f51b-431e-b102-55a69acdecad") {
-                    ИндексТипаЭлемента = (ТипЭлемента="a9f3b1ac-f51b-431e-b102-55a69acdecad") ? ИсследуемыйУзел.Дочерниеузлы.Item(5).ТекстовоеСодержимое:ИсследуемыйУзел.Дочерниеузлы.Item(7).ТекстовоеСодержимое
+                    ИндексТипаЭлемента = (ТипЭлемента=="a9f3b1ac-f51b-431e-b102-55a69acdecad") ? ИсследуемыйУзел.Дочерниеузлы.Item(5).ТекстовоеСодержимое:ИсследуемыйУзел.Дочерниеузлы.Item(7).ТекстовоеСодержимое
                 } else{
                     ИндексТипаЭлемента=ИсследуемыйУзел.Дочерниеузлы.Item(5+ДопИндекс).ТекстовоеСодержимое;
                 }
@@ -402,7 +403,7 @@ FuncProcPanel.prototype.CreateTreeManagmentForm = function(text, tree){
                 var КоличествоСобытий=parseInt(УзелРазбора.ПервыйДочерний.ТекстовоеСодержимое);
                 ЗаполнитьСобытия(НоваяСтрока, УзелРазбора, КоличествоСобытий, tree);
             }
-            //debugger
+            //FIXME: для типа элемента Картинка(4) и поле флажка (3) ДочерниеУзлы.Item(40).ДочерниеУзлы.Item(36) - должны быть другие. 
             //if (ИндексТипаЭлемента!="1"  && ИндексТипаЭлемента!="4" ) {
             if (ИндексТипаЭлемента!="1"  && ИндексТипаЭлемента!="4"  && ИндексТипаЭлемента!="3") {
                 if(ДочерниеУзлы.Item(40).ДочерниеУзлы.Item(36).ТекстовоеСодержимое!="0") {
@@ -425,19 +426,19 @@ FuncProcPanel.prototype.CreateTreeManagmentForm = function(text, tree){
     }
 
     function StringInternalInXml (вхСтрока){
-    //{ Получение одной длинной строки
+     //{ Получение одной длинной строки
         var выхХМЛТело = вхСтрока.replace(/\n/g, "#%");
         выхХМЛТело = выхХМЛТело.replace(/\r/g, "#%");
-    //}
+     //}
 
-    //{ Заменяем символы, критичные для XML
+     //{ Заменяем символы, критичные для XML
         // & на "&amp;"
         // < на "&lt;"
         // > на "&gt;"
         выхХМЛТело = выхХМЛТело.replace(/&/g,"&amp;");
         выхХМЛТело = выхХМЛТело.replace(/</g,"&lt;");
         выхХМЛТело = выхХМЛТело.replace(/>/g,"&gt;");
-    //}
+     //}
 
         //Решаем проблему с кавычками:
         выхХМЛТело=выхХМЛТело.replace(/\"\"/g,"^$^$");
@@ -556,14 +557,15 @@ FuncProcPanel.prototype.CreateTreeManagmentForm = function(text, tree){
        }
     
     var МассивФормы = StringInternalInXml(text)
-    //var МассивФормы=StringInternalInXml(text);
-    //{
-        //debugger;
-         var ЧтениеXML = v8New('ЧтениеXML');
+    
+    function ПолучитьДокументDOMФормы(МассивФормы) {
+        var ЧтениеXML = v8New('ЧтениеXML');
         ЧтениеXML.УстановитьСтроку(МассивФормы);
         var ПостроительDOM = v8New('ПостроительDOM');
         ДокументDOM = ПостроительDOM.Прочитать(ЧтениеXML); 
-    //} ДокументDOM=ПолучитьДокументDOMФормы(МассивФормы);
+        return ДокументDOM
+    }
+    var ДокументDOM=ПолучитьДокументDOMФормы(МассивФормы);
     var РазыменовательПИ = v8New('РазыменовательПространствИменDOM',ДокументDOM);
     var ИмяЭлемента="/elem[1]/elem[1]/node()";
     var РезультатXPath=ДокументDOM.ВычислитьВыражениеXPath(ИмяЭлемента, ДокументDOM, РазыменовательПИ, ТипРезультатаDOMXPath.УпорядоченныйИтераторУзлов);
