@@ -837,10 +837,10 @@ FuncProcPanel.prototype.CreateTreeDicForm = function(form, tree) {
         
      }
 
-    for(var key in form.ЭлементыФормы) {
-        var element = form.ЭлементыФормы[key];
+    for(var i=0; i<form.ЭлементыФормы.Count(); i++) {
+        var element = form.ЭлементыФормы.Get(key);
         var НоваяСтрока = tree.add();
-        НоваяСтрока.Контрол = element.Name;
+        НоваяСтрока.Контрол = element.Имя;
         for (var i=0; i<СписокОбработчиковСобытий.Count(); i++) {
             Событие = СписокОбработчиковСобытий.Get(i).Значение;
             try{
