@@ -131,13 +131,15 @@ FuncProcPanel.prototype.GetList = function () {
         // Сохраним текущее состояние свойства "Форма" в файл. Так как файл в saveToFile не передан, то
         // сохранение произойдет в псевдо-файл в памяти.
         var file = extProp.saveToFile()
+        //debugger
         // Для обычных форм формат файла формы является "файлом файлов", storage. Поэтому будем
         // рассматривать его как storage. Для управляемых форм - это не так, там обычный текст utf-8
         try{
             // создадим хранилище на базе файла. Для управляемых форм тут вывалится в catch
             var stg = v8Files.attachStorage(file)
             // Получим из хранилища содержимое под-файла form
-            var text = stg.open("form", fomIn).getString(dsUtf8)
+            var form = extProp.getForm();
+            //var text = stg.open("form", fomIn).getString(dsUtf8)
             //Message(text);
             isManagmendForm = false
             // Простым регэкспом выдернем встречающиеся колонки
@@ -163,8 +165,8 @@ FuncProcPanel.prototype.GetList = function () {
             // Сюда попадаем, если это управляемая форма. Ее можно прочитать так
             
         }
+            this.tree.Clear();
             if (isManagmendForm) {
-                this.tree.Clear();
                 try {
                     this.CreateTreeManagmentForm(text, this.tree); 
                 } catch (e) {
@@ -174,8 +176,8 @@ FuncProcPanel.prototype.GetList = function () {
                 //this.form.Controls.TreeView.Контрол.Visible = true;
                 this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
             } else {
-                debugger
-                this.CreateTreeDicForm(extProp, this.tree)
+                //debugger
+                this.CreateTreeDicForm(form, this.tree)
                 this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
             }
     }
@@ -820,37 +822,58 @@ FuncProcPanel.prototype.CreateTreeDicForm = function(form, tree) {
     }
     
     var СписокОбработчиковСобытий=СоставитьСписокОбработчиковСобытий();
+    var re = new RegExp(/{"#",\w{8}-\w{4}-\w{4}-\w{4}-\w{12},\n{\d,\d,\w{8}-\w{4}-\w{4}-\w{4}-\w{12},\n{\d,(.*),\n/i);
     var НоваяСтрока=tree.Добавить();
     НоваяСтрока.Контрол="Форма";
+    //debugger
     for (var i=0; i<СписокОбработчиковСобытий.Count(); i++) {
         Событие = СписокОбработчиковСобытий.Get(i).Значение;
         try{
             var Действие=form.ПолучитьДействие(Событие);
-            if (!Действие) {
+            if (Действие!=undefined) {
                 if (НоваяСтрока.Событие!=undefined) {
                     НоваяСтрока = tree.add();
                 }
+                text = tov8value(Действие).tostringinternal();
+                var Matches = re.exec(text);
+                if (Matches && Matches.length) {
+                    НоваяСтрока.Действие=Matches[1];
+                } else {
+                    НоваяСтрока.Действие = text;
+                }
                 НоваяСтрока.Событие=Событие;
-                НоваяСтрока.Действие=Действие.toString();
+                
+                
+                //Message(""+Событие+" "+tov8value(Действие).tostringinternal());
+                
             }
         } catch (e) {}
         
      }
-
+    
     for(var i=0; i<form.ЭлементыФормы.Count(); i++) {
-        var element = form.ЭлементыФормы.Get(key);
+        //var control = form.getControl(i)
+        var element = form.ЭлементыФормы.Get(i);
         var НоваяСтрока = tree.add();
         НоваяСтрока.Контрол = element.Имя;
-        for (var i=0; i<СписокОбработчиковСобытий.Count(); i++) {
-            Событие = СписокОбработчиковСобытий.Get(i).Значение;
+        for (var z=0; z<СписокОбработчиковСобытий.Count(); z++) {
+            Событие = СписокОбработчиковСобытий.Get(z).Значение;
             try{
                 var Действие=element.ПолучитьДействие(Событие);
-                if (!Действие) {
+                if (Действие!=undefined) {
                     if (НоваяСтрока.Событие!=undefined) {
                         НоваяСтрока = tree.add();
                     }
+                    //Message(""+Событие+" "+tov8value(Действие).tostringinternal());
+                    text = tov8value(Действие).tostringinternal();
+                    var Matches = re.exec(text);
+                    if (Matches && Matches.length) {
+                        НоваяСтрока.Действие=Matches[1];
+                    } else {
+                        НоваяСтрока.Действие = text;
+                   }
                     НоваяСтрока.Событие=Событие;
-                    НоваяСтрока.Действие=Действие.toString();
+                    //НоваяСтрока.Действие=Действие.toString();
                 }
             } catch (e) {}
         }
