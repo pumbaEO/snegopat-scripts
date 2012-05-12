@@ -540,7 +540,7 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
         var index=0;
         while ((matches = re.exec(r)) != null)
         {
-            result[index] = {"version":matches[2], "comment":''+matches[3], "date":matches[1], "author":matches[5]}
+            result[index] = {"version":matches[2], "comment":''+matches[3].replace(/\s{2,}|\n/g, " "), "date":matches[1], "author":matches[5]}
             index++;
         }
     } else { 
