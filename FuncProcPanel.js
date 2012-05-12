@@ -57,7 +57,8 @@ function FuncProcPanel() {
     
     this.isForm = false; //Признак формы и необходимости строить дерево.
     this.defaultSettings = {
-        'TreeView'      : false // Группировать результаты поиска по контекстам.
+        'TreeView'      : false , // Группировать результаты поиска по контекстам.
+        'FuncProcViewRecursive' : false //Показывать вызовы процедур.
     };
         
     this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
@@ -69,10 +70,11 @@ function FuncProcPanel() {
     this.lastFilter = '';
     
     this.groupsCache = v8New("Map");
-    
     this.Icons = {
         'Func': this.form.Controls.PicFunc.Picture,
-        'Proc': this.form.Controls.PicProc.Picture
+        'Proc': this.form.Controls.PicProc.Picture,
+        'Form': this.form.Controls.PicForm.Picture,
+        'Forward':this.form.Controls.PicForward.Picture
     }
        this.tree = v8New("ValueTable");
        this.tree.Колонки.Добавить("Контрол");
@@ -119,70 +121,57 @@ FuncProcPanel.prototype.GetList = function () {
             
     this.methods.Rows.Clear();
     this.targetWindow = this.watcher.getActiveTextWindow();
-    
-    // Проверим, что это Форма.
-    // Свойство mdProp показывает, к какому свойству объекта метаданных относится окно
-    this.isForm = (this.targetWindow.textWindow.mdProp.name(1) == "Форма")
-        if (this.isForm) {
-        //debugger
+    //debugger;
+    if (!this.targetWindow) {
+        this.isForm = false;
+    } else {
+        // Проверим, что это Форма.
+        // Свойство mdProp показывает, к какому свойству объекта метаданных относится окно  
+        if (!this.targetWindow.textWindow.mdProp){
+            this.isForm = false;
+        } else {
+            this.isForm = (this.targetWindow.textWindow.mdProp.name(1) == "Форма")
+        }
+    }
+    if (this.isForm) {
         var wnd = this.targetWindow.textWindow;
         var extProp = wnd.mdObj.getExtProp(wnd.mdProp.id)
         var isManagmendForm = false;
         // Сохраним текущее состояние свойства "Форма" в файл. Так как файл в saveToFile не передан, то
         // сохранение произойдет в псевдо-файл в памяти.
         var file = extProp.saveToFile()
-        //debugger
-        // Для обычных форм формат файла формы является "файлом файлов", storage. Поэтому будем
-        // рассматривать его как storage. Для управляемых форм - это не так, там обычный текст utf-8
         try{
             // создадим хранилище на базе файла. Для управляемых форм тут вывалится в catch
             var stg = v8Files.attachStorage(file)
             // Получим из хранилища содержимое под-файла form
             var form = extProp.getForm();
-            //var text = stg.open("form", fomIn).getString(dsUtf8)
-            //Message(text);
             isManagmendForm = false
-            // Простым регэкспом выдернем встречающиеся колонки
-            /* var re = /\{6,3,0,\d\},\d,0,0,4,0,"(.+)"/g
-            var columns = {}
-            while(re.exec(text))
-                columns[RegExp.$1] = 1
-            var arrOfColumns = []
-            for(var k in columns)
-                arrOfColumns.push(k)
-            var choice = sel.FilterValue(arrOfColumns.join("\r\n"), 1 | 4)
-            if(choice.length)
-            {
-                wnd.selectedText = choice
-                return true
-            } */
         }catch(e)
         {
             isManagmendForm = true;
             file.seek(0, fsBegin)
             var text = file.getString(dsUtf8);
-            //Message(text)
-            // Сюда попадаем, если это управляемая форма. Ее можно прочитать так
-            
         }
-            this.tree.Clear();
-            if (isManagmendForm) {
-                try {
-                    this.CreateTreeManagmentForm(text, this.tree); 
-                } catch (e) {
-                        // Ошибок, еще может быть много ...
-                       //Message("Ошибка парсинга "+e.description)
-                };
-                //this.form.Controls.TreeView.Контрол.Visible = true;
-                this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
-            } else {
-                //debugger
-                this.CreateTreeDicForm(form, this.tree)
-                this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
-            }
+        this.tree.Clear();
+        if (isManagmendForm) {
+            try {
+                this.CreateTreeManagmentForm(text, this.tree); 
+            } catch (e) {
+                    // Ошибок, еще может быть много ...
+                   //Message("Ошибка парсинга "+e.description)
+            };
+            //this.form.Controls.TreeView.Контрол.Visible = true;
+        } else {
+            //debugger
+            this.CreateTreeDicForm(form, this.tree)
+            //this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
+        }
     }
 
     var contextCache = v8New("Map");
+    // ассоциативный массив, с вызовами в текущем модуле.
+    var Calls = {};
+    //debugger
     cnt = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
     vtModules = cnt.getMethodsTable();
     for (var i = 0; i<vtModules.Count(); i++) {
@@ -192,31 +181,57 @@ FuncProcPanel.prototype.GetList = function () {
         newRow.Method = thisRow.Name;
         newRow.Context =this.isForm?thisRow.Context:" ";
         newRow._method = thisRow._method;
-        var filter_struct = v8New("Структура");
-        //FIXME: исправить при определении наименований функций, убрать лишние ковычки "
-        filter_struct.Insert("Действие", '"'+newRow.Method +'"');
-        var МассивСтрок = this.tree.FindRows(filter_struct);
-        if (МассивСтрок.Count()>0) {
-            for (var z=0; z<МассивСтрок.Count(); z++) {
-                ЭлементСтроки = МассивСтрок.Get(z);
-                if (z>0) {
-                    newRow.Контрол = newRow.Контрол+ ";"+ЭлементСтроки.Контрол;
-                    newRow.ТипЭлемента = newRow.ТипЭлемента+ ";"+ЭлементСтроки.ТипЭлемента;
-                } else {
-                    newRow.Контрол = (ЭлементСтроки.Контрол==undefined)? " ": ЭлементСтроки.Контрол;
-                    newRow.ТипЭлемента = (ЭлементСтроки.ТипЭлемента==undefined)? " ": ЭлементСтроки.ТипЭлемента;
+        if (this.isForm) {
+            var filter_struct = v8New("Структура");
+            //FIXME: исправить при определении наименований функций, убрать лишние ковычки "
+            filter_struct.Insert("Действие", '"'+newRow.Method +'"');
+            var МассивСтрок = this.tree.FindRows(filter_struct);
+            if (МассивСтрок.Count()>0) {
+                newRow.КонтролТип = 1;
+                for (var z=0; z<МассивСтрок.Count(); z++) {
+                    ЭлементСтроки = МассивСтрок.Get(z);
+                    if (z>0) {
+                        newRow.Контрол = newRow.Контрол+ ";"+ЭлементСтроки.Контрол;
+                        newRow.ТипЭлемента = newRow.ТипЭлемента+ ";"+ЭлементСтроки.ТипЭлемента;
+                    } else {
+                        newRow.Контрол = (ЭлементСтроки.Контрол==undefined)? " ": ЭлементСтроки.Контрол;
+                        newRow.ТипЭлемента = (ЭлементСтроки.ТипЭлемента==undefined)? " ": ЭлементСтроки.ТипЭлемента;
+                    }
+                }
+            }
+         }
+        if (this.form.FuncProcViewRecursive) {
+            for (var z=0; z<thisRow._method.Calls.length; z++) {
+                if (cnt.context.getMethodByName(thisRow._method.Calls[z])!=undefined) {
+                    if (Calls[thisRow._method.Calls[z]]==undefined) {
+                        Calls[thisRow._method.Calls[z]] = new Array();
+                        Calls[thisRow._method.Calls[z]].push(thisRow.Name);
+                    } else {
+                        Calls[thisRow._method.Calls[z]].push(thisRow.Name);
+                    }
+                }
+           }
+       }
+        contextCache.Insert(newRow.Context , "1"); 
+    }
+    //FIXME: добавить настройку сортировки по алфавиту/порядку объявления...
+    this.methods.Rows.Sort("Контрол, Context, Method"); //Сортировка по умолчанию по порядку.
+    if (this.form.FuncProcViewRecursive) {
+        //Добавим локальные вызовы функций процедур. 
+        for (var i = 0; i<this.methods.Rows.Count(); i++) {
+            var thisRow = this.methods.Rows.Get(i);
+            if (Calls[thisRow.Method]!=undefined){
+                for (var y=0; y<Calls[thisRow.Method].length; y++){
+                    thisRow.Контрол = (thisRow.Контрол.length<1)? Calls[thisRow.Method][y]: thisRow.Контрол+";"+Calls[thisRow.Method][y]
+                    thisRow.КонтролТип = 2;
                 }
             }
         }
-        contextCache.Insert(newRow.Context , "1"); 
     }
+    
     this.form.TreeView = (this.isForm && (contextCache.Count()>1))
-    
-    //проанализруем управляемую форму...
 
-    //FIXME: добавить настройку сортировки по алфавиту/порядку объявления...
-    this.methods.Rows.Sort("Контрол, Context, Method"); //Сортировка по умолчанию по порядку.
-    
+    //проанализруем управляемую форму...
     this.form.CurrentControl=this.form.Controls.ТекстФильтра;
     
 }
@@ -821,6 +836,27 @@ FuncProcPanel.prototype.CreateTreeDicForm = function(form, tree) {
         return Список;
     }
     
+    function ЗагрузитьКнопки(Элемент,re, tree) {
+        for (var i =0 ; i<Элемент.Кнопки.Количество(); i++) {
+            var Кнопка = Элемент.Кнопки.Получить(i);
+            НоваяСтрока=tree.Добавить();
+            НоваяСтрока.Контрол=Кнопка.Имя;
+            НоваяСтрока.ТипЭлемента = ValueToStringInternal(Кнопка);
+            НоваяСтрока.Событие="Действие";
+            text = tov8value(Кнопка.Действие).tostringinternal();
+            var Matches = re.exec(text);
+            if (Matches && Matches.length) {
+                НоваяСтрока.Действие=Matches[1];
+            } else {
+                НоваяСтрока.Действие = text;
+            }
+            if(Кнопка.Кнопки!=undefined) {
+                if (Кнопка.Кнопки.Количество()>0) 
+                    ЗагрузитьКнопки(Кнопка, re, tree)
+            }
+        }
+    }
+    
     var СписокОбработчиковСобытий=СоставитьСписокОбработчиковСобытий();
     var re = new RegExp(/{"#",\w{8}-\w{4}-\w{4}-\w{4}-\w{12},\n{\d,\d,\w{8}-\w{4}-\w{4}-\w{4}-\w{12},\n{\d,(.*),\n/i);
     var НоваяСтрока=tree.Добавить();
@@ -833,6 +869,7 @@ FuncProcPanel.prototype.CreateTreeDicForm = function(form, tree) {
             if (Действие!=undefined) {
                 if (НоваяСтрока.Событие!=undefined) {
                     НоваяСтрока = tree.add();
+                    НоваяСтрока.Контрол = "Форма";
                 }
                 text = tov8value(Действие).tostringinternal();
                 var Matches = re.exec(text);
@@ -863,6 +900,7 @@ FuncProcPanel.prototype.CreateTreeDicForm = function(form, tree) {
                 if (Действие!=undefined) {
                     if (НоваяСтрока.Событие!=undefined) {
                         НоваяСтрока = tree.add();
+                        НоваяСтрока.Контрол = element.Name;
                     }
                     //Message(""+Событие+" "+tov8value(Действие).tostringinternal());
                     text = tov8value(Действие).tostringinternal();
@@ -873,11 +911,50 @@ FuncProcPanel.prototype.CreateTreeDicForm = function(form, tree) {
                         НоваяСтрока.Действие = text;
                    }
                     НоваяСтрока.Событие=Событие;
+                    
                     //НоваяСтрока.Действие=Действие.toString();
                 }
             } catch (e) {}
         }
-    
+        stringinetrnal = ValueToStringInternal(element);
+        if (stringinetrnal.indexOf('{"#",75746124-44d6-4292-8887-ed80e2aada87}')>=0) {
+            for (var z = 0; z<element.Columns.Count(); z++) {
+                var Column = element.Columns.Get(z);
+                var НоваяСтрока = tree.add();
+                НоваяСтрока.Контрол = Column.Name;
+                НоваяСтрока.ТипЭлемента = ValueToStringInternal(Column);
+                if (Column.ЭлементУправления == undefined) 
+                    continue
+                 
+                for (var y=0; y<СписокОбработчиковСобытий.Count(); y++) {
+                    Событие = СписокОбработчиковСобытий.Get(y).Значение;
+                    
+                    try{
+                        var Действие=Column.ЭлементУправления.ПолучитьДействие(Событие);
+                        if (Действие!=undefined) {
+                            if (НоваяСтрока.Событие!=undefined) {
+                                НоваяСтрока = tree.add();
+                                НоваяСтрока.Контрол = Column.Name;
+                            }
+                            //Message(""+Событие+" "+tov8value(Действие).tostringinternal());
+                            text = tov8value(Действие).tostringinternal();
+                            var Matches = re.exec(text);
+                            if (Matches && Matches.length) {
+                                НоваяСтрока.Действие=Matches[1];
+                            } else {
+                                НоваяСтрока.Действие = text;
+                           }
+                            НоваяСтрока.Событие=Событие;
+                            
+                            //НоваяСтрока.Действие=Действие.toString();
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+        if (stringinetrnal.indexOf('{"#",7783f716-79fb-446d-9aae-94ba2f2e3957}')>=0) {
+            ЗагрузитьКнопки(element, re, tree);
+        }
     }
 }
 
@@ -896,6 +973,9 @@ FuncProcPanel.prototype.OnClose= function() {
     this.groupsCache.Clear();
     this.lastFilter='';
     this.isForm=false;
+    this.settings.ReadFromForm(this.form);
+    this.settings.SaveSettings();
+    
     events.disconnect(Designer, "onIdle", this)
 }
 FuncProcPanel.prototype.CmdBarTreeView = function (Button) {
@@ -967,10 +1047,16 @@ FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
         newRow.Context = thisRow.Context;
         newRow.Контрол = thisRow.Контрол;
         newRow.ТипЭлемента = thisRow.ТипЭлемента;
+        newRow.КонтролТип = thisRow.КонтролТип;
         newRow.RowType = thisRow._method.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
     }
     this.expandTree();
     this.form.Controls.FunctionList.Columns.Context.Visible = !this.form.TreeView;
+    this.form.Controls.FunctionList.Columns.Context.Visible = (this.form.Controls.FunctionList.Columns.Context.Visible && this.groupsCache.Count() >0) ? true:false
+    this.form.Controls.FunctionList.Columns.Контрол.Visible = (this.isForm || this.form.FuncProcViewRecursive);
+    this.form.Controls.CmdBar.Кнопки['TreeView'].Check = this.form.TreeView;
+    this.form.Controls.CmdBar.Кнопки['ВыводитьВызовы'].Check = this.form.FuncProcViewRecursive;
+    
 }
 
 FuncProcPanel.prototype.CmdBarActivate = function(Button){
@@ -1021,6 +1107,23 @@ FuncProcPanel.prototype.FuncProcOnRowOutput = function(Control, RowAppearance, R
         break;
     }
     
+    var cell = RowAppearance.val.Cells.Контрол;
+    //FIXME: поменять RowTypes.FuncGroup на свой, сейчас совпадают, в дальнейшем может и нет. 
+    switch (RowData.val.КонтролТип)
+    {
+    case RowTypes.FuncGroup:
+        cell.SetPicture(this.Icons.Forward);
+        break;
+    
+    case RowTypes.ProcGroup:
+        cell.SetPicture(this.Icons.Form);
+        break;
+        
+    default:
+        break;
+    }
+    
+
     //if (RowData.val._method.IsProc !== undefined)
     //    RowAppearance.val.Cells.Method.SetPicture(RowData.val._method.IsProc ? this.Icons.Proc : this.Icons.Func);
     
@@ -1150,6 +1253,12 @@ FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = f
     //Message("FunctionListПриАктивизацииСтроки");
 }
 
+FuncProcPanel.prototype.CmdBarВыводитьВызовы = function(Button) {
+    this.form.FuncProcViewRecursive = !this.form.FuncProcViewRecursive;
+    this.GetList();
+    Button.val.Check = this.form.FuncProcViewRecursive;
+    this.viewFunctionList(this.ТекстФильтра);
+}
 
 ////////////////////////////////////////////////////////////////33////////////////////////
 ////{ TextWindowsWatcher - отслеживает активизацию текстовых окон и запоминает последнее.
