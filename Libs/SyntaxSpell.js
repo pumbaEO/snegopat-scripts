@@ -55,6 +55,18 @@ SelfScript.Self['macrosНастройкаSpellChecker'] = function () {
     
 }
 
+SelfScript.Self['macrosПроверкаТекущегоМодуля'] = function() {
+    //var test = windows.getActiveView();
+    //debugger
+    var wnd = GetTextWindow();
+    var text = "";
+    if (wnd)
+        text = wnd.GetText();
+    spell = GetSpellChecker();
+    spell.SpellModule(text, wnd);
+
+}
+
 
 function getDefaultMacros() {
     return "ПроверкаВыделенногоТекста";
@@ -71,8 +83,8 @@ function _SpellChecker(settings) {
     this.settings = { 
                     'provider': "" ,
                     'dict':v8New("ValueList"), 
-                    'prefix':{},
-                    'suffix':{}
+                    'prefix':v8New("ValueList"),
+                    'suffix':v8New("ValueList")
                     }
        settings.ApplyToForm(this.settings);
        this.settingsManager = settings;
@@ -102,7 +114,9 @@ function _SpellChecker(settings) {
     
     this.extSearch = stdlib.require(mainFolder+'scripts\\extSearch.js').GetExtSearch();
     if (this.provider==null)
-        this.form.Open();
+        Message("Не удалось подключиться к "+this.settings.provider + " проверьте настройки! \n (клацните 2 раза на этой сообщении)", mExc1, (function(param){
+            
+        }), this)
 }
 
 
@@ -126,13 +140,14 @@ _SpellChecker.prototype.getAlternatives = function(words) {
 
 _SpellChecker.prototype.WordJoin = function(word, prefix, suffix) {
     var results = {};
-    if (prefix == undefined) prefix = {}
-    if (suffix == undefined) suffix = {}
+    if (prefix == undefined) prefix = v8New('ValueList');
+    if (suffix == undefined) suffix = v8New('ValueList');
     
     if (this.words[word]) 
         return this.words[word];
     
-    for (var key in prefix) {
+    for (var i=0; i< prefix.Count(); i++) {
+        var key = prefix.Get(i).value;
         var re = new RegExp('^('+key+')(.*)','');
         var Matches = word.match(re);
         
@@ -142,7 +157,8 @@ _SpellChecker.prototype.WordJoin = function(word, prefix, suffix) {
             break;
         }
     }
-    for (var key in suffix) {
+    for (var i=0; i<suffix.Count(); i++) {
+        var key = suffix.Get(i).value;
         var re = new RegExp('^(.*)('+key+')','');
         var Matches = word.match(re);
         
@@ -166,7 +182,7 @@ _SpellChecker.prototype.WordJoin = function(word, prefix, suffix) {
              }
         }
         if (!find && word.length>0) {
-            results[word] = {"spell":true, "alternatives":new Array(), "isValid":false};
+            results[word] = {"spell":(word.length>2), "alternatives":new Array(), "isValid":(word.length<3)};
             if (!(this.settings.dict.FindByValue(word.toLowerCase()) == undefined)) {
                     results[word] = {"spell":false, "alternatives":new Array(), "isValid":true};
              }
@@ -201,6 +217,98 @@ _SpellChecker.prototype.SpellText = function(text) {
     
 }
 
+_SpellChecker.prototype.SpellModule = function(text, wnd) {
+    var re = new RegExp('([\wА-яёЁ\d]+)','gi');
+    var Lines = text.split('\n')
+    var n = Lines.length;
+    var i =  0;
+    var isValid = true;
+    while (i<n){
+
+        var str = '';
+        str = Lines[i];
+        
+        wordsparse = new Array();
+        while( (Matches = re.exec(str)) != null ) {
+            wordsparse.push(Matches[1]);
+        }
+        for (var z=0; z<wordsparse.length; z++){
+            if (!this.words[wordsparse[z]]) {
+                if (!(this.settings.dict.FindByValue(wordsparse[z].toLowerCase()) == undefined)) {
+                    var result = {}
+                    result[wordsparse[z].toLowerCase()] = {"spell":false, "alternatives":new Array(), "isValid":true}
+                    this.words[wordsparse[z]] = result;
+                    continue;
+                }
+                this.words[wordsparse[z]] = this.WordJoin(wordsparse[z], this.settings.prefix, this.settings.suffix)
+                // а теперь проверим текст... 
+                this.words[wordsparse[z]] = this.CheckWords(this.words[wordsparse[z]]);    
+            }
+        }
+        var wordsNotValid = new Array()
+        for (var z=0; z<wordsparse.length; z++){ 
+            var words = this.words[wordsparse[z]];
+            for (var key in words) {
+                if (!words[key]['isValid']){
+                    isValid = false;
+                    wordsNotValid.push(wordsparse[z]);
+                    break
+                }
+            }
+        }
+        // запишем сообщение об ошибке... 
+        if (wordsNotValid.length > 0) {
+            var errorstr = 'Ошибки в словах: ';
+            for (var z = 0; z<wordsNotValid.length; z++) {
+                errorstr = (z==0)? errorstr+wordsNotValid[z]:errorstr+'; '+wordsNotValid[z]
+            }
+            errorstr = errorstr + '\n'+str;
+            var param = {}
+            param['wnd'] = wnd;
+            param['words'] = wordsNotValid;
+            param['LineNo'] = i;
+            param['str'] = str;
+
+            Message(errorstr, mExc1, (function(param){
+            
+    if (!param['wnd']) {
+        return }
+    if (!param['wnd'].IsActive()) {
+        return }
+    
+    //FIXME: магия, когда перестанет работать не знаю. Исправь на windows.activate(), но hwnd от ActiveTextWindow <> hwnd из списка windows.list...
+    stdcommands.Frame.GotoBack.send();
+        
+    var colNo = 1;
+    if (param['words'].length>0){
+        var searchPattern = param['words'][0];
+        var re = new RegExp(searchPattern, 'g');
+        var matches = re.exec(param['str']);
+        if (matches) 
+        {   
+            colNo = re.lastIndex - param['words'][0].length + 1;
+        }
+
+    }
+    
+    param['wnd'].SetCaretPos(param['LineNo']+1, colNo);
+    param['wnd'].SetSelection(param['LineNo']+1, colNo, param['LineNo']+1, colNo +param['words'][0].length);
+    
+    param = null;
+}
+    
+    ), param);
+        }
+        i++;
+        Состояние("Всего строк "+Lines.length+" проверяется строка "+i);
+    }
+    if (isValid) {
+        //TODO: добавить в настройку 
+        Message('Ошибок не обнаруженно!', mInfo);
+    }
+    if (!snegopat.activeTextWindow()) {
+        stdcommands.Frame.GotoBack.send();}
+}
 
 _SpellChecker.prototype.КнЗаменитьНажатие = function (Элемент) {
 	// Вставить содержимое обработчика.
@@ -310,7 +418,7 @@ _SpellChecker.prototype.ПриОткрытии = function () {
        }
        
       if (this.form.ДеревоПроверки.Строки.Count()==0) {
-        Message("Ошибок не обнаруженно!")
+        Message("Ошибок не обнаруженно!", mInfo);
         this.form.Close();
       }
 }
@@ -350,13 +458,23 @@ _SpellChecker.prototype.ПараметрыПриОткрытии = function () {
         this.formParams.Controls.СпПровайдерПроверки.Значение = this.settings.provider;
     
     this.formParams.ПользовательскийСловарь = this.settings.dict;
+    //this.formParams.ТаблицаПрефиксов = this.settings.prefix;
+    //this.formParams.ТаблицаПрефиксов = this.settings.prefix;
     //debugger
-    for (var key in this.settings.prefix) {
+    // for (var key in this.settings.prefix) {
+        // var НоваяСтрока = this.formParams.ТаблицаПрефиксов.Add();
+        // НоваяСтрока.Префикс = key
+    // }
+    
+    for (var i=0 ; i<this.settings.prefix.Count(); i++) {
         var НоваяСтрока = this.formParams.ТаблицаПрефиксов.Add();
+        var key = this.settings.prefix.Get(i).value;
         НоваяСтрока.Префикс = key
     }
-    for (var key in this.settings.suffix) {
+    
+    for (var i=0 ; i<this.settings.suffix.Count(); i++) {
         var НоваяСтрока = this.formParams.ТаблицаСуффиксов.Add();
+        var key = this.settings.suffix.Get(i).value;
         НоваяСтрока.Суффикс = key
     }
 }
@@ -365,17 +483,22 @@ _SpellChecker.prototype.ПараметрыКнОкНажатие = function (Э�
 	// Вставить содержимое обработчика.
     this.settings.dict = this.formParams.ПользовательскийСловарь;
     this.settings.provider = this.formParams.Controls.СпПровайдерПроверки.Значение;
+    this.settings.prefix = this.formParams.ТаблицаПрефиксов;
     //debugger;
-    prefix = {};
+    prefix = v8New('ValueList');
     for(var i=0; i<this.formParams.ТаблицаПрефиксов.Count(); i++) {
         var ТекущаяСтрока = this.formParams.ТаблицаПрефиксов.Get(i);
-        prefix[ТекущаяСтрока.Префикс] = true
+        prefix.add(ТекущаяСтрока.Префикс);
     }
+    // for(var i=0; i<this.formParams.ТаблицаПрефиксов.Count(); i++) {
+        // var ТекущаяСтрока = this.formParams.ТаблицаПрефиксов.Get(i);
+        // prefix[ТекущаяСтрока.Префикс] = true
+    // }
     
-    suffix = {};
+    suffix = v8New('ValueList');
     for(var i=0; i<this.formParams.ТаблицаСуффиксов.Count(); i++) {
         var ТекущаяСтрока = this.formParams.ТаблицаСуффиксов.Get(i);
-        suffix[ТекущаяСтрока.Суффикс] = true
+        suffix.add(ТекущаяСтрока.Суффикс);
     }
     
     this.settings.prefix = prefix;
@@ -701,13 +824,13 @@ if(!Array.prototype.indexOf) {
 ////
 
 var ValueList = v8New("ValueList");
-
+var prefixList = v8New("ValueList");
+var suffixList = v8New("ValueList");
 settings = SettingsManagement.CreateManager('SpellChecker', { 
                     'provider': "libreoffice",  //word, libreoffice, aspell, internet Yandex... 
                     'dict': ValueList, // структура с игнорируемыми словами. 
-                    'prefix':{},
-                    'suffix':{}
-                    
+                    'prefix':prefixList,
+                    'suffix':suffixList
                     })
 settings.LoadSettings();
 var мЦвет = v8New("Цвет", 255, 0, 0);
