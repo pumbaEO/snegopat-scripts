@@ -175,7 +175,11 @@ FuncProcPanel.prototype.GetList = function () {
     var contextCache = v8New("Map");
     // ассоциативный массив, с вызовами в текущем модуле.
     var Calls = {};
-    //debugger
+    if (!this.targetWindow)
+        return
+    if (!this.targetWindow.textWindow)
+        return
+
     cnt = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
     vtModules = cnt.getMethodsTable();
     for (var i = 0; i<vtModules.Count(); i++) {
