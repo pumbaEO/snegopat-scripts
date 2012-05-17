@@ -1,7 +1,6 @@
 ﻿$engine JScript
 $uname ScriptFormClass
 $dname Класс ScriptForm
-$addin global
 $addin stdlib
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -20,9 +19,6 @@ $addin stdlib
 ////}
 ////////////////////////////////////////////////////////////////////////////////////////
 
-
-global.connectGlobals(SelfScript);
-
 ScriptForm = stdlib.Class.extend({
 
     //{ Свойства
@@ -38,6 +34,15 @@ ScriptForm = stdlib.Class.extend({
     show: function (modal) {
         return modal ? this.form.DoModal() : this.form.Open();
     },    
+        
+    close: function () {
+        if (this.isOpen())
+            this.form.Close();
+    },
+        
+    isOpen: function () {
+        return this.form.IsOpen();
+    },
         
     addHandler: function (eventName, handler) {
     
@@ -77,7 +82,10 @@ ScriptForm = stdlib.Class.extend({
         // Если командная панель обрабатывается впервые, 
         // то заполним кэш кнопок этой командной панели.
         if (!this._cmdBarsCache[cmdBar.Name]) {
-        
+     
+            // Чтобы не импортировать весь глобальный контекст.
+            var CommandBarButtonType = globalContext("{D041F9A0-476B-4558-8EFC-D895DC695E72}").CommandBarButtonType;
+            
             // Рекурсивно кэширует кнопки командной панели в ассоциативном массиве
             // со следующей структурой:
             //  { ИмяКнопки => [Массив кнопок с одинаковым именем], ... }
@@ -140,7 +148,8 @@ ScriptForm = stdlib.Class.extend({
                         var ctrl = this.form.Controls.Find(matches[1]);
                         if (ctrl && !matches[3])
                         {
-                            if (toV8Value(ctrl).typeName() == 'КомманднаяПанель' || toV8Value(ctrl).typeName() == 'CommandBar') 
+                            var tName = toV8Value(ctrl).typeName();
+                            if (tName == 'КомманднаяПанель' || tName == 'CommandBar') 
                             {
                                 // Обработчик нажатия кнопки командной панели (ИмяКоманднойПанели_ИмяКнопки).
                                 var buttons = this.getCommandBarButtonsByName(ctrl, matches[2]);
