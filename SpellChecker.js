@@ -25,15 +25,12 @@ var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
 SelfScript.Self['macrosПроверкаВыделенногоТекста'] = function () {
-    //var dsForm = new NotifySendSettingsForm(settings);
-    //dsForm.ShowDialog();
+    
     var wnd = GetTextWindow();    
     var text = "";
     if (wnd) 
         text = wnd.GetSelectedText();
-    //var  text ="Текст русский с ошибками \n"
-    //+"Процедура МояСупперПроцедура ( Знач ПеременнаяАшибка)";
-    //debugger;
+    
     spell = GetSpellChecker();
     spell.SpellText(text);
     
@@ -48,7 +45,6 @@ SelfScript.Self['macrosНастройкаSpellChecker'] = function () {
     
     spell = GetSpellChecker();
     spell.formParams.ОткрытьМодально();
-    //spell.SpellText(text);
     
 }
 
@@ -84,11 +80,7 @@ function _SpellChecker(settings) {
                     }
        settings.ApplyToForm(this.settings);
        this.settingsManager = settings;
-    
-    /* this.Парам=null;
-    this.ПроверкаОрфографии=null;
-    this.Локал=null; */
-    
+        
     this.words= {};
     this.provider = null
     switch (this.settings.provider) 
@@ -209,8 +201,6 @@ _SpellChecker.prototype.SpellText = function(text) {
     }
     
     this.form.Open();
-    
-    
 }
 
 _SpellChecker.prototype.SpellModule = function(text, wnd) {
