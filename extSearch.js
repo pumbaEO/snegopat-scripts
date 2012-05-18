@@ -64,6 +64,16 @@ SelfScript.self['macrosПерейти к предыдущему совпаден
     es.moveRowCursor(false);
 }
 
+SelfScript.self['macrosСвернуть группировки'] = function() {
+    var es = GetExtSearch();
+    es.expandTree(true);
+}
+
+SelfScript.self['macrosРазвернуть группировки'] = function() {
+    var es = GetExtSearch();
+    es.expandTree(false);
+}
+
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
@@ -128,11 +138,15 @@ ExtSearch = ScriptForm.extend({
         this.addToHistory(query);
     },
     
-    expandTree : function () {
+    expandTree : function (collapse) {
         if (this.form.TreeView)
         {
+            var tree = this.form.Controls.SearchResults;
             for (var rowNo=0; rowNo < this.results.Rows.Count(); rowNo++)
-                this.form.Controls.SearchResults.Expand(this.results.Rows.Get(rowNo), true);
+            {
+                var row = this.results.Rows.Get(rowNo);
+                collapse ? tree.Collapse(row) : tree.Expand(row, true);
+            }
         }
     },
 
