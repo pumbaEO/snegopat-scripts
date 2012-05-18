@@ -23,7 +23,11 @@ global.connectGlobals(SelfScript)
 ////
 
 SelfScript.self['macrosОткрыть окно'] = function() {
-    GetFuncProcPanel().Show();
+    var f = GetFuncProcPanel();
+    f.Reload();
+    f.Show();
+
+
 }
 
 function getPredefinedHotkeys(predef)
@@ -171,7 +175,11 @@ FuncProcPanel.prototype.GetList = function () {
     var contextCache = v8New("Map");
     // ассоциативный массив, с вызовами в текущем модуле.
     var Calls = {};
-    //debugger
+    if (!this.targetWindow)
+        return
+    if (!this.targetWindow.textWindow)
+        return
+
     cnt = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
     vtModules = cnt.getMethodsTable();
     for (var i = 0; i<vtModules.Count(); i++) {
@@ -967,6 +975,23 @@ FuncProcPanel.prototype.OnOpen = function() {
     this.viewFunctionList(this.form.ТекстФильтра);
     events.connect(Designer, "onIdle", this)
 }
+
+FuncProcPanel.prototype.Reload = function() {
+
+    if (this.IsOpen) {
+
+        this.results.Rows.Clear();
+        this.methods.Rows.Clear();
+        this.groupsCache.Clear();
+        this.lastFilter='';
+        this.isForm=false;
+
+        this.GetList();
+        this.form.ТекстФильтра = '';
+        this.viewFunctionList(this.form.ТекстФильтра);
+    }
+}
+
 FuncProcPanel.prototype.OnClose= function() {
     this.results.Rows.Clear();
     this.methods.Rows.Clear();
@@ -1061,6 +1086,11 @@ FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
 
 FuncProcPanel.prototype.CmdBarActivate = function(Button){
     this.goToLine(this.form.Controls.FunctionList.CurrentRow);
+}
+
+FuncProcPanel.prototype.CmdBarReloadFunc = function(Button){
+
+    this.Reload();
 }
 
 FuncProcPanel.prototype.activateEditor = function () {
