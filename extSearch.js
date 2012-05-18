@@ -25,7 +25,7 @@ global.connectGlobals(SelfScript);
 SelfScript.self['macrosНайти текст'] = function() {
     
     var w = GetTextWindow();
-    if (!w) return;
+    if (!w) return false;
     
     var es = GetExtSearch();
     var selText = w.GetSelectedText();
@@ -42,6 +42,8 @@ SelfScript.self['macrosНайти текст'] = function() {
     }
     else
         es.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
+        
+    return true;
 }
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
