@@ -51,7 +51,12 @@ SelfScript.self['macrosОткрыть окно поиска'] = function() {
 }
 
 SelfScript.self['macrosЗакрыть окно поиска'] = function() {
-    return GetExtSearch().close();
+    var es = GetExtSearch();
+    if (es.isOpen()) {
+        es.close();
+        return true;
+    }
+    return false;
 }
 
 SelfScript.self['macrosПерейти к следующему совпадению'] = function() {
