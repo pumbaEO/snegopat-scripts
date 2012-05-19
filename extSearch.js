@@ -129,6 +129,8 @@ ExtSearch = ScriptForm.extend({
             'Proc': this.form.Controls.PicProc.Picture
         }
         
+        this.SetControlsVisible();
+        
         ExtSearch._instance = this;
     
     },
@@ -598,7 +600,7 @@ ExtSearch = ScriptForm.extend({
                 }
             }
         }    
-        this.SetControlsVisible()
+        this.SetControlsVisible();
     },
     
     CmdBar_TreeView : function (Button) {
@@ -606,6 +608,14 @@ ExtSearch = ScriptForm.extend({
         Button.val.Check = this.form.TreeView;
         this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
         this.switchView(this.form.TreeView);
+    },
+    
+    CmdBar_ExpandAll : function (Button) {
+        this.expandTree(false);
+    },
+    
+    CmdBar_CollapseAll : function (Button) {
+        this.expandTree(true);
     },
 
     SetControlsVisible : function() {
@@ -616,8 +626,14 @@ ExtSearch = ScriptForm.extend({
         this.form.Controls.SearchResults.Columns.Method.Visible = !this.form.TreeView;
         this.form.Controls.SearchResults.Columns.ExactMatch.Visible = this.form.IsRegExp;
 
+        var buttons = this.form.Controls.CmdBar.Buttons;
+        buttons.ExpandAll.Enabled = this.form.TreeView;
+        buttons.Actions.Buttons.ExpandAll.Enabled = this.form.TreeView;
+        buttons.CollapseAll.Enabled = this.form.TreeView;
+        buttons.Actions.Buttons.CollapseAll.Enabled = this.form.TreeView;
+
     }
-    
+  
 }); // end of ExtSearch class
 
 ////} ExtSearch
