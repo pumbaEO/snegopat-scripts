@@ -22,13 +22,76 @@ $addin stdlib
 ScriptForm = stdlib.Class.extend({
 
     //{ Свойства
+    
+    // Отключить автоназначение обработчиков событий.
+    disableAutoEvents: false,    
+    
+    // Путь к сохраняемым настройкам в хранилище настроек.
+    settingsRootPath : '',
+    
+    /* Настройки: сохраняемые реквизиты формы.
+    Ключ - значение перечисления ProfileStoreType, тип хранилища, 
+    в котором хранить настройки. Значение - ассоциативный массив. 
+    Ключ - имя реквизита формы, который сохранять. 
+    Значение - значение настройки по умолчанию. */
+    settings : {
+        //pflSnegopat: {/* FormPropName : DefaultValue, ... */},
+        //pflBase: {},
+        //pflBaseUser: {},
+        //pflCompBase: {},
+        //pflCompBaseUser: {},
+        //pflComputer: {},
+        //pflSeanse: {}
+    },
+    
+    // Вспомогательные.
     form: null,
-    handlers: {},
-    disableAutoEvents: false,
+    handlers: {},    
+    
     //} Свойства
 
     construct: function (formPath) {
         this.loadForm(formPath);
+    },
+    
+    hasSettings : function () {
+        return this.settingsRootPath && this.settings;
+    },
+    
+    loadSettings : function () {
+        
+        if (!this.hasSettings())
+            return false;
+            
+        var sm = stdlib.require('SettingsManaagement.js').SettingsManagement;
+        for (var pflType in this.settings) 
+        {
+            var defaults = this.settings[pflType];
+            var settings = sm.CreateManager(this.settingsRootPath, defaults, pflType);
+            
+            settings.LoadSettings();
+            if (this.form)
+                settings.ApplyToForm(this.form);            
+                
+            this.settings[pflType] = settings;
+        }
+        
+        return true;
+    },
+    
+    saveSettings : function () {
+        
+        if (!this.hasSettings())
+            return false;
+        
+        for (var pflType in this.settings)
+        {
+            settings = this.settings[pflType];
+            settings.ReadFromForm(this.form);
+            settings.SaveSettings();
+        }
+        
+        return true;
     },
     
     show: function (modal) {
@@ -221,7 +284,8 @@ ScriptForm = stdlib.Class.extend({
     fire: function (eventName, eventArgs) {
         // Вызываем все обработчики, подписанные на событие.
         for (var i=0; i<this.handlers[eventName].length; i++)
-            Function.call.apply(this.handlers[eventName][i], eventArgs);    
+            //Function.call.apply(this.handlers[eventName][i], eventArgs);    
+            this.handlers[eventName][i].apply(this, eventArgs);
     }    
     //} Приватные методы    
 });
