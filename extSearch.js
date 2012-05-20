@@ -14,7 +14,6 @@ $addin stdlib
 ////////////////////////////////////////////////////////////////////////////////////////
 
 stdlib.require('TextWindow.js', SelfScript);
-stdlib.require('SettingsManagement.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
 global.connectGlobals(SelfScript);
 
@@ -101,6 +100,19 @@ RowTypes = {
 
 ExtSearch = ScriptForm.extend({
 
+    settingsRootPath : SelfScript.uniqueName,
+    
+    settings : {
+        pflSnegopat : {
+            'IsRegExp'      : false, // Поиск регулярными выражениями.
+            'CaseSensetive' : false, // Учитывать регистр при поиске.
+            'WholeWords'    : false, // Поиск слова целиком.
+            'SearchHistory' : v8New('ValueList'), // История поиска.
+            'HistoryDepth'  : 15, // Количество элементов истории поиска.
+            'TreeView'      : false // Группировать результаты поиска по методам.            
+        }
+    },
+
     construct : function () {
     
         this._super("scripts\\extSearch.results.ssf");
@@ -111,19 +123,8 @@ ExtSearch = ScriptForm.extend({
         
         this.watcher = new TextWindowsWatcher();
         this.watcher.startWatch();
-            
-        this.defaultSettings = {
-            'IsRegExp'      : false, // Поиск регулярными выражениями.
-            'CaseSensetive' : false, // Учитывать регистр при поиске.
-            'WholeWords'    : false, // Поиск слова целиком.
-            'SearchHistory' : v8New('ValueList'), // История поиска.
-            'HistoryDepth'  : 15, // Количество элементов истории поиска.
-            'TreeView'      : false // Группировать результаты поиска по методам.
-        };
-           
-        this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
-        this.settings.LoadSettings();
-        this.settings.ApplyToForm(this.form);
+          
+        this.loadSettings();
         
         this.targetWindow = null;
         
@@ -453,9 +454,9 @@ ExtSearch = ScriptForm.extend({
             history.Insert(0, query);
         else
             history.Add(query);
-       debugger;     
+           
         // Не позволяем истории расти более заданной глубины.
-        while (history.Count() > this.settings.current.HistoryDepth)
+        while (history.Count() > this.form.HistoryDepth)
             history.Delete(history.Count() - 1);
     },
     
@@ -476,8 +477,7 @@ ExtSearch = ScriptForm.extend({
     },
 
     Form_OnClose : function () {
-        this.settings.ReadFromForm(this.form);
-        this.settings.SaveSettings();
+        this.saveSettings();
     },
 
     CmdBar_BtPrev : function (control) {
