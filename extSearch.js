@@ -117,10 +117,10 @@ ExtSearch = ScriptForm.extend({
             'CaseSensetive' : false, // Учитывать регистр при поиске.
             'WholeWords'    : false, // Поиск слова целиком.
             'SearchHistory' : v8New('ValueList'), // История поиска.
-            'HistoryDepth'  : 10, // Количество элементов истории поиска.
+            'HistoryDepth'  : 15, // Количество элементов истории поиска.
             'TreeView'      : false // Группировать результаты поиска по методам.
         };
-            
+           
         this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
         this.settings.LoadSettings();
         this.settings.ApplyToForm(this.form);
@@ -453,9 +453,9 @@ ExtSearch = ScriptForm.extend({
             history.Insert(0, query);
         else
             history.Add(query);
-            
+       debugger;     
         // Не позволяем истории расти более заданной глубины.
-        while (history.Count() > this.settings.HistoryDepth)
+        while (history.Count() > this.settings.current.HistoryDepth)
             history.Delete(history.Count() - 1);
     },
     
