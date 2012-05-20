@@ -221,7 +221,7 @@ ScriptForm = stdlib.Class.extend({
     fire: function (eventName, eventArgs) {
         // Вызываем все обработчики, подписанные на событие.
         for (var i=0; i<this.handlers[eventName].length; i++)
-            Function.call.apply(this.handlers[eventName][i], eventArgs);    
+            this.handlers[eventName][i].apply(this, eventArgs);    
     }    
     //} Приватные методы    
 });
