@@ -468,15 +468,14 @@ ExtSearch = ScriptForm.extend({
         return '';
     },
     
-    OnOpen : function () {
-            
+    Form_OnOpen : function () {   
         if (!this.getRegExpEditorScriptPath())
             this.form.Controls.Query.ChoiceButton = false;
         
         this.SetControlsVisible();
     },
 
-    OnClose : function () {
+    Form_OnClose : function () {
         this.settings.ReadFromForm(this.form);
         this.settings.SaveSettings();
     },
