@@ -10,8 +10,8 @@ $addin stdlib
 
 SettingsManagement = {};
 
-SettingsManagement.CreateManager = function (rootPath, defaults) {
-    return new _SettingsManager(rootPath, defaults);
+SettingsManagement.CreateManager = function (rootPath, defaults, pflStoreType) {
+    return new _SettingsManager(rootPath, defaults, pflStoreType);
 }
 
 ////}
@@ -20,14 +20,15 @@ SettingsManagement.CreateManager = function (rootPath, defaults) {
 ////{ SettingsManager(script, defaults)
 ////
 
-function _SettingsManager(rootPath, defaults) {
+function _SettingsManager(rootPath, defaults, pflStoreType) {
     this.rootPath = rootPath;
+    this.pflStoreType = pflStoreType || pflSnegopat;
     
     var emptySettings = {};
     this.DefaultSettings = defaults || emptySettings;
         
     for(var setting in this.DefaultSettings)
-        profileRoot.createValue(this.GetFullSettingPath(setting), this.DefaultSettings[setting], pflSnegopat);
+        profileRoot.createValue(this.GetFullSettingPath(setting), this.DefaultSettings[setting], this.pflStoreType);
                 
     this.current = {};
     
