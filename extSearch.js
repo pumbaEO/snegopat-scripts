@@ -166,28 +166,9 @@ ExtSearch = ScriptForm.extend({
         if (!this.targetWindow) return;
 
         this.clearSearchResults();
-        
-        var pattern = this.form.Query;
-        if (!this.form.IsRegExp) 
-        {
-            pattern = StringUtils.addSlashes(pattern);
-            
-            if (this.form.WholeWords)
-                pattern = "([^\\w\\dА-я]|^)" + pattern + "([^\\w\\dА-я]|$)";
-        }
-        
-        var iFlag = !this.form.CaseSensetive;
-        
-        var re = null;
-        try 
-        {
-            re = new RegExp(pattern, iFlag ? 'i' : '');
-        }
-        catch (e)
-        {
-            DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
-            return;
-        }
+     
+        var re = this.buildSearchRegExpObject();
+        if (!re) return;
                 
         var curMethod = { 
             'Name'      : 'Раздел описания переменных',
@@ -198,9 +179,11 @@ ExtSearch = ScriptForm.extend({
         var re_method_start = /^\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\s+([\wА-яёЁ\d]+)\s*\(/i;
         var re_method_end = /((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))/i;
                 
-        for(var lineNo=1; lineNo <= this.targetWindow.LinesCount(); lineNo++)
+        var text = this.targetWindow.GetText();        
+        var lines = StringUtils.toLines(text);
+        for(var lineIx=0; lineIx < lines.length; lineIx++)
         {
-            var line = this.targetWindow.GetLine(lineNo);
+            var line = lines[lineIx];
             
             // Проверим, не встретилось ли начало метода.
             var matches = line.match(re_method_start);
@@ -209,22 +192,22 @@ ExtSearch = ScriptForm.extend({
                 curMethod = {
                     'Name'      : matches[2],
                     'IsProc'    : matches[1].toLowerCase() == 'процедура' || matches[1].toLowerCase() == 'procedure',
-                    'StartLine' : lineNo - 1
+                    'StartLine' : lineIx
                 }
             }
             
             matches = line.match(re);
-            if (matches && matches.length) //moduleData.getMethodByLineNumber(lineNo)
-                this.addSearchResult(line, lineNo, matches, curMethod);
+            if (matches && matches.length) //moduleData.getMethodByLineNumber(lineIx + 1)
+                this.addSearchResult(line, lineIx + 1, matches, curMethod);
                
             // Проверим, не встретился ли конец метода.
             matches = line.match(re_method_end);
             if (matches && matches.length)
             {
                 curMethod = {
-                    'Name'      : '',
+                    'Name'      : '<Текст вне процедур и функций>',
                     'IsProc'    : undefined,
-                    'StartLine' : lineNo
+                    'StartLine' : lineIx
                 }
             }
         }
@@ -243,7 +226,7 @@ ExtSearch = ScriptForm.extend({
         if (this.form.TreeView && this.results.Rows.Count() > 0)
         {
             var lastGroup = this.results.Rows.Get(this.results.Rows.Count() - 1);
-            if (lastGroup.FoundLine == '')
+            if (lastGroup.FoundLine == '<Текст вне процедур и функций>')
                 lastGroup.FoundLine = "Раздел основной программы";
         }
         
@@ -266,6 +249,35 @@ ExtSearch = ScriptForm.extend({
         }
     },
 
+    buildSearchRegExpObject : function () {
+    
+        var pattern = this.form.Query;
+        
+        if (!this.form.IsRegExp) 
+        {
+            pattern = StringUtils.addSlashes(pattern);
+            
+            if (this.form.WholeWords)
+                pattern = "([^\\w\\dА-я]|^)" + pattern + "([^\\w\\dА-я]|$)";
+        }
+        
+        var iFlag = !this.form.CaseSensetive;
+        
+        var re = null;
+        
+        try 
+        {
+            re = new RegExp(pattern, iFlag ? 'i' : '');
+        }
+        catch (e)
+        {
+            DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
+            return null;
+        }
+    
+        return re;
+    },
+    
     getRowForTheCurrentLine: function() {
         var rows = this.results.Rows;
         var curLineNo = this.targetWindow.GetCaretPos().beginRow;
@@ -287,7 +299,7 @@ ExtSearch = ScriptForm.extend({
             if (methodData.IsProc !== undefined)
                 groupRow.RowType = methodData.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
                 
-            groupRow.LineNo = methodData.StartLine + 1;
+            groupRow.lineNo = methodData.StartLine + 1;
             groupRow._method = methodData;
             
             this.groupsCache.Insert(methodData, groupRow); 
@@ -301,7 +313,7 @@ ExtSearch = ScriptForm.extend({
 
         var resRow = groupRow.Rows.Add();
         resRow.FoundLine = line;
-        resRow.LineNo = lineNo;
+        resRow.lineNo = lineNo;
         
         if(undefined != methodData)
             resRow.Method = methodData.Name;
