@@ -93,9 +93,15 @@ function getDefaultMacros() {
 ////
 
 RowTypes = {
-    'SearchResult'  : 0,
-    'ProcGroup'     : 1,
-    'FuncGroup'     : 2
+    'SearchResult'  : 0, // Строка результата поиска.
+    'ProcGroup'     : 1, // Строка группы-процедуры (в режиме группировки по процедурам и функциям).
+    'FuncGroup'     : 2, // Строка группы-функции (в режиме группировки по процедурам и функциям).
+    'SearchDoc'     : 3  // Строка документа, в котором производится поиск.
+}
+
+RE = {
+    METHOD_START : /^\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\s+([\wА-яёЁ\d]+)\s*\(/i,
+    METHOD_END : /((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))/i
 }
 
 ExtSearch = ScriptForm.extend({
@@ -120,6 +126,7 @@ ExtSearch = ScriptForm.extend({
         this.form.КлючСохраненияПоложенияОкна = "extSearch.js"
         this.results = this.form.Controls.SearchResults.Value;
         this.results.Columns.Add('_method');
+        this.results.Columns.Add('groupsCache');
         
         this.watcher = new TextWindowsWatcher();
         this.watcher.startWatch();
@@ -128,12 +135,12 @@ ExtSearch = ScriptForm.extend({
         
         this.targetWindow = null;
         
-        this.groupsCache = v8New("Map");
-        
         this.Icons = {
             'Func': this.form.Controls.PicFunc.Picture,
             'Proc': this.form.Controls.PicProc.Picture
         }
+        
+        this.SearchDocRowFont = v8New('Font', undefined, undefined, true);
         
         this.SetControlsVisible();
         
@@ -149,14 +156,11 @@ ExtSearch = ScriptForm.extend({
     },
     
     expandTree : function (collapse) {
-        if (this.form.TreeView)
+        var tree = this.form.Controls.SearchResults;
+        for (var rowNo=0; rowNo < this.results.Rows.Count(); rowNo++)
         {
-            var tree = this.form.Controls.SearchResults;
-            for (var rowNo=0; rowNo < this.results.Rows.Count(); rowNo++)
-            {
-                var row = this.results.Rows.Get(rowNo);
-                collapse ? tree.Collapse(row) : tree.Expand(row, true);
-            }
+            var row = this.results.Rows.Get(rowNo);
+            collapse ? tree.Collapse(row) : tree.Expand(row, true);
         }
     },
 
@@ -169,49 +173,16 @@ ExtSearch = ScriptForm.extend({
      
         var re = this.buildSearchRegExpObject();
         if (!re) return;
-                
-        var curMethod = { 
-            'Name'      : 'Раздел описания переменных',
-            'IsProc'    : undefined,
-            'StartLine' : 0
-        }
-                
-        var re_method_start = /^\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\s+([\wА-яёЁ\d]+)\s*\(/i;
-        var re_method_end = /((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))/i;
-                
-        var text = this.targetWindow.GetText();        
-        var lines = StringUtils.toLines(text);
-        for(var lineIx=0; lineIx < lines.length; lineIx++)
-        {
-            var line = lines[lineIx];
-            
-            // Проверим, не встретилось ли начало метода.
-            var matches = line.match(re_method_start);
-            if (matches && matches.length)
-            {
-                curMethod = {
-                    'Name'      : matches[2],
-                    'IsProc'    : matches[1].toLowerCase() == 'процедура' || matches[1].toLowerCase() == 'procedure',
-                    'StartLine' : lineIx
-                }
-            }
-            
-            matches = line.match(re);
-            if (matches && matches.length) //moduleData.getMethodByLineNumber(lineIx + 1)
-                this.addSearchResult(line, lineIx + 1, matches, curMethod);
-               
-            // Проверим, не встретился ли конец метода.
-            matches = line.match(re_method_end);
-            if (matches && matches.length)
-            {
-                curMethod = {
-                    'Name'      : '<Текст вне процедур и функций>',
-                    'IsProc'    : undefined,
-                    'StartLine' : lineIx
-                }
-            }
-        }
-            
+
+        var docText = this.targetWindow.GetText();        
+
+        var docRow = this.results.Rows.Add();
+        docRow.FoundLine = 'Результаты поиска';
+        docRow.RowType = RowTypes.SearchDoc;
+        docRow.groupsCache = v8New('Map');
+        
+        this.searchDoc(docRow, re, docText);
+        
         this.expandTree();
         
         // Запомним строку поиска в истории.
@@ -278,21 +249,62 @@ ExtSearch = ScriptForm.extend({
         return re;
     },
     
+    searchDoc : function (docRow, re, docText) {
+           
+        var curMethod = { 
+            'Name'      : 'Раздел описания переменных',
+            'IsProc'    : undefined,
+            'StartLine' : 0
+        }
+                                
+        var lines = StringUtils.toLines(docText);
+        for(var lineIx=0; lineIx < lines.length; lineIx++)
+        {
+            var line = lines[lineIx];
+            
+            // Проверим, не встретилось ли начало метода.
+            var matches = line.match(RE.METHOD_START);
+            if (matches && matches.length)
+            {
+                curMethod = {
+                    'Name'      : matches[2],
+                    'IsProc'    : matches[1].toLowerCase() == 'процедура' || matches[1].toLowerCase() == 'procedure',
+                    'StartLine' : lineIx
+                }
+            }
+            
+            matches = line.match(re);
+            if (matches && matches.length) //moduleData.getMethodByLineNumber(lineIx + 1)
+                this.addSearchResult(docRow, line, lineIx + 1, matches, curMethod);
+               
+            // Проверим, не встретился ли конец метода.
+            matches = line.match(RE.METHOD_END);
+            if (matches && matches.length)
+            {
+                curMethod = {
+                    'Name'      : '<Текст вне процедур и функций>',
+                    'IsProc'    : undefined,
+                    'StartLine' : lineIx
+                }
+            }
+        }    
+    },
+    
     getRowForTheCurrentLine: function() {
         var rows = this.results.Rows;
         var curLineNo = this.targetWindow.GetCaretPos().beginRow;
         return  this.form.TreeView ? rows.Find(curLineNo, "LineNo", true) : rows.Find(curLineNo, "LineNo", true);
     },
 
-    getGroupRow: function (methodData) {
+    getGroupRow: function (docRow, methodData) {
 
         if (!this.form.TreeView)
-            return this.results;
+            return docRow;
 
-        var groupRow = this.groupsCache.Get(methodData);
+        var groupRow = docRow.groupsCache.Get(methodData);
         if (!groupRow) 
         {
-            groupRow = this.results.Rows.Add();
+            groupRow = docRow.Rows.Add();
             groupRow.FoundLine = methodData.Name;
             groupRow.Method = methodData.Name;
             
@@ -302,14 +314,14 @@ ExtSearch = ScriptForm.extend({
             groupRow.lineNo = methodData.StartLine + 1;
             groupRow._method = methodData;
             
-            this.groupsCache.Insert(methodData, groupRow); 
+            docRow.groupsCache.Insert(methodData, groupRow); 
         }
         return groupRow;
     },
     
-    addSearchResult : function (line, lineNo, matches, methodData) {
+    addSearchResult : function (docRow, line, lineNo, matches, methodData) {
 
-        var groupRow = this.getGroupRow(methodData);
+        var groupRow = this.getGroupRow(docRow, methodData);
 
         var resRow = groupRow.Rows.Add();
         resRow.FoundLine = line;
@@ -444,7 +456,6 @@ ExtSearch = ScriptForm.extend({
     },
     
     clearSearchResults : function () {
-        this.groupsCache.Clear();
         this.results.Rows.Clear();
     },
     
@@ -575,12 +586,18 @@ ExtSearch = ScriptForm.extend({
         case RowTypes.ProcGroup:
             cell.SetPicture(this.Icons.Proc);
             break;
+
+        case RowTypes.SearchDoc:
+            RowAppearance.val.Cells.LineNo.SetText('');
+            RowAppearance.val.Font = this.SearchDocRowFont;
+            RowAppearance.val.TextColor = WebColors.DarkBlue;
+            break;
             
         default:
             break;
         }
         
-        if (RowData.val._method.IsProc !== undefined)
+        if (RowData.val._method && RowData.val._method.IsProc !== undefined)
             RowAppearance.val.Cells.Method.SetPicture(RowData.val._method.IsProc ? this.Icons.Proc : this.Icons.Func);
         
     },
@@ -588,41 +605,48 @@ ExtSearch = ScriptForm.extend({
     switchView : function (setTreeView) {
         
         var results = this.results.Copy();
-        //var curRow = this.form.Controls.SearchResults.CurrentRow;
-        //if (curRow)
+        
         this.clearSearchResults();
         
-        if (setTreeView)
+        for (var docRowIx = 0; docRowIx < results.Rows.Count(); docRowIx++)
         {
-            for (var i=0; i<results.Rows.Count(); i++)
+            var oldDocRow = results.Rows.Get(docRowIx);
+            var docRow = this.results.Rows.Add();
+            FillPropertyValues(docRow, oldDocRow);
+            docRow.groupsCache = v8New('Map');
+            
+            if (setTreeView)
             {
-                var row = results.Rows.Get(i);
-                var groupRow = this.getGroupRow(row._method);
-                var resRow = groupRow.Rows.Add();
-                FillPropertyValues(resRow, row);
-            }
-            this.expandTree();
-        }
-        else
-        {
-            for (var i=0; i<results.Rows.Count(); i++)
-            {
-                var groupRow = results.Rows.Get(i);
-                for (var j=0; j<groupRow.Rows.Count(); j++)
+                for (var i=0; i<oldDocRow.Rows.Count(); i++)
                 {
-                    var row = groupRow.Rows.Get(j);
-                    var resRow = this.results.Rows.Add();
+                    var row = oldDocRow.Rows.Get(i);
+                    var groupRow = this.getGroupRow(docRow, row._method);
+                    var resRow = groupRow.Rows.Add();
                     FillPropertyValues(resRow, row);
                 }
             }
-        }    
+            else
+            {
+                for (var i=0; i<oldDocRow.Rows.Count(); i++)
+                {
+                    var groupRow = oldDocRow.Rows.Get(i);
+                    for (var j=0; j<groupRow.Rows.Count(); j++)
+                    {
+                        var row = groupRow.Rows.Get(j);
+                        var resRow = docRow.Rows.Add();
+                        FillPropertyValues(resRow, row);
+                    }
+                }
+            }    
+        }
+        this.expandTree();        
         this.SetControlsVisible();
     },
     
     CmdBar_TreeView : function (Button) {
         this.form.TreeView = !this.form.TreeView;
         Button.val.Check = this.form.TreeView;
-        this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
+        //this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
         this.switchView(this.form.TreeView);
     },
     
@@ -637,7 +661,7 @@ ExtSearch = ScriptForm.extend({
     SetControlsVisible : function() {
         
         var ctr = this.form.Controls;
-        ctr.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;    
+        //ctr.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;    
         ctr.CmdBar.Buttons.TreeView.Check = this.form.TreeView;
         this.form.Controls.SearchResults.Columns.Method.Visible = !this.form.TreeView;
         this.form.Controls.SearchResults.Columns.ExactMatch.Visible = this.form.IsRegExp;
