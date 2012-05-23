@@ -290,7 +290,8 @@ _SpellChecker.prototype.SpellModule = function(text, wnd) {
     }
     if (isValid) {
         //TODO: добавить в настройку 
-        Message('Ошибок не обнаруженно!', mInfo);
+        ПоказатьОповещениеПользователя("Проверка орфографии модуля ", "e1cib/app/Обработка", "Ошибок не обнаруженно!");
+        //Message('Ошибок не обнаруженно!', mInfo);
     }
     if (!snegopat.activeTextWindow()) {
         stdcommands.Frame.GotoBack.send();}
@@ -400,7 +401,8 @@ _SpellChecker.prototype.ПриОткрытии = function () {
        }
        
       if (this.form.ДеревоПроверки.Строки.Count()==0) {
-        Message("Ошибок не обнаруженно!", mInfo);
+        //Message("Ошибок не обнаруженно!", mInfo);
+        ПоказатьОповещениеПользователя("Проверка орфографии модуля ", "e1cib/app/Обработка", "Ошибок не обнаруженно!");
         this.form.Close();
       }
 }
@@ -535,7 +537,7 @@ _SpellLibreOffice.prototype.Connect = function(){
        this.Локал.Language = "ru";
         this.Локал.Country = "RU";
     }catch (e) {
-        Message("Не удалось создать объект");
+        ПоказатьОповещениеПользователя("Ошибка ", "e1cib/app/Обработка", "Не удалось создать объект");
     }
 }
 
@@ -568,7 +570,7 @@ _SpellWord.prototype.Connect = function(){
             this.Word.Documents.Add();
             
     }catch (e) {
-       Message("Не удалось создать объект Word.Application");
+        ПоказатьОповещениеПользователя("Ошибка ", "e1cib/app/Обработка", "Не удалось создать объект Word.Application");
     }
     
 }
