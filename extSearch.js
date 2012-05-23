@@ -184,7 +184,8 @@ ExtSearch = ScriptForm.extend({
         }
         catch (e)
         {
-            DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
+            //DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
+            stdlib.require('NotifySend.js').GetNotifySend().Error("Ошибка в регулярном выражении" , "выражение '" + pattern+"', описание ошибки'"+e.message+"'", undefined, undefined, "Встроенный1С");
             return;
         }
                 
@@ -329,7 +330,8 @@ ExtSearch = ScriptForm.extend({
      
         if (!this.targetWindow.IsActive())
         {
-            DoMessageBox("Окно, для которого выполнялся поиск, было закрыто!\nОкно поиска с результатами стало не актуально и будет закрыто.");
+            //DoMessageBox("Окно, для которого выполнялся поиск, было закрыто!\nОкно поиска с результатами стало не актуально и будет закрыто.");
+            stdlib.require('NotifySend.js').GetNotifySend().Error("Окно, для которого выполнялся поиск, было закрыто!" , "Окно поиска с результатами стало не актуально и будет закрыто.", undefined, undefined, "Встроенный1С");
             this.clearSearchResults();
             this.Close();
             return;
@@ -504,7 +506,8 @@ ExtSearch = ScriptForm.extend({
 
         if (this.form.Query == '')
         {
-            DoMessageBox('Не задана строка поиска');
+            stdlib.require('NotifySend.js').GetNotifySend().Error("Поиск в модуле" , "Не задана строка поиска", undefined, undefined, "Встроенный1С");
+            //DoMessageBox('Не задана строка поиска');
             return;
         }
         
