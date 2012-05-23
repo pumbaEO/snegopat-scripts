@@ -235,7 +235,9 @@ ExtSearch = ScriptForm.extend({
         
         if (this.results.Rows.Count() == 0) 
         {
-            DoMessageBox('Совпадений не найдено!');
+            //DoMessageBox('Совпадений не найдено!');
+            stdlib.require('NotifySend.js').GetNotifySend().Warning("Поиск" , "Совпадений для '" + this.form.Query+"' не найдено!", undefined, undefined, "Встроенный1С");
+
             return;
         }
         

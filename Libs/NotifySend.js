@@ -75,24 +75,24 @@ _NotifySend.prototype.initprovider = function(provider) {
     return result;
 }
 
-_NotifySend.prototype.Warning = function(Title, Text, Timeout, Type) {
+_NotifySend.prototype.Warning = function(Title, Text, Timeout, Type, Provider) {
     this.Check(Title, Text, Timeout, "Warning");
-    this.provider.SendMessage(this.title, this.text, this.time, this.type);
+    this.SendMessage(this.title, this.text, this.time, this.type, Provider);
 }
 
-_NotifySend.prototype.Info = function(Title, Text, Timeout, Type) {
+_NotifySend.prototype.Info = function(Title, Text, Timeout, Type, Provider) {
     this.Check(Title, Text, Timeout, "Info");
-    this.provider.SendMessage(this.title, this.text, this.time, this.type);
+    this.SendMessage(this.title, this.text, this.time, this.type, Provider);
 }
 
-_NotifySend.prototype.Error = function(Title, Text, Timeout, Type) {
+_NotifySend.prototype.Error = function(Title, Text, Timeout, Type, Provider) {
     this.Check(Title, Text, Timeout, "Error");
-    this.provider.SendMessage(this.title, this.text, this.time, this.type);
+    this.SendMessage(this.title, this.text, this.time, this.type, Provider);
 }
 
-_NotifySend.prototype.Message = function(Title, Text, Timeout, Type) {
+_NotifySend.prototype.Message = function(Title, Text, Timeout, Type, Provider) {
     this.Check(Title, Text, Timeout, Type);
-    this.provider.SendMessage(this.title, this.text, this.time, this.type);
+    this.SendMessage(this.title, this.text, this.time, this.type, Provider);
 }
 
 _NotifySend.prototype.Check = function(Title, Text, Timeout, Type) {
@@ -109,12 +109,19 @@ _NotifySend.prototype.Check = function(Title, Text, Timeout, Type) {
     
 }
 
-_NotifySend.prototype.SendMessage = function(title, text, timeout, type) {
+_NotifySend.prototype.SendMessage = function(title, text, timeout, type, provider) {
     
-    title = title.replace(/\\/g, "\\\\").substr(0, 62);
-    text = text.replace(/\n/g, "~n").replace(/\t/g, "~t").replace(/"/g, "~q");
-    var cmd = mainFolder+'scripts\\bin\\TrayTip.exe "'+title+'" "'+ text +'" ' +timeout+' '+type;
-    ЗапуститьПриложение(cmd, "", false);
+    if (provider==undefined)
+        provider = this.settings.MessagePovider
+
+    var restoreprovider = ""
+    if (provider!=this.settings.MessagePovider) {
+        this.provider = this.initprovider(provider);
+    }
+    this.provider.SendMessage(title, text, timeout, type);
+    if (provider!=this.settings.MessagePovider) {
+        this.provider = this.initprovider(this.settings.MessagePovider)
+    }
 }
 
 _NotifySend.prototype.ShowDialog = function () {

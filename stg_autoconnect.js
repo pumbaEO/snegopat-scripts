@@ -46,9 +46,7 @@ function onDoModal(dlgInfo)
                     dlgInfo.cancel = true   // Отменяем показ диалога
                     dlgInfo.result = 1      // Как будто в нем нажали Ок
                     if(profileRoot.getValue(pflShowMessage))    // Информируем пользователя, если он хочет
-                        ПоказатьОповещениеПользователя("Авто-подключение к хранилищу", "e1cib/app/Обработка", "Путь:'"  + data.path + "' пользователем '" + data.login + "'");
-                        //Message("Авто-подключение к хранилищу '" + data.path + "' пользователем '" + data.login + "'")
-
+                        Message("Авто-подключение к хранилищу '" + data.path + "' пользователем '" + data.login + "'")
                     // Взведем процедуру определения успешности соединения с хранилищем
                     prevConnectSuccessed = false
                     events.connect(Designer, "onIdle", SelfScript.self)
