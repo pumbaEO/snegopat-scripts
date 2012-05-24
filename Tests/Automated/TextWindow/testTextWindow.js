@@ -47,6 +47,7 @@ function macrosTestGetText()
     assertTrue('Нет активного текстового окна!', twnd.IsActive());    
     
     assertEquals("Полученный текст отличается от содержимого текстового окна!", text, twnd.GetText());
+    assertEquals("Полученный текст отличается от содержимого текстового окна!", text, twnd.ПолучитьТекст());
 }
 
 function macrosTestSetText()
