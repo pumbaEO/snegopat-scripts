@@ -9,7 +9,7 @@ function GetTextWindow() {
     var activeWnd = snegopat.activeTextWindow();
     
     if (activeWnd)
-        return new _TextWindow(activeWnd);
+        return new _TextWindow(activeWnd, windows.getActiveView());
         
     return null;
 }
@@ -22,11 +22,11 @@ function GetTextWindow() {
 интерфейс объектов ITextWindow, так и ТекстовыйДокумент. */
 _TextWindow = stdlib.Class.extend({
 
-    construct : function (textWindow) {
+    construct : function (textWindow, view) {
         this.textWindow = textWindow;
+        this._view = textWindow.hwnd == view.hwnd ? view : undefined;
     },
     
-    //{ Реализация основных методов
     IsActive : function() {
         
         if (!this.textWindow)
@@ -407,10 +407,30 @@ _TextWindow = stdlib.Class.extend({
         }
 
         return str;
+    },
+
+    // Возвращает отображение, соответствующее данному экземпляру объекта TextWindow.
+    GetView : function () {
+        if (this._view == undefined) {
+            var view = null;
+            var twnd = this.textWindow;
+            function walkWindows(views) {
+                for(var i = 0; i < views.count; i++) {
+                    var v = views.item(i);
+                    if (v.isContainer != vctNo)
+                        v = walkWindows(v.enumChilds());                        
+                    if (v.hwnd == twnd.hwnd)
+                        return v;
+                }
+                return null;
+            }
+            this._view = walkWindows(windows.mdiView.enumChilds());
+        }
+        return this._view;
     }
+    
 }); // stdlib.Class.extend
 
-//} Реализация основных методов
 
 //{ Русскоязычные аналоги основных методов объекта Текстовый документ (TextDocument).
 _TextWindow.prototype.КоличествоСтрок = _TextWindow.prototype.LinesCount;
