@@ -170,7 +170,7 @@ function fillTableProcedur(filter)
     form.ТаблицаПроцедур.clear();
     for (var i=0; i<vtModules.Count(); i++){
         var CurRow = vtModules.Get(i);
-        Method = CurRow.Наименование;
+        Method = CurRow.Наименование.toLowerCase();
         var needAdd = true;
         if (filter.length>0){
             for(var s in filters)
