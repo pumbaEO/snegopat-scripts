@@ -419,7 +419,8 @@ _TextWindow = stdlib.Class.extend({
                     var v = views.item(i);
                     if (v.isContainer != vctNo)
                         v = walkWindows(v.enumChilds());                        
-                    if (v.hwnd == twnd.hwnd)
+                    if (v && ((v.hwnd == twnd.hwnd) 
+                    || (v.mdObj && v.mdObj == twnd.mdObj && v.mdProp == twnd.mdProp)))
                         return v;
                 }
                 return null;
