@@ -248,6 +248,8 @@ function fillTableProcedur(filter)
         newRow.RowNumber = CurRow.Module1C.StartLine;
         newRow.RowType = CurRow.Module1C.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
     }
+    if(form.ТаблицаПроцедур.Количество())
+        form.ЭлементыФормы.ТаблицаПроцедур.ТекущаяСтрока = form.ТаблицаПроцедур.Получить(0)
 }
 
 // Функция заполнения списка объектов метаданных
