@@ -3,8 +3,12 @@ $uname mdNavigator
 $dname Навигатор по метаданным
 $addin vbs
 $addin global
+$addin stdlib
 
+stdlib.require('SyntaxAnalysis.js', SelfScript);
+stdlib.require('TextWindow.js', SelfScript);
 global.connectGlobals(SelfScript)
+
 
 // (c) Евгений JohnyDeath Мартыненков
 // (c) Александр Орефков
@@ -14,6 +18,19 @@ var vtMD = null
 var currentFilter = ''
 var listOfFilters = []
 var listOfChoices = []
+var fuctionlistview = false
+var vtModules = v8New("ValueTable");
+vtModules.Колонки.Add("Модуль");
+vtModules.Колонки.Add("Наименование");
+vtModules.Колонки.Add("Module1C");
+var Icons = null;
+var ЦветФонаДляМодулейМенеджера = v8New("Цвет", 240, 255, 240);
+
+RowTypes = {
+    'ProcGroup'     : 1,
+    'FuncGroup'     : 2
+}
+
 
 function walkMdObjs(mdObj, parentName)
 {
@@ -105,13 +122,88 @@ function readMDtoVT()
     walkMdObjs(metadata.current.rootObject, "")
 }
 
+function fillTableProcedur(filter)
+{
+    //Определим надо ли нам заполнять таблицу и надо ли вообще ее показывать...
+    var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
+    var propsModules = [
+    {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
+    {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
+    {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4}
+    ]
+    
+    
+    if(curRow && vtModules.Count()==0)
+    {
+        var mdObj = findMdObj(curRow.UUID)
+        if(mdObj)
+        {
+            enabled = true;
+            // Переберем свойства объекта, и добавим команды для их обработки
+            var mdc = mdObj.mdclass
+            for(var i = 0, c = mdc.propertiesCount; i < c; i++)
+            {
+                var mdPropName = mdc.propertyAt(i).name(1);
+                for(var k in propsModules)
+                {
+                    if(propsModules[k].propName == mdPropName)
+                    {
+                        var text = mdObj.getModuleText(mdPropName);
+                        parseModule = SyntaxAnalysis.AnalyseModule(text, true);
+                        for (var z=0; z<parseModule._vtAllMethods.Count(); z++){
+                            var НоваяСтрока = vtModules.Add();
+                            var RowMethod = parseModule._vtAllMethods.Get(z);
+                            НоваяСтрока.Модуль = mdPropName;
+                            НоваяСтрока.Наименование = RowMethod.Name;
+                            НоваяСтрока.Module1C = RowMethod._method;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (!form.ЭлементыФормы.ТаблицаПроцедур.Visible) {
+        form.ЭлементыФормы.ТаблицаПроцедур.Visible = true;
+    }
+    var filters = filter.split(' ');
+    form.ТаблицаПроцедур.clear();
+    for (var i=0; i<vtModules.Count(); i++){
+        var CurRow = vtModules.Get(i);
+        Method = CurRow.Наименование.toLowerCase();
+        var needAdd = true;
+        if (filter.length>0){
+            for(var s in filters)
+            {
+                if(Method.indexOf(filters[s]) < 0) {
+                    needAdd = false
+                    break;
+                }
+            }
+        }
+        if(!needAdd) continue
+        
+        var newRow = form.ТаблицаПроцедур.Add();
+        newRow.Модуль = CurRow.Модуль;
+        newRow.Наименование = CurRow.Наименование;
+        newRow.RowNumber = CurRow.Module1C.StartLine;
+        newRow.RowType = CurRow.Module1C.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
+    }
+}
+
 // Функция заполнения списка объектов метаданных
 // Если есть строка фильтра, выводит объекты, удовлетворяющие фильтру,
 // иначе выводит список последних выбранных объектов
 function fillTable(newFilter)
 {
     currentFilter = newFilter
-    form.ТаблицаМетаданных.Clear()
+    if (currentFilter.indexOf(":")!=-1){
+        //form.ТаблицаМетаданных.Clear();
+        form.ЭлементыФормы.Панель1.ТекущаяСтраница = form.ЭлементыФормы.Панель1.Страницы.Страница2;
+    }else {
+        form.ЭлементыФормы.Панель1.ТекущаяСтраница = form.ЭлементыФормы.Панель1.Страницы.Страница1;
+        form.ТаблицаМетаданных.Clear();
+    }
     var mode = ''
     if(!currentFilter.length)
     {
@@ -125,7 +217,21 @@ function fillTable(newFilter)
     }
     else
     {
-        var filters = currentFilter.split(' ')
+        if (currentFilter.indexOf(":")!=-1){
+            fuctionlistview = true;
+            var filters = currentFilter.substr(0, currentFilter.indexOf(":"));
+            var filtersProc = currentFilter.substr(currentFilter.indexOf(":")+1);
+            //Уже все есть, надо только вызвать нашу функцию. 
+            fillTableProcedur(filtersProc);
+            return;
+        } else {
+            var filters = currentFilter.split(' ')
+            var filtersProc = "";
+            fuctionlistview = false;
+        }
+        
+        //var filters = currentFilter.split(' ')
+        //var filters = currentFilter.substr(0, cur
         outer: for(var k in vtMD)
         {
             for(var s in filters)
@@ -253,6 +359,9 @@ function updateCommands()
     }
     buttons.Get(2).Enabled = enabled
     buttons.Get(3).Enabled = enabled
+    if (vtModules.Count()>0){
+        vtModules.Clear();
+    }
 }
 
 SelfScript.self['macrosОткрыть объект метаданных'] = function()
@@ -263,6 +372,11 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
     {
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
         form.КлючСохраненияПоложенияОкна = "mdNavigator"
+        Icons = {
+        'Func': form.Controls.PicFunc.Picture,
+        'Proc': form.Controls.PicProc.Picture
+        }
+
         // Заполним таблицу изначально
         fillTable('')
     }
@@ -286,13 +400,22 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
 // Это для пермещения вверх/вниз текущего выбора
 function ТекстФильтраРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
-    if(!form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока)
+    //debugger
+    if (form.ЭлементыФормы.Панель1.ТекущаяСтраница == form.ЭлементыФормы.Панель1.Страницы.Страница1){
+        var curTableForm = form.ЭлементыФормы.ТаблицаМетаданных;
+        var curTable = form.ТаблицаМетаданных;
+    } else {
+        var curTableForm = form.ЭлементыФормы.ТаблицаПроцедур;
+        var curTable = form.ТаблицаПроцедур;
+    }
+    
+    if(!curTableForm.ТекущаяСтрока)
         return
-    var curRow = form.ТаблицаМетаданных.Индекс(form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока), newRow = curRow
+    var curRow = curTable.Индекс(curTableForm.ТекущаяСтрока), newRow = curRow
     
     if(-1 == Направление.val)
     {
-        if(curRow != form.ТаблицаМетаданных.Количество() - 1)
+        if(curRow != curTable.Количество() - 1)
             newRow++
     }
     else
@@ -301,7 +424,7 @@ function ТекстФильтраРегулирование(Элемент, На
             newRow--
     }
     if(newRow != curRow)
-        form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(newRow)
+        curTableForm.ТекущаяСтрока = curTable.Получить(newRow)
     СтандартнаяОбработка.val = false
 }
 
@@ -371,6 +494,60 @@ function ТаблицаМетаданныхПриВыводеСтроки(Эле
     var mdObj = findMdObj(ДанныеСтроки.val.UUID);
     ОформлениеСтроки.val.Ячейки.Name.УстановитьКартинку(mdObj.picture)
 }
+
+
+function ТаблицаПроцедурПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
+{
+    //var mdObj = findMdObj(ДанныеСтроки.val.UUID);
+    
+    var cell = ОформлениеСтроки.val.Cells.Наименование;
+    if (Icons!=null) {
+        switch (ДанныеСтроки.val.RowType)
+        {
+        case RowTypes.FuncGroup:
+            cell.SetPicture(Icons.Func);
+            break;
+        
+        case RowTypes.ProcGroup:
+            cell.SetPicture(Icons.Proc);
+            break;
+            
+        default:
+            break;
+        }
+    }
+    if (ДанныеСтроки.val.Модуль == "МодульМенеджера"){
+        ОформлениеСтроки.val.BackColor = ЦветФонаДляМодулейМенеджера;
+    }
+    //ОформлениеСтроки.val.Ячейки.Name.УстановитьКартинку(mdObj.picture)
+}
+
+function ТаблицаПроцедурВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+    //debugger
+    //doAction(function(mdObj){mdObj.editProperty(ВыбраннаяСтрока.val.Модуль)})
+    var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
+    if(!curRow)
+        return
+    var mdObj = findMdObj(curRow.UUID);
+    if(!mdObj)
+    {
+        MessageBox("Объект '" + curRow.Name + "' не найден.");
+        return
+    }
+    mdObj.editProperty(ВыбраннаяСтрока.val.Модуль);
+    var wnd = GetTextWindow();    
+    if (wnd){
+        var LineNo = ВыбраннаяСтрока.val.RowNumber;
+        var textline = wnd.GetLine(LineNo+1);
+        wnd.SetCaretPos(LineNo+2, 1);
+        wnd.SetSelection(LineNo+1, 1, LineNo+1, textline.length-1);
+    }
+    form.Close(); 
+}
+
+
+
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
