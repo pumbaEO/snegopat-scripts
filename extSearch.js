@@ -46,6 +46,32 @@ SelfScript.self['macrosНайти текст'] = function() {
     return true;
 }
 
+SelfScript.self['macrosНайти во всех открытых документах'] = function() {
+    
+    var w = GetTextWindow();
+    if (!w) return false;
+    
+    var es = GetExtSearch();
+        
+    var selText = w.GetSelectedText();
+    if (selText == '')
+        selText = w.GetWordUnderCursor();
+    
+    es.setSimpleQuery(selText);    
+    es.show();
+        
+    if (selText == '')
+    {
+        es.clearSearchResults();
+        es.setDefaultSearchQuery();
+    }
+    else
+        es.searchOpenedWindows(true);
+        
+    return true;
+}
+
+
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
     GetExtSearch().show();
 }
@@ -160,12 +186,19 @@ ExtSearch = ScriptForm.extend({
     expandTree : function (collapse) {
         var tree = this.form.Controls.SearchResults;
         for (var i=0; i < this.results.Rows.Count(); i++)
-        {
+        {        
             var docRow = this.results.Rows.Get(i);
-            for (var j=0; j < docRow.Rows.Count(); j++)
+            if (this.form.TreeView)
             {
-                var row = docRow.Rows.Get(j);
-                collapse ? tree.Collapse(row) : tree.Expand(row, true);
+                for (var j=0; j < docRow.Rows.Count(); j++)
+                {
+                    var row = docRow.Rows.Get(j);
+                    collapse ? tree.Collapse(row) : tree.Expand(row, true);
+                }
+            }
+            else
+            {
+                collapse ? tree.Collapse(docRow) : tree.Expand(docRow, true);            
             }
         }
     },
@@ -184,6 +217,45 @@ ExtSearch = ScriptForm.extend({
         return null;
     },
     
+    searchOpenedWindows: function (fromHotKey) {
+
+        var activeWindow = this.watcher.getActiveTextWindow();
+        if (!activeWindow) return;
+        
+        var activeView = activeWindow.GetView();
+        if (!activeView) return;
+
+        this.clearSearchResults();
+                     
+        var re = this.buildSearchRegExpObject();
+        if (!re) return;
+        
+        var activeWndResRow = null;
+        
+        var es = this;
+        (function (views) {        
+            for(var i = 0; i < views.count; i++) 
+            {
+                var v = views.item(i);
+                if(v.isContainer != vctNo)
+                {
+                    // Если окно - контейнер, то обходим рекурсивно его потомков.
+                    arguments.callee(v.enumChilds());
+                    continue;
+                }
+                                
+                var obj = es.getWindowObject(v);
+                if (!obj) continue;
+                
+                var docRow = es.search(obj, re);
+                if (v == activeView)
+                    activeWndResRow = docRow;
+            }
+        })(windows.mdiView.enumChilds());
+        
+        this.showSearchResult(activeWndResRow, fromHotKey);
+    },
+        
     searchActiveDoc : function (fromHotKey) {
         
         this.clearSearchResults();
@@ -199,41 +271,7 @@ ExtSearch = ScriptForm.extend({
         
         var docRow = this.search(obj, re);
         
-        this.expandTree();
-        
-        // Запомним строку поиска в истории.
-        this.addToHistory(this.form.Query);
-        
-        if (this.results.Rows.Count() == 0) 
-        {
-            DoMessageBox('Совпадений не найдено!');
-            return;
-        }
-        
-        if (this.form.TreeView && docRow.Rows.Count() > 0)
-        {
-            var lastGroup = this.results.Rows.Get(this.results.Rows.Count() - 1);
-            if (lastGroup.FoundLine == '<Текст вне процедур и функций>')
-                lastGroup.FoundLine = "Раздел основной программы";
-        }
-        
-        if (fromHotKey == true)
-        { 
-            // Для того чтобы курсор не прыгал при поиске текущего слова, 
-            // тут бы еще добавить чтобы активизировалась именно текущая строка
-            this.form.Open();
-            this.form.CurrentControl=this.form.Controls.SearchResults;
-            var curLineRow = this.getRowForTheCurrentLine(docRow);  
-            if (curLineRow)
-                this.form.Controls.SearchResults.CurrentRow = curLineRow;            
-        }
-        else
-        {
-            if (this.form.TreeView)
-                this.goToLine(docRow.Rows.Get(0).Rows.Get(0));
-            else
-                this.goToLine(docRow.Rows.Get(0));        
-        }
+        this.showSearchResult(docRow, fromHotKey);
     },
 
     buildSearchRegExpObject : function () {
@@ -310,7 +348,58 @@ ExtSearch = ScriptForm.extend({
                 }
             }
         }    
+        
+        if (this.form.TreeView && docRow.Rows.Count() > 0)
+        {
+            var lastGroup = this.results.Rows.Get(this.results.Rows.Count() - 1);
+            if (lastGroup.FoundLine == '<Текст вне процедур и функций>')
+                lastGroup.FoundLine = "Раздел основной программы";
+        }
+        
+        if (!docRow.Rows.Count())
+        {
+            this.results.Rows.Delete(docRow);
+            docRow = null;
+        }
+        
         return docRow;
+    },
+    
+    showSearchResult: function (docRow, fromHotKey) {
+        
+        this.results.Rows.Sort('FoundLine', false);
+        
+        this.expandTree();
+        
+        // Запомним строку поиска в истории.
+        this.addToHistory(this.form.Query);
+        
+        if (this.results.Rows.Count() == 0) 
+        {
+            DoMessageBox('Совпадений не найдено!');
+            return;
+        }
+                
+        if (fromHotKey == true)
+        { 
+            // Для того чтобы курсор не прыгал при поиске текущего слова, 
+            // тут бы еще добавить чтобы активизировалась именно текущая строка
+            this.form.Open();
+            this.form.CurrentControl=this.form.Controls.SearchResults;
+            if (docRow) 
+            {
+                var curLineRow = this.getRowForTheCurrentLine(docRow);  
+                if (curLineRow)
+                    this.form.Controls.SearchResults.CurrentRow = curLineRow;            
+            }
+        }
+        else if (docRow)
+        {
+            if (this.form.TreeView)
+                this.goToLine(docRow.Rows.Get(0).Rows.Get(0));
+            else
+                this.goToLine(docRow.Rows.Get(0));        
+        }    
     },
     
     getRowForTheCurrentLine: function(docRow) {
@@ -401,74 +490,71 @@ ExtSearch = ScriptForm.extend({
         
         if (!this.results.Rows.Count())
             return;
-         
-        var row;     
-        var curRow = this.form.Controls.SearchResults.CurrentRow;
+                          
+        var row = this.form.Controls.SearchResults.CurrentRow;
         
-        if (!curRow)
+        if (!row)
         {
-            row = this.results.Rows.Get(0);
+            row = this.results.Rows.Get(0).Get(0);
             if (this.form.TreeView)
                 row = row.Rows.Get(0);
                 
             this.goToLine(row);    
             return;
         }
-
-        function getNextRow(curRow, rows) {
-            
-            var curIndex = rows.indexOf(curRow);
-            
-            // Обеспечим возможность пролистывать результаты поиска по кругу.
-            if (forward && curIndex == rows.Count()-1)
-                curIndex = -1;
-            else if (!forward && curIndex == 0)
-                curIndex = rows.Count();
-                
-            return rows.Get(curIndex + (forward ? 1 : -1));
-        }
         
-        if (this.form.TreeView)
-        {        
-            if (curRow.Parent)
-            {
-                var rows = curRow.Parent.Rows;
-                var curIndex = rows.IndexOf(curRow);
-                
-                if (forward && curIndex == rows.Count()-1)
+        if (forward) 
+        {
+            if (row.RowType == RowTypes.SearchResult)
+            {    
+                while (row)
                 {
-                    var groupRow = getNextRow(curRow.Parent, this.results.Rows);
-                    row = groupRow.Rows.Get(0);
-                }
-                else if (!forward && curIndex == 0)
-                {
-                    var groupRow = getNextRow(curRow.Parent, this.results.Rows);
-                    row = groupRow.Rows.Get(groupRow.Rows.Count() - 1);            
-                }
-                else
-                {
-                    row = getNextRow(curRow, rows);
-                }
+                    var rows = row.Parent ? row.Parent.Rows : this.results.Rows;
+                    var index = rows.IndexOf(row);
+            
+                    if (index < rows.Count() - 1)
+                    {
+                        row = rows.Get(index + 1);
+                        break;
+                    }
+                    
+                    if (!row.Parent)
+                        break;
+                   
+                    row = row.Parent;                    
+                 }
             }
-            else
-            {
-                if (forward)
-                {
-                    row = curRow.Rows.Get(0); 
-                }
-                else 
-                {
-                    var groupRow = getNextRow(curRow, this.results.Rows);
-                    row = groupRow.Rows.Get(groupRow.Rows.Count() - 1);
-                }
-            }
+            
+            while (row.Rows.Count() > 0)
+                row = row.Rows.Get(0);                        
         }
         else
-        {               
-            row = getNextRow(curRow, this.results.Rows);
+        {   
+            if (row.RowType == RowTypes.SearchResult)
+            {    
+                while (row) 
+                {
+                    var rows = row.Parent ? row.Parent.Rows : this.results.Rows;
+                    var index = rows.IndexOf(row);
+            
+                    if (index > 0)
+                    {
+                        row = rows.Get(index - 1);
+                        break;
+                    }
+                    
+                    if (!row.Parent)
+                        break;
+                    
+                    row = row.Parent;                    
+                 }
+            }
+            
+            while (row.Rows.Count() > 0)
+                row = row.Rows.Get(row.Rows.Count() - 1);                        
         }
         
-        this.goToLine(row);        
+        this.goToLine(row);
     },
     
     clearSearchResults : function () {
