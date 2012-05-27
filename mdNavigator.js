@@ -7,6 +7,7 @@ $addin stdlib
 
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
+stdlib.require('ScriptForm.js', SelfScript);
 global.connectGlobals(SelfScript)
 
 
@@ -116,6 +117,63 @@ TextChangesWatcher.prototype.onTimer = function()
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+////{ TextWindowsWatcher - отслеживает активизацию текстовых окон и запоминает последнее и переходим по строке.
+////
+
+TextWindowsWatcher = stdlib.Class.extend({
+
+    construct : function(LineNo) {
+        this.timerId = 0;
+        this.lastActiveTextWindow = null;
+        this.Line = LineNo;
+        this.startWatch();
+    },
+
+    getActiveTextWindow : function () {
+        if (this.lastActiveTextWindow && this.lastActiveTextWindow.IsActive())
+            return this.lastActiveTextWindow;
+        return null;
+    },
+
+    startWatch : function () {
+        if (this.timerId)
+            this.stopWatch();
+        this.timerId = createTimer(1*300, this, 'onTimer');
+    },
+
+    stopWatch : function () {
+        if (!this.timerId)
+            return;
+        killTimer(this.timerId);
+        this.timerId = 0;
+    },
+    
+    goToLine : function() {
+        if (!this.Line)
+            return
+        
+        wnd = this.getActiveTextWindow()
+        if (wnd){
+            var LineNo = this.Line;
+            var textline = wnd.GetLine(LineNo+1);
+            wnd.SetCaretPos(LineNo+2, 1);
+            wnd.SetSelection(LineNo+1, 1, LineNo+1, textline.length-1);
+        }
+    },
+
+    onTimer : function (timerId) {
+        var wnd = GetTextWindow();    
+        if (wnd){
+            this.lastActiveTextWindow = wnd;
+            this.goToLine()
+        }
+        this.stopWatch();
+    }
+    
+}); 
+//} end of TextWindowsWatcher class
+
 function readMDtoVT()
 {
     vtMD = []
@@ -129,6 +187,7 @@ function fillTableProcedur(filter)
     var propsModules = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
     {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
+    {propName: "Форма",            title: "Открыть модуль",        hotkey: 13, modif: 0},
     {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4}
     ]
     
@@ -233,10 +292,10 @@ function fillTable(newFilter)
         //var filters = currentFilter.split(' ')
         //var filters = currentFilter.substr(0, cur
         outer: for(var k in vtMD)
-        {
+        {   
             for(var s in filters)
             {
-                if(vtMD[k].lName.indexOf(filters[s]) < 0)
+                if(vtMD[k].lName.indexOf(filters[s])  < 0) 
                     continue outer
             }
             var row = form.ТаблицаМетаданных.Add()
@@ -473,7 +532,20 @@ function КомандыРедактировать(Кнопка)
 function openProperty(Кнопка)
 {
     var n = Кнопка.val.Name
-    doAction(function(mdObj){mdObj.editProperty(n)})
+    if (form.ЭлементыФормы.Панель1.ТекущаяСтраница == form.ЭлементыФормы.Панель1.Страницы.Страница1){
+        doAction(function(mdObj){mdObj.editProperty(n)})
+    } else {
+        var CurRow = form.ЭлементыФормы.ТаблицаПроцедур.ТекущаяСтрока;
+        if (CurRow) {
+            startTextWindowWather(CurRow.RowNumber);
+            var n = CurRow.Модуль;
+            if (n=="Форма"){
+                doAction(function(mdObj){mdObj.openModule(n.toString())})
+            } else {
+                doAction(function(mdObj){mdObj.editProperty(n.toString())})
+            }
+        }
+    }
     /*
     doAction(function(mdObj)
     {
@@ -522,28 +594,21 @@ function ТаблицаПроцедурПриВыводеСтроки(Элеме
     //ОформлениеСтроки.val.Ячейки.Name.УстановитьКартинку(mdObj.picture)
 }
 
+function startTextWindowWather(line){
+    (new TextWindowsWatcher(line)).startWatch();
+}
+
 function ТаблицаПроцедурВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
-    //debugger
-    //doAction(function(mdObj){mdObj.editProperty(ВыбраннаяСтрока.val.Модуль)})
-    var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
-    if(!curRow)
-        return
-    var mdObj = findMdObj(curRow.UUID);
-    if(!mdObj)
-    {
-        MessageBox("Объект '" + curRow.Name + "' не найден.");
-        return
+    
+    startTextWindowWather(ВыбраннаяСтрока.val.RowNumber);
+    var n = ВыбраннаяСтрока.val.Модуль;
+    if (n=="Форма"){
+        doAction(function(mdObj){mdObj.openModule(n.toString())})
+    } else {
+        doAction(function(mdObj){mdObj.editProperty(n.toString())})
     }
-    mdObj.editProperty(ВыбраннаяСтрока.val.Модуль);
-    var wnd = GetTextWindow();    
-    if (wnd){
-        var LineNo = ВыбраннаяСтрока.val.RowNumber;
-        var textline = wnd.GetLine(LineNo+1);
-        wnd.SetCaretPos(LineNo+2, 1);
-        wnd.SetSelection(LineNo+1, 1, LineNo+1, textline.length-1);
-    }
-    form.Close(); 
+    
 }
 
 
