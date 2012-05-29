@@ -278,7 +278,13 @@ function fillTable(newFilter)
     }
     else
     {
+        if (form.ТаблицаМетаданных.Columns.Find("Rate") == undefined){
+            var КвалификаторЧисла = v8New("КвалификаторыЧисла", 25, 10, ДопустимыйЗнак.Любой);
+            form.ТаблицаМетаданных.Columns.Add("Rate", v8New("ОписаниеТипов", "Число", КвалификаторЧисла));
+        }
+
         if (currentFilter.indexOf(":")!=-1){
+
             fuctionlistview = true;
             var filters = currentFilter.substr(0, currentFilter.indexOf(":"));
             var filtersProc = currentFilter.substr(currentFilter.indexOf(":")+1);
@@ -295,15 +301,32 @@ function fillTable(newFilter)
         //var filters = currentFilter.substr(0, cur
         outer: for(var k in vtMD)
         {   
+            var lNameLength = 500;
+            var maxIndex = 0;
+            var rate = 0;
+            var filtersLenth = filters.length
+            var surcharge = lNameLength/filtersLenth;
             for(var s in filters)
             {
-                if(vtMD[k].lName.indexOf(filters[s])  < 0) 
+                var index = vtMD[k].lName.indexOf(filters[s])
+                if( index < 0) {
                     continue outer
+                } else {
+                    //Посчитаем рейтинг...
+                    percent = (100*index)/lNameLength;
+                    if (percent < maxIndex) 
+                        rate +=surcharge;
+                    rate = rate + percent;
+                    maxIndex = percent
+                }
             }
+
             var row = form.ТаблицаМетаданных.Add()
             row.Name = vtMD[k].Name
             row.UUID = vtMD[k].UUID
+            row.Rate = rate;
         }
+        form.ТаблицаМетаданных.Sort("Rate, Name");
         mode = "Объекты, подходящие под фильтр '" + currentFilter + "' (" + form.ТаблицаМетаданных.Количество() + " шт.):"
     }
     form.ЭлементыФормы.Режим.Заголовок = mode
