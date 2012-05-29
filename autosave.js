@@ -44,6 +44,7 @@ function FilterViews() {
     //debugger
     var views = []      // Массив всех конечных отображений
     var result = {}
+    var find = {} 
     var childs = windows.mdiView.enumChilds();   // Получим список MDI-окон
     (function(views, list)  // Далее надо каждое MDI-окно "раскрутить" до конечных отображений,
     {                       // т.к. MDI-окно может быть контейнером для одного или нескольких отображений
@@ -61,12 +62,24 @@ function FilterViews() {
     for(var idx in views)
     {
         var v = views[idx]
+        if(!find.hasOwnProperty(v.id))
+            {
+                find[v.id] = v
+        }
         if (v.title.indexOf('*')!=-1) {
             result[v.title] = v;
         }
         
     }
-    return result
+    var activeView = null
+    if(childs.count > 0)
+    {
+        activeView = childs.item(0)
+        while(activeView.activeChild)
+            activeView = activeView.activeChild
+        activeView = find[activeView.id]
+    }
+    return {views: result, activeView: activeView}
     
 }
 
@@ -89,7 +102,9 @@ function onTimer(timerID)
         }catch(e){}
         return false
     }
-    var views = FilterViews();
+    var filtersview = FilterViews();
+    var views = filtersview.views;
+    var activeView = filtersview.activeView;
     for (var key in views){
         var v=views[key]
         var mdname = ""
@@ -132,6 +147,7 @@ function onTimer(timerID)
         }
         stdcommands.Frame.FileSave.sendToView(v)
     }
+    activeView.activate();
     // Восстановим настройку "Проверять автоматически"
     if(isAutoCheck)
         profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
@@ -155,6 +171,11 @@ function macrosНастройкаАвтоСохранения()
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
     return 'НастройкаАвтоСохранения';
+}
+
+function macrosСохранитьОкна() {
+
+    onTimer(12345)
 }
 
 // Обработчики нажатий кнопок в форме
