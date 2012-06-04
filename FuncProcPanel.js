@@ -80,16 +80,17 @@ function FuncProcPanel() {
         'Form': this.form.Controls.PicForm.Picture,
         'Forward':this.form.Controls.PicForward.Picture
     }
-       this.tree = v8New("ValueTable");
-       this.tree.Колонки.Добавить("Контрол");
-       this.tree.Колонки.Добавить("ТипЭлемента");
-       this.tree.Колонки.Добавить("Событие");
-       this.tree.Колонки.Добавить("Действие");
+    this.tree = v8New("ValueTable");
+    this.tree.Колонки.Добавить("Контрол");
+    this.tree.Колонки.Добавить("ТипЭлемента");
+    this.tree.Колонки.Добавить("Событие");
+    this.tree.Колонки.Добавить("Действие");
     //Возьмем пример у Орефкова из wndpanel
     this.needHide = false;
 
     this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
         '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+    this.cache = v8New("Map");
 
 }
 FuncProcPanel.prototype.InvisiblePanelSelectAndHide = function(Button) {
@@ -122,7 +123,7 @@ FuncProcPanel.prototype.IsOpen = function () {
 }
 
 FuncProcPanel.prototype.GetList = function () {
-            
+
     this.methods.Rows.Clear();
     this.targetWindow = this.watcher.getActiveTextWindow();
     //debugger;
@@ -139,37 +140,44 @@ FuncProcPanel.prototype.GetList = function () {
     }
     if (this.isForm) {
         var wnd = this.targetWindow.textWindow;
-        var extProp = wnd.mdObj.getExtProp(wnd.mdProp.id)
-        var isManagmendForm = false;
-        // Сохраним текущее состояние свойства "Форма" в файл. Так как файл в saveToFile не передан, то
-        // сохранение произойдет в псевдо-файл в памяти.
-        var file = extProp.saveToFile()
-        try{
-            // создадим хранилище на базе файла. Для управляемых форм тут вывалится в catch
-            var stg = v8Files.attachStorage(file)
-            // Получим из хранилища содержимое под-файла form
-            var form = extProp.getForm();
-            isManagmendForm = false
-        }catch(e)
-        {
-            isManagmendForm = true;
-            file.seek(0, fsBegin)
-            var text = file.getString(dsUtf8);
-        }
-        this.tree.Clear();
-        if (isManagmendForm) {
-            try {
-                this.CreateTreeManagmentForm(text, this.tree); 
-            } catch (e) {
-                    // Ошибок, еще может быть много ...
-                   //Message("Ошибка парсинга "+e.description)
-            };
-            //this.form.Controls.TreeView.Контрол.Visible = true;
+        //
+        if (this.cache.Get(wnd.hwnd)==undefined) {
+            var extProp = wnd.mdObj.getExtProp(wnd.mdProp.id)
+            var isManagmendForm = false;
+            // Сохраним текущее состояние свойства "Форма" в файл. Так как файл в saveToFile не передан, то
+            // сохранение произойдет в псевдо-файл в памяти.
+            var file = extProp.saveToFile()
+            try{
+                // создадим хранилище на базе файла. Для управляемых форм тут вывалится в catch
+                var stg = v8Files.attachStorage(file)
+                // Получим из хранилища содержимое под-файла form
+                var form = extProp.getForm();
+                isManagmendForm = false
+            }catch(e)
+            {
+                isManagmendForm = true;
+                file.seek(0, fsBegin)
+                var text = file.getString(dsUtf8);
+            }
+            this.tree.Clear();
+            if (isManagmendForm) {
+                try {
+                    this.CreateTreeManagmentForm(text, this.tree); 
+                } catch (e) {
+                        // Ошибок, еще может быть много ...
+                       //Message("Ошибка парсинга "+e.description)
+                };
+                //this.form.Controls.TreeView.Контрол.Visible = true;
+            } else {
+                //debugger
+                this.CreateTreeDicForm(form, this.tree)
+                //this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
+            }
+            this.cache.Insert(wnd.hwnd, this.tree.Copy())
         } else {
-            //debugger
-            this.CreateTreeDicForm(form, this.tree)
-            //this.form.Controls.FunctionList.Columns.Контрол.Visible = true;
+            this.tree = this.cache.Get(wnd.hwnd).Copy();
         }
+        
     }
 
     var contextCache = v8New("Map");
@@ -238,7 +246,6 @@ FuncProcPanel.prototype.GetList = function () {
     }
     
     this.form.TreeView = (this.isForm && (contextCache.Count()>1))
-
     //проанализруем управляемую форму...
     this.form.CurrentControl=this.form.Controls.ТекстФильтра;
     
@@ -978,14 +985,13 @@ FuncProcPanel.prototype.OnOpen = function() {
 
 FuncProcPanel.prototype.Reload = function() {
 
-    if (this.IsOpen) {
+    if (this.IsOpen()) {
 
         this.results.Rows.Clear();
         this.methods.Rows.Clear();
         this.groupsCache.Clear();
         this.lastFilter='';
         this.isForm=false;
-
         this.GetList();
         this.form.ТекстФильтра = '';
         this.viewFunctionList(this.form.ТекстФильтра);
@@ -1090,6 +1096,10 @@ FuncProcPanel.prototype.CmdBarActivate = function(Button){
 
 FuncProcPanel.prototype.CmdBarReloadFunc = function(Button){
 
+    var wnd = this.targetWindow.textWindow; //вручную выбрали обновление, значит сделаем долгий анализ формы. 
+    if (this.cache.Get(wnd.hwnd)!=undefined) {
+        this.cache.Delete(wnd.hwnd)
+    }
     this.Reload();
 }
 
