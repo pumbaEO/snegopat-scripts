@@ -105,6 +105,9 @@ function onTimer(timerID)
     var filtersview = FilterViews();
     var views = filtersview.views;
     var activeView = filtersview.activeView;
+    //if(!activeView)
+    //    Message("autosave::isAlive - null")
+        
     for (var key in views){
         var v=views[key]
         var mdname = ""
@@ -147,7 +150,8 @@ function onTimer(timerID)
         }
         stdcommands.Frame.FileSave.sendToView(v)
     }
-    activeView.activate();
+    if(activeView)
+        activeView.activate();
     // Восстановим настройку "Проверять автоматически"
     if(isAutoCheck)
         profileRoot.setValue("ModuleTextEditor/CheckAutomatically", true)
