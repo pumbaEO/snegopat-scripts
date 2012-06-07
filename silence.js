@@ -28,8 +28,8 @@ function onMessageBox(param)
         return;
 	}
     
-    // artbear сообщения типа "Объект Роль.Менеджер заблокирован."
-    reRoleBlock = /Объект\s*Роль\.[\d\wzа-яё]+\s*заблокирован\./ig
+    // artbear сообщения типа "Объект Роль.Менеджер заблокирован." или "Объект Справочник.СохраненныеНастройки заблокирован."
+    reRoleBlock = /Объект\s*[\d\wzа-яё]+\.[\d\wzа-яё]+\s*заблокирован\./ig
     if(reRoleBlock.test(param.text)){
         Message(param.text)
 	    param.result = mbaYes
