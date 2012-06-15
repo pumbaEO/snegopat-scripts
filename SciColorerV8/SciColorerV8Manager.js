@@ -9,6 +9,6 @@ function macrosOnHyperLinkClick(){ //вызывается при Ctrl+Click на
 }
 
 function macrosOnLineNumbersContextMenu(){ //вызывается при правом клике на номерах строк
-	addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все"); //например
+	addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все"); // например
 }
 
