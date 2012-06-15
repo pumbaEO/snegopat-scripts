@@ -47,4 +47,3 @@ script:.\scripts\SciColorerV8\SciColorerV8Manager.js
 
 09.11.2011 - 1.0.0.0
 - ѕерва€ верси€, работа в режиме "только на просмотр"
-
