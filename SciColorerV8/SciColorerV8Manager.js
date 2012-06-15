@@ -12,3 +12,25 @@ function macrosOnLineNumbersContextMenu(){ //вызывается при пра�
 	addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все"); // например
 }
 
+function macrosСвернутьРазвернутьГруппу()
+{
+	addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть или развернуть текущий блок")
+}
+
+function macrosСвернутьВсе()
+{
+	addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть все")
+}
+
+function macrosРазвернутьВсе()
+{
+	addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все")
+}
+
+function getPredefinedHotkeys(predef)
+{
+    predef.setVersion(1)
+    predef.add("СвернутьРазвернутьГруппу", "Ctrl + NumAdd")
+    predef.add("РазвернутьВсе", "Ctrl + Shift + NumAdd")
+    predef.add("СвернутьВсе", "Ctrl + Shift + Num-")
+}
