@@ -4,27 +4,26 @@ $dname SciColorerV8 Manager
 $addin stdcommands
 
 function macrosOnHyperLinkClick(){ //вызывается при Ctrl+Click на любом идентификаторе в тексте модуля
-	stdcommands.Frntend.GoToDefinition.getState()
-	stdcommands.Frntend.GoToDefinition.send()
+    addins.byUniqueName("SnegopatMainScript").invokeMacros("ПерейтиКОпределению")
 }
 
 function macrosOnLineNumbersContextMenu(){ //вызывается при правом клике на номерах строк
-	addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все"); // например
+    addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все"); // например
 }
 
 function macrosСвернутьРазвернутьГруппу()
 {
-	addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть или развернуть текущий блок")
+    addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть или развернуть текущий блок")
 }
 
 function macrosСвернутьВсе()
 {
-	addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть все")
+    addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть все")
 }
 
 function macrosРазвернутьВсе()
 {
-	addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все")
+    addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все")
 }
 
 function getPredefinedHotkeys(predef)
