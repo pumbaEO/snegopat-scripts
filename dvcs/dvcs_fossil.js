@@ -544,36 +544,49 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
             index++;
         }
     } else { 
-        TextDoc.AddLine(PathToFossil+' timeline -t ci -n '+limit+'  >'+' "'+PathToFossilOutput+'"')
+        TextDoc.AddLine(PathToFossil+' json timeline checkin --limit '+limit+'  >'+' "'+PathToFossilOutput+'"')
         TextDoc.Write(PathToBatFossil, 'cp866');
         
         ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
         TextDoc.Clear();
         TextDoc.Read(PathToFossilOutput, "UTF-8");
+        debugger
+        jsonoutput = TextDoc.GetText();
+        jsonobject = eval('('+jsonoutput+')');
+        if (!(jsonobject.resultCode == undefined))
+            return result
         if (TextDoc.LineCount() == 0) {
             return result 
         }
+        if (jsonobject.payload.timeline == undefined) 
+            return result
         
-        var re = new RegExp(/===\s((20\d\d)-(0[1-9]|2[012])-(0[1-9]|[12][0-9]|3[01]))\s===((\n(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\))+)/g)
-        var re_comment = new RegExp(/(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\)/g);
-        var r = TextDoc.ПолучитьТекст();
-        var matches;
-        var index=0;
-        //debugger;
-        while ((matches = re.exec(r)) != null)
-        {
-            var matches_comment;
-            var text = matches[5]
-            while ((matches_comment = re_comment.exec(text)) != null)
-            {
-                /* var cmd = "";
-                for (var i=1; i < matches_comment.length; i++)
-                    var cmd = cmd + " "+i+" - "+matches_comment[i] */
-                
-                result[index] = {"version":matches_comment[5], "comment":'('+matches_comment[9]+')'+' '+matches_comment[6], "date":'' +matches[1]+' '+matches_comment[1], "author":matches_comment[8]}
-                index++;
-            }
+        for (var i=0; i<jsonobject.payload.timeline.length; i++) {
+            var timeline = jsonobject.payload.timeline[i];
+            var date = new Date(timeline.timestamp);
+            result[i] = {"version":timeline.uuid, "comment":'('+timeline.tags[0]+')'+' '+timeline.comment, "date":'' +date.toString(), "author":timeline.user}
         }
+        
+        // var re = new RegExp(/===\s((20\d\d)-(0[1-9]|2[012])-(0[1-9]|[12][0-9]|3[01]))\s===((\n(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\))+)/g)
+        // var re_comment = new RegExp(/(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\)/g);
+        // var r = TextDoc.ПолучитьТекст();
+        // var matches;
+        // var index=0;
+        //debugger;
+        // while ((matches = re.exec(r)) != null)
+        // {
+            // var matches_comment;
+            // var text = matches[5]
+            // while ((matches_comment = re_comment.exec(text)) != null)
+            // {
+                // /* var cmd = "";
+                // for (var i=1; i < matches_comment.length; i++)
+                    // var cmd = cmd + " "+i+" - "+matches_comment[i] */
+                
+                // result[index] = {"version":matches_comment[5], "comment":'('+matches_comment[9]+')'+' '+matches_comment[6], "date":'' +matches[1]+' '+matches_comment[1], "author":matches_comment[8]}
+                // index++;
+            // }
+        // }
     }
     
 return result;    
