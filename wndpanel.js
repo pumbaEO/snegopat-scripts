@@ -113,13 +113,7 @@ WndList = stdlib.Class.extend({
             if(!item.isAlive())
             {
                 if(item.rowInVt)
-                {
-                	if(item.rowInVt.Родитель == undefined) // Пушин
-                		vt.Rows.Delete(item.rowInVt)
-                	else
-                		item.rowInVt.Родитель.Rows.Delete(item.rowInVt)
-                }
-                
+                    vt.Delete(item.rowInVt)
                 delete this.find[item.view.id]
                 this.list.splice(i, 1)
                 removed = true
@@ -197,45 +191,28 @@ WndList = stdlib.Class.extend({
                 }
                 if(needAdd)
                 {
-                    if(!item.rowInVt) //пушин
+                    if(!item.rowInVt)
                     {
-                    	лЗаголовок=item.makeTitle().title;
-	                   	лПозицияДвоеточия=лЗаголовок.indexOf(': ')
-	                   	
-    		            if(лПозицияДвоеточия == -1)
-            		    {
-	                        item.rowInVt = vt.Rows.Insert(idxInVt)
-                    	}
-		                else 
-		                {
-		                	лРодитель = vt.Rows.Найти(лЗаголовок.substr(0, лПозицияДвоеточия), "Заголовок", true)
-	    		            if(лРодитель == undefined)
-		                        item.rowInVt = vt.Rows.Insert(idxInVt)
-			                else
-		                		item.rowInVt = лРодитель.Rows.Insert(idxInVt)
-		                	лЗаголовок = лЗаголовок.substr(лПозицияДвоеточия+1)
-		                }
-                        
+                        item.rowInVt = vt.Insert(idxInVt)
                         item.rowInVt.Окно = item
-                        item.rowInVt.Заголовок = лЗаголовок;
                     }
                     idxInVt++
                 }
                 else if(item.rowInVt)
                 {
-                    vt.Rows.Delete(item.rowInVt) //пушин
+                    vt.Delete(item.rowInVt)
                     item.rowInVt = null
                 }
             }
         }
-        if(needUpdateColors && vt.Rows.Count()) // пушин
+        if(needUpdateColors && vt.Count())
         {
             //debugger
-            var prevItem = vt.Rows.Get(0).Окно // пушин
+            var prevItem = vt.Get(0).Окно
             prevItem.color = 0
-            for(var k = 1; k < vt.Rows.Count(); k++) // пушин
+            for(var k = 1; k < vt.Count(); k++)
             {
-                var item = vt.Rows.Get(k).Окно
+                var item = vt.Get(k).Окно
                 item.color = (prevItem.color + 1) % 2
                 var mdObj = item.view.mdObj
                 var prevMdObj = prevItem.view.mdObj
@@ -339,11 +316,6 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
     try{cell.УстановитьКартинку(item.view.icon)}catch(e){}
     var title = item.makeTitle()
     var hdc = api.GetDC(0)
-    
-    var titlestr =  title.title
-    if(ДанныеСтроки.val.Родитель != undefined) // Пушин
-    	titlestr = ДанныеСтроки.val.Заголовок
-    
     // Приготовим шрифты.
     if(!boldFontV8)
     {
@@ -370,8 +342,8 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
     // будут ссылаться на одну и ту же область памяти со строкой, а так как dynwrapx модифицирует
     // буфер строки напрямую, то oldTitle и title.title всегда будут равны, даже если DrawText
     // изменит строку
-    var oldTitle = new String("-" + titlestr)
-    var res = api.DrawText(hdc, titlestr,
+    var oldTitle = new String("-" + title.title)
+    var res = api.DrawText(hdc, title.title,
 	    new api.Rect(0, 0, widthOfColumn, 0), 0x20 | 0x4000 | 0x10000 | 0x400)// DT_CALCRECT | DT_SINGLELINE | DT_PATH_ELLIPSIS | DT_MODIFYSTRING
     cell.УстановитьТекст(res.text)  // Если текст был шире колонки, то DrawText изменит его так, чтобы он влезал
     api.SelectObject(hdc, oldFont)

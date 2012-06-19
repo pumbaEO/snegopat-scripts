@@ -9,7 +9,7 @@ function GetTextWindow() {
     var activeWnd = snegopat.activeTextWindow();
     
     if (activeWnd)
-        return new _TextWindow(activeWnd, windows.getActiveView());
+        return new _TextWindow(activeWnd);
         
     return null;
 }
@@ -20,418 +20,394 @@ function GetTextWindow() {
 
 /** Класс-обертка вокруг ITextWindow, поддерживающий одновременно 
 интерфейс объектов ITextWindow, так и ТекстовыйДокумент. */
-_TextWindow = stdlib.Class.extend({
+function _TextWindow(textWindow) {
+    this.textWindow = textWindow;
+}
 
-    construct : function (textWindow, view) {
-        this.textWindow = textWindow;
-        this._view = textWindow.hwnd == view.hwnd ? view : undefined;
-    },
+//{ Реализация основных методов
+_TextWindow.prototype.IsActive = function() {
     
-    IsActive : function() {
+    if (!this.textWindow)
+        return false;
         
-        if (!this.textWindow)
-            return false;
-            
-        try 
-        {
-            /* Окно могло быть закрыто. Тогда при обращении 
-            к его свойствам произойдет ошибка. */
-            var hwnd = this.textWindow.hwnd;
-        }
-        catch (e)
-        {
-            return false;
-        }
-        
-        return true;
-    },
-
-    GetHwnd : function () {
-        return this.textWindow.hwnd;
-    },
-
-    GetText : function() {
-        return this.textWindow.text;
-    },
-
-    SetText : function(text) {
-        this.Range(1,1,this.textWindow.linesCount).SetText(text);
-    },
-
-    ExtName : function() {
-        return this.textWindow.extName;
-    },
-
-    GetCaretPos : function() {
-        return this.textWindow.getCaretPos();    
-    },
-
-    SetCaretPos : function(row, col) {
-        return this.textWindow.setCaretPos(row, col);    
-    },
-
-    GetSelection : function() {
-        return this.textWindow.getSelection();    
-    },
-
-    SetSelection : function(beginRow, beginCol, endRow, endCol) {
-        return this.textWindow.setSelection(beginRow, beginCol, endRow, endCol);    
-    },
-
-    GetSelectedText : function() {
-        return this.textWindow.selectedText;
-    },
-
-    SetSelectedText : function(text) {
-        this.textWindow.selectedText = text;
-    },
-
-    GetLine : function(rowNum) {
-        return this.textWindow.line(rowNum);    
-    },
-
-    LinesCount : function() {
-        return this.textWindow.linesCount;    
-    },
-
-    IsReadOnly : function() {
-        return this.textWindow.readOnly;    
-    },
-
-    DeleteLine : function(rowNum) {
-        
-        if (rowNum < 1 || rowNum > this.LinesCount())
-            return;
-
-        var nextLine = this.GetLine(rowNum + 1);
-        this.Range(rowNum, 1, rowNum+1, nextLine.length + 1).SetText(nextLine);
-    },
-
-    AddLine : function(strLine) {
-        var linesCount = this.LinesCount();
-        if (linesCount > 0)
-        {
-            var lastLine = this.GetLine(linesCount);
-            this.Range(linesCount, 1, linesCount).SetText(lastLine + "\n" + strLine);
-        }
-        else 
-        {
-            this.Range().SetText(strLine);
-        }
-    },
-
-    InsertLine : function(rowNum, strLine) {
-
-        var linesCount = this.LinesCount();
-
-        if (rowNum < 0 || rowNum > linesCount + 1)
-            throw "_TextWindow.InsertLine(): Индекс за границами диапазона!";
-            
-        if (rowNum == linesCount + 1)
-        {    
-            this.AddLine(strLine);
-        }
-        else 
-        {
-            var curLine = this.GetLine(rowNum);
-            this.Range(rowNum, 1, rowNum).SetText(strLine + "\n" + curLine);
-        }
-    },
-
-    ReplaceLine : function(rowNum, strLine) {
-        this.Range(rowNum, 1, rowNum).SetText(strLine);
-    },
-
-    Clear : function () {
-        this.Range().SetText("");
-    },
-
-    /** RangeObject _TextWindow::Range([beginRow [,beginCol [,endRow [,endCol]]]]) */
-    Range : function() {
-        var tw = this.textWindow;
-
-        /* Нумерация строк и колонок в текстовом документе - с 1. 
-        Если документ пустой, то linesCount == 0, поэтому для корректной работы 
-        объекта Range() приводим значения аргументов при помощи выражения (index || 1). */
-        
-        var beginRow = (arguments.length > 0 ? arguments[0] : 1) || 1;
-        var endRow  = (arguments.length > 2 ? arguments[2] : tw.linesCount) || 1;
-        
-        if (beginRow > endRow)
-            throw "_TextWindow: Индекс первой строки области не может быть больше индекса последней строки области!";
-
-        var beginCol = (arguments.length > 1 ? arguments[1] : 1) || 1;
-        var endCol =  (arguments.length > 3 ? arguments[3] : tw.line(endRow).length) || 1;
-        
-        if (beginRow == endRow && beginCol > endCol)
-            throw "_TextWindow: Индекс первого символа области строки не может быть больше индекса последнего символа области!";
-
-         // Возвращает строки области как массив.
-         var getLines = function() {
-            
-            var lines = [];        
-
-            /* Чтобы не ошибиться в индексах, надо помнить:
-             - в строках js нумерация символов начинается с 0;
-             - строки и колонки в ITextWindow нумеруются с 1;
-             - в substr второй параметр - длина подстроки, которую требуется получить.*/
-
-            ////// Область - подстрока одной строки.
-
-            if (beginRow == endRow)
-            {
-                lines.push(tw.line(beginRow).substr(beginCol-1, endCol));
-                return lines;
-            }
-
-            ////// Область - несколько строк.            
-            
-            // 1. Первая строка - от первой колонки области и до конца этой строки.
-            lines.push(tw.line(beginRow).substr(beginCol - 1));
-            
-            // 2. Строки, начиная со второй и до предпоследней.
-            for (var row=beginRow + 1; row <= endRow - 1; row++)
-                lines.push(tw.line(row));
-
-            // 3. Последняя строка - от первого символа и до последней колонки области.
-            lines.push(tw.line(endRow).substr(0, endCol));
-
-            return lines;
-        };
-
-        // Возвращает строки области в виде одной мультистроки (разделитель строк - \n).
-        var getText = function() {
-            return getLines().join("\n");
-        };
-
-        var setText = function(text) {        
-            
-            ////1. Запомнить текущую позицию курсора и выделение.        
-            var curPos = tw.getCaretPos();
-            var curSel = tw.getSelection();
-            
-            ////2. установить выделение в соответствии с координатами Range
-            
-            /* И снова чехарда с индексами: выделение включает символы
-            вплоть до позиции каретки, т.е. если мы хотим, чтобы символ 
-            в позиции endCol попал в выделение, мы каретку должны поставить
-            в позицию (endCol + 1). */
-            
-            tw.setSelection(beginRow, beginCol, endRow, endCol+1);
-            
-            ////3. установить выделенный текст
-            tw.selectedText = text;
-            
-            ////4. вернуть положение курсора в прежнюю позицию.
-            tw.setSelection(curSel.beginRow, curSel.beginCol, curSel.endRow, curSel.endCol);
-            tw.setCaretPos(curPos.beginRow, curPos.beginCol);
-        }
-        
-        // Возвращаем наш псевдо - Range
-        return { GetLines: getLines, GetText: getText, SetText: setText };
-
-    },
-
-    /** Array _TextWindow::Lines([from [,to]])*/
-    GetLines : function () {
-
-        // Если не задано ни одного параметра, то возвращаем все строки.
-        // Если задан только первый параметр, то возвращается заданная строка.
-        // Если заданы оба параметра, возвращаем диапазон строк.
-
-        var beginRow, endRow;
-
-        if (!arguments.length)
-        {
-            beginRow = 1;
-            endRow = this.textWindow.linesCount;
-        }
-        else if (arguments.length == 1) 
-        {
-            beginRow = arguments[0];
-            endRow = beginRow;
-        }
-        else if (arguments.length > 1)
-        {
-            beginRow = arguments[0];
-            endRow = arguments[1];
-        }
-        
-        return this.Range(beginRow, 1, endRow).GetLines();
-    },
-
-    /** Возвращает слово под курсором. */
-    GetWordUnderCursor : function () {
-
-        /*TODO: Добавить необязательный параметр: регулярное выражение для проверки символов слова. */
-
-        var pos = this.GetCaretPos();
-        var line = this.GetLine(pos.beginRow);
-        var isChar = /[\w\dА-я]/;
-
-        var wordBegPos = pos.beginCol - 1;
-        
-        if (!isChar.test(line.charAt(wordBegPos)))
-            return '';
-            
-        while (wordBegPos > 0)
-        {
-            if (!isChar.test(line.charAt(wordBegPos - 1)))
-                break;
-                
-            wordBegPos--;
-        }
-            
-        var wordEndPos = pos.beginCol - 1;
-        
-        while (wordEndPos < line.length - 1)
-        {
-            if (!isChar.test(line.charAt(wordEndPos + 1)))
-                break;
-                
-            wordEndPos++;    
-        }
-
-        return line.substr(wordBegPos, wordEndPos - wordBegPos + 1);
-    },
-
-    /** Возвращает строковый литерал, внутри которого находится курсор. 
-    FIXME: Текущая реализация некорректно отрабатывает ситуацию, когда курсор
-    находится вне строкового литерала между границами двух других строковых  
-    литералов (см. тест macrosTest10 в testTextWindow_GetStringUnderCursor.js). */
-    GetStringUnderCursor : function () {
-
-        var pos = this.GetCaretPos();
-
-        var beginRow = pos.beginRow;
-        var wordBegPos = pos.beginCol - 1;
-        
-        // Далее везде помним, что нумерация строк начинаются с 1,
-        // а нумерация символов в js-строке - с 0.
-        var line = this.GetLine(pos.beginRow);
-        var str = '';
-        
-        while (true)
-        {            
-            if (beginRow < 1 || wordBegPos < 0)
-                return null;
-        
-            var curChar = line.charAt(wordBegPos);
-            
-            /* Если встретилась двойная кавычка, то либо строка завершилась, либо
-            рядом есть еще одна экранирующая двойная кавычка. */
-            if (curChar == '"')
-            {
-                if (wordBegPos - 1 > -1 && line.charAt(wordBegPos - 1) == '"')
-                {
-                    str = '"' + str;
-                    wordBegPos -= 2;
-                    continue;
-                }                    
-                break;
-            }
-            
-            /* Если встретился символ вертикальной черты, то значит нам 
-            встретилась мультистрока. Добавляем перевод строки и продолжаем 
-            парсинг с конца близлежайшей верхней строки. */
-            if (curChar == '|')
-            {
-                str = "\n" + str;
-                beginRow--;
-                if (beginRow < 1) 
-                    return null;
-                    
-                line = this.GetLine(beginRow);
-                wordBegPos = line.length - 1;
-                continue;
-            }
-                
-            /* В остальных случаях встретился обычный символ, добавляем его к строке. */
-            str = curChar + str;        
-            wordBegPos--;
-        }
-            
-        var endRow = pos.beginRow;
-        var wordEndPos = pos.beginCol;
-        var linesCount = this.LinesCount();
-        var line = this.GetLine(endRow);
-        
-        // Регулярное выражение для проверки начала очередной строки в мультистроке.
-        var reMultilineString = new RegExp('^\s*\|');
-        
-        while (true)
-        {
-            if (endRow > linesCount)
-                return null;
-                            
-            if (wordEndPos >= line.length) 
-            {
-                /* Надо проверить, находимся ли мы в мультистроке.
-                Критерий проверки: наличие вертикальной черты в самом начале следующей строки.
-                Если да, мы в мультистроке, то просто переходим к обработке следующей строки.
-                Если нет, то значит имеет место быть синтаксическая ошибка. */
-                
-                endRow++;
-                if (endRow > linesCount)
-                    return null;
-                
-                line = this.GetLine(endRow);
-                
-                // Если следующая строка - не продолжение мультстроки, то это ошибка.
-                var match = reMultilineString.exec(line);
-                if (!match) return null;
-
-                // Добавляем перевод строки и продолжаем со следующей за вертикальной чертой позиции.
-                str += "\n";
-                wordEndPos = reMultilineString.lastIndex + 1;
-            }
-                            
-            var curChar = line.charAt(wordEndPos);
-            
-            /* Если встретилась двойная кавычка, то либо строка завершилась, либо
-            рядом есть еще одна экранирующая двойная кавычка. */
-            if (curChar == '"')
-            {
-                if (wordEndPos + 1 < line.length && line.charAt(wordEndPos + 1) == '"')
-                {
-                    str += '"';
-                    wordEndPos += 2;
-                    continue;
-                }                    
-                break;
-            }
-
-            /* В остальных случаях встретился обычный символ, добавляем его к строке. */
-            str += curChar;        
-            wordEndPos++;        
-        }
-
-        return str;
-    },
-
-    // Возвращает отображение, соответствующее данному экземпляру объекта TextWindow.
-    GetView : function () {
-        if (this._view == undefined) {
-            var view = null;
-            var twnd = this.textWindow;
-            function walkWindows(views) {
-                for(var i = 0; i < views.count; i++) {
-                    var v = views.item(i);
-                    if (v.isContainer != vctNo)
-                        v = walkWindows(v.enumChilds());                        
-                    if (v && ((v.hwnd == twnd.hwnd) 
-                    || (v.mdObj && v.mdObj == twnd.mdObj && v.mdProp == twnd.mdProp)))
-                        return v;
-                }
-                return null;
-            }
-            this._view = walkWindows(windows.mdiView.enumChilds());
-        }
-        return this._view;
+    try 
+    {
+        /* Окно могло быть закрыто. Тогда при обращении 
+        к его свойствам произойдет ошибка. */
+        var hwnd = this.textWindow.hwnd;
+    }
+    catch (e)
+    {
+        return false;
     }
     
-}); // stdlib.Class.extend
+    return true;
+}
 
+_TextWindow.prototype.GetHwnd = function () {
+    return this.textWindow.hwnd;
+}
+
+_TextWindow.prototype.GetText = function() {
+    return this.textWindow.text;
+}
+
+_TextWindow.prototype.SetText = function(text) {
+    this.Range(1,1,this.textWindow.linesCount).SetText(text);
+}
+
+_TextWindow.prototype.ExtName = function() {
+    return this.textWindow.extName;
+}
+
+_TextWindow.prototype.GetCaretPos = function() {
+    return this.textWindow.getCaretPos();    
+}
+
+_TextWindow.prototype.SetCaretPos = function(row, col) {
+    return this.textWindow.setCaretPos(row, col);    
+}
+
+_TextWindow.prototype.GetSelection = function() {
+    return this.textWindow.getSelection();    
+}
+
+_TextWindow.prototype.SetSelection = function(beginRow, beginCol, endRow, endCol) {
+    return this.textWindow.setSelection(beginRow, beginCol, endRow, endCol);    
+}
+
+_TextWindow.prototype.GetSelectedText = function() {
+    return this.textWindow.selectedText;
+}
+
+_TextWindow.prototype.SetSelectedText = function(text) {
+    this.textWindow.selectedText = text;
+}
+
+_TextWindow.prototype.GetLine = function(rowNum) {
+    return this.textWindow.line(rowNum);    
+}
+
+_TextWindow.prototype.LinesCount = function() {
+    return this.textWindow.linesCount;    
+}
+
+_TextWindow.prototype.IsReadOnly = function() {
+    return this.textWindow.readOnly;    
+}
+
+_TextWindow.prototype.DeleteLine = function(rowNum) {
+	
+	if (rowNum < 1 || rowNum > this.LinesCount())
+		return;
+
+	var nextLine = this.GetLine(rowNum + 1);
+	this.Range(rowNum, 1, rowNum+1, nextLine.length + 1).SetText(nextLine);
+}
+
+_TextWindow.prototype.AddLine = function(strLine) {
+    var linesCount = this.LinesCount();
+    if (linesCount > 0)
+    {
+        var lastLine = this.GetLine(linesCount);
+        this.Range(linesCount, 1, linesCount).SetText(lastLine + "\n" + strLine);
+    }
+    else 
+    {
+        this.Range().SetText(strLine);
+    }
+}
+
+_TextWindow.prototype.InsertLine = function(rowNum, strLine) {
+
+    var linesCount = this.LinesCount();
+
+    if (rowNum < 0 || rowNum > linesCount + 1)
+        throw "_TextWindow.InsertLine(): Индекс за границами диапазона!";
+        
+    if (rowNum == linesCount + 1)
+    {    
+        this.AddLine(strLine);
+    }
+    else 
+    {
+        var curLine = this.GetLine(rowNum);
+        this.Range(rowNum, 1, rowNum).SetText(strLine + "\n" + curLine);
+    }
+}
+
+_TextWindow.prototype.ReplaceLine = function(rowNum, strLine) {
+    this.Range(rowNum, 1, rowNum).SetText(strLine);
+}
+
+_TextWindow.prototype.Clear = function () {
+    this.Range().SetText("");
+}
+
+/** RangeObject _TextWindow::Range([beginRow [,beginCol [,endRow [,endCol]]]]) */
+_TextWindow.prototype.Range = function() {
+    var tw = this.textWindow;
+
+    /* Нумерация строк и колонок в текстовом документе - с 1. 
+    Если документ пустой, то linesCount == 0, поэтому для корректной работы 
+    объекта Range() приводим значения аргументов при помощи выражения (index || 1). */
+    
+    var beginRow = (arguments.length > 0 ? arguments[0] : 1) || 1;
+    var endRow  = (arguments.length > 2 ? arguments[2] : tw.linesCount) || 1;
+    
+    if (beginRow > endRow)
+        throw "_TextWindow: Индекс первой строки области не может быть больше индекса последней строки области!";
+
+    var beginCol = (arguments.length > 1 ? arguments[1] : 1) || 1;
+    var endCol =  (arguments.length > 3 ? arguments[3] : tw.line(endRow).length) || 1;
+    
+    if (beginRow == endRow && beginCol > endCol)
+        throw "_TextWindow: Индекс первого символа области строки не может быть больше индекса последнего символа области!";
+
+     // Возвращает строки области как массив.
+     var getLines = function() {
+        
+        var lines = [];        
+
+        /* Чтобы не ошибиться в индексах, надо помнить:
+         - в строках js нумерация символов начинается с 0;
+         - строки и колонки в ITextWindow нумеруются с 1;
+         - в substr второй параметр - длина подстроки, которую требуется получить.*/
+
+        ////// Область - подстрока одной строки.
+
+        if (beginRow == endRow)
+        {
+            lines.push(tw.line(beginRow).substr(beginCol-1, endCol));
+            return lines;
+        }
+
+        ////// Область - несколько строк.            
+        
+        // 1. Первая строка - от первой колонки области и до конца этой строки.
+        lines.push(tw.line(beginRow).substr(beginCol - 1));
+        
+        // 2. Строки, начиная со второй и до предпоследней.
+        for (var row=beginRow + 1; row <= endRow - 1; row++)
+            lines.push(tw.line(row));
+
+        // 3. Последняя строка - от первого символа и до последней колонки области.
+        lines.push(tw.line(endRow).substr(0, endCol));
+
+        return lines;
+    };
+
+    // Возвращает строки области в виде одной мультистроки (разделитель строк - \n).
+    var getText = function() {
+        return getLines().join("\n");
+    };
+
+    var setText = function(text) {        
+        
+        ////1. Запомнить текущую позицию курсора и выделение.        
+        var curPos = tw.getCaretPos();
+        var curSel = tw.getSelection();
+        
+        ////2. установить выделение в соответствии с координатами Range
+        
+        /* И снова чехарда с индексами: выделение включает символы
+        вплоть до позиции каретки, т.е. если мы хотим, чтобы символ 
+        в позиции endCol попал в выделение, мы каретку должны поставить
+        в позицию (endCol + 1). */
+        
+        tw.setSelection(beginRow, beginCol, endRow, endCol+1);
+        
+        ////3. установить выделенный текст
+        tw.selectedText = text;
+        
+        ////4. вернуть положение курсора в прежнюю позицию.
+        tw.setSelection(curSel.beginRow, curSel.beginCol, curSel.endRow, curSel.endCol);
+        tw.setCaretPos(curPos.beginRow, curPos.beginCol);
+    }
+    
+    // Возвращаем наш псевдо - Range
+    return { GetLines: getLines, GetText: getText, SetText: setText };
+
+}
+
+/** Array _TextWindow::Lines([from [,to]])*/
+_TextWindow.prototype.GetLines = function () {
+
+    // Если не задано ни одного параметра, то возвращаем все строки.
+    // Если задан только первый параметр, то возвращается заданная строка.
+    // Если заданы оба параметра, возвращаем диапазон строк.
+
+    var beginRow, endRow;
+
+    if (!arguments.length)
+    {
+        beginRow = 1;
+        endRow = this.textWindow.linesCount;
+    }
+    else if (arguments.length == 1) 
+    {
+        beginRow = arguments[0];
+        endRow = beginRow;
+    }
+    else if (arguments.length > 1)
+    {
+        beginRow = arguments[0];
+        endRow = arguments[1];
+    }
+    
+    return this.Range(beginRow, 1, endRow).GetLines();
+}
+
+/** Возвращает слово под курсором. */
+_TextWindow.prototype.GetWordUnderCursor = function () {
+
+    /*TODO: Добавить необязательный параметр: регулярное выражение для проверки символов слова. */
+
+    var pos = this.GetCaretPos();
+    var line = this.GetLine(pos.beginRow);
+    var isChar = /[\w\dА-я]/;
+
+    var wordBegPos = pos.beginCol - 1;
+    
+    if (!isChar.test(line.charAt(wordBegPos)))
+        return '';
+        
+    while (wordBegPos > 0)
+    {
+        if (!isChar.test(line.charAt(wordBegPos - 1)))
+            break;
+            
+        wordBegPos--;
+    }
+        
+    var wordEndPos = pos.beginCol - 1;
+    
+    while (wordEndPos < line.length - 1)
+    {
+        if (!isChar.test(line.charAt(wordEndPos + 1)))
+            break;
+            
+        wordEndPos++;    
+    }
+
+    return line.substr(wordBegPos, wordEndPos - wordBegPos + 1);
+}
+
+/** Возвращает строковый литерал, внутри которого находится курсор. 
+FIXME: Текущая реализация некорректно отрабатывает ситуацию, когда курсор
+находится вне строкового литерала между границами двух других строковых  
+литералов (см. тест macrosTest10 в testTextWindow_GetStringUnderCursor.js). */
+_TextWindow.prototype.GetStringUnderCursor = function () {
+
+    var pos = this.GetCaretPos();
+
+    var beginRow = pos.beginRow;
+    var wordBegPos = pos.beginCol - 1;
+    
+    // Далее везде помним, что нумерация строк начинаются с 1,
+    // а нумерация символов в js-строке - с 0.
+    var line = this.GetLine(pos.beginRow);
+    var str = '';
+    
+    while (true)
+    {            
+        if (beginRow < 1 || wordBegPos < 0)
+            return null;
+    
+        var curChar = line.charAt(wordBegPos);
+        
+        /* Если встретилась двойная кавычка, то либо строка завершилась, либо
+        рядом есть еще одна экранирующая двойная кавычка. */
+        if (curChar == '"')
+        {
+            if (wordBegPos - 1 > -1 && line.charAt(wordBegPos - 1) == '"')
+            {
+                str = '"' + str;
+                wordBegPos -= 2;
+                continue;
+            }                    
+            break;
+        }
+        
+        /* Если встретился символ вертикальной черты, то значит нам 
+        встретилась мультистрока. Добавляем перевод строки и продолжаем 
+        парсинг с конца близлежайшей верхней строки. */
+        if (curChar == '|')
+        {
+            str = "\n" + str;
+            beginRow--;
+            if (beginRow < 1) 
+                return null;
+                
+            line = this.GetLine(beginRow);
+            wordBegPos = line.length - 1;
+            continue;
+        }
+            
+        /* В остальных случаях встретился обычный символ, добавляем его к строке. */
+        str = curChar + str;        
+        wordBegPos--;
+    }
+        
+    var endRow = pos.beginRow;
+    var wordEndPos = pos.beginCol;
+    var linesCount = this.LinesCount();
+    var line = this.GetLine(endRow);
+    
+    // Регулярное выражение для проверки начала очередной строки в мультистроке.
+    var reMultilineString = new RegExp('^\s*\|');
+    
+    while (true)
+    {
+        if (endRow > linesCount)
+            return null;
+                        
+        if (wordEndPos >= line.length) 
+        {
+            /* Надо проверить, находимся ли мы в мультистроке.
+            Критерий проверки: наличие вертикальной черты в самом начале следующей строки.
+            Если да, мы в мультистроке, то просто переходим к обработке следующей строки.
+            Если нет, то значит имеет место быть синтаксическая ошибка. */
+            
+            endRow++;
+            if (endRow > linesCount)
+                return null;
+            
+            line = this.GetLine(endRow);
+            
+            // Если следующая строка - не продолжение мультстроки, то это ошибка.
+            var match = reMultilineString.exec(line);
+            if (!match) return null;
+
+            // Добавляем перевод строки и продолжаем со следующей за вертикальной чертой позиции.
+            str += "\n";
+            wordEndPos = reMultilineString.lastIndex + 1;
+        }
+                        
+        var curChar = line.charAt(wordEndPos);
+        
+        /* Если встретилась двойная кавычка, то либо строка завершилась, либо
+        рядом есть еще одна экранирующая двойная кавычка. */
+        if (curChar == '"')
+        {
+            if (wordEndPos + 1 < line.length && line.charAt(wordEndPos + 1) == '"')
+            {
+                str += '"';
+                wordEndPos += 2;
+                continue;
+            }                    
+            break;
+        }
+
+        /* В остальных случаях встретился обычный символ, добавляем его к строке. */
+        str += curChar;        
+        wordEndPos++;        
+    }
+
+    return str;
+}
+
+//} Реализация основных методов
 
 //{ Русскоязычные аналоги основных методов объекта Текстовый документ (TextDocument).
 _TextWindow.prototype.КоличествоСтрок = _TextWindow.prototype.LinesCount;

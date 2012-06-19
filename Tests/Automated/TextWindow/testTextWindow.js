@@ -47,7 +47,6 @@ function macrosTestGetText()
     assertTrue('Нет активного текстового окна!', twnd.IsActive());    
     
     assertEquals("Полученный текст отличается от содержимого текстового окна!", text, twnd.GetText());
-    assertEquals("Полученный текст отличается от содержимого текстового окна!", text, twnd.ПолучитьТекст());
 }
 
 function macrosTestSetText()
@@ -317,16 +316,3 @@ function macrosTestGetWordUnderCursor8() {
     assertEquals('', twnd.GetWordUnderCursor());
 }
 //}
-
-function macrosTestGetView1() {
-    assertNotNull(twnd.GetView());
-    assertEquals(twnd.GetHwnd(), twnd.GetView().hwnd);
-}
-
-function macrosTestGetView2() {
-    twnd._view = undefined;// чтобы гарантированно отработал алгоритм рекурсивного поиска вьюхи
-    var view = twnd.GetView();
-    assertNotUndefined(view);
-    assertNotNull(view);
-    assertEquals(twnd.GetHwnd(), view.hwnd);
-}

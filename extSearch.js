@@ -14,6 +14,7 @@ $addin stdlib
 ////////////////////////////////////////////////////////////////////////////////////////
 
 stdlib.require('TextWindow.js', SelfScript);
+stdlib.require('SettingsManagement.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
 global.connectGlobals(SelfScript);
 
@@ -27,50 +28,23 @@ SelfScript.self['macrosНайти текст'] = function() {
     if (!w) return false;
     
     var es = GetExtSearch();
-        
     var selText = w.GetSelectedText();
     if (selText == '')
         selText = w.GetWordUnderCursor();
     
     es.setSimpleQuery(selText);    
     es.show();
-        
+    
     if (selText == '')
     {
         es.clearSearchResults();
         es.setDefaultSearchQuery();
     }
     else
-        es.searchActiveDoc(true);
+        es.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
         
     return true;
 }
-
-SelfScript.self['macrosНайти во всех открытых документах'] = function() {
-    
-    var w = GetTextWindow();
-    if (!w) return false;
-    
-    var es = GetExtSearch();
-        
-    var selText = w.GetSelectedText();
-    if (selText == '')
-        selText = w.GetWordUnderCursor();
-    
-    es.setSimpleQuery(selText);    
-    es.show();
-        
-    if (selText == '')
-    {
-        es.clearSearchResults();
-        es.setDefaultSearchQuery();
-    }
-    else
-        es.searchOpenedWindows(true);
-        
-    return true;
-}
-
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
     GetExtSearch().show();
@@ -120,31 +94,12 @@ function getDefaultMacros() {
 ////
 
 RowTypes = {
-    'SearchResult'  : 0, // Строка результата поиска.
-    'ProcGroup'     : 1, // Строка группы-процедуры (в режиме группировки по процедурам и функциям).
-    'FuncGroup'     : 2, // Строка группы-функции (в режиме группировки по процедурам и функциям).
-    'SearchDoc'     : 3  // Строка документа, в котором производится поиск.
-}
-
-RE = {
-    METHOD_START : /^\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\s+([\wА-яёЁ\d]+)\s*\(/i,
-    METHOD_END : /((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))/i
+    'SearchResult'  : 0,
+    'ProcGroup'     : 1,
+    'FuncGroup'     : 2
 }
 
 ExtSearch = ScriptForm.extend({
-
-    settingsRootPath : SelfScript.uniqueName,
-    
-    settings : {
-        pflSnegopat : {
-            'IsRegExp'      : false, // Поиск регулярными выражениями.
-            'CaseSensetive' : false, // Учитывать регистр при поиске.
-            'WholeWords'    : false, // Поиск слова целиком.
-            'SearchHistory' : v8New('ValueList'), // История поиска.
-            'HistoryDepth'  : 15, // Количество элементов истории поиска.
-            'TreeView'      : false // Группировать результаты поиска по методам.            
-        }
-    },
 
     construct : function () {
     
@@ -153,22 +108,31 @@ ExtSearch = ScriptForm.extend({
         this.form.КлючСохраненияПоложенияОкна = "extSearch.js"
         this.results = this.form.Controls.SearchResults.Value;
         this.results.Columns.Add('_method');
-        this.results.Columns.Add('groupsCache');
-        this.results.Columns.Add('_object');
         
         this.watcher = new TextWindowsWatcher();
         this.watcher.startWatch();
-          
-        this.loadSettings();
+            
+        this.defaultSettings = {
+            'IsRegExp'      : false, // Поиск регулярными выражениями.
+            'CaseSensetive' : false, // Учитывать регистр при поиске.
+            'WholeWords'    : false, // Поиск слова целиком.
+            'SearchHistory' : v8New('ValueList'), // История поиска.
+            'HistoryDepth'  : 10, // Количество элементов истории поиска.
+            'TreeView'      : false // Группировать результаты поиска по методам.
+        };
+            
+        this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
+        this.settings.LoadSettings();
+        this.settings.ApplyToForm(this.form);
         
         this.targetWindow = null;
+        
+        this.groupsCache = v8New("Map");
         
         this.Icons = {
             'Func': this.form.Controls.PicFunc.Picture,
             'Proc': this.form.Controls.PicProc.Picture
         }
-        
-        this.SearchDocRowFont = v8New('Font', undefined, undefined, true);
         
         this.SetControlsVisible();
         
@@ -184,100 +148,25 @@ ExtSearch = ScriptForm.extend({
     },
     
     expandTree : function (collapse) {
-        var tree = this.form.Controls.SearchResults;
-        for (var i=0; i < this.results.Rows.Count(); i++)
-        {        
-            var docRow = this.results.Rows.Get(i);
-            if (this.form.TreeView)
+        if (this.form.TreeView)
+        {
+            var tree = this.form.Controls.SearchResults;
+            for (var rowNo=0; rowNo < this.results.Rows.Count(); rowNo++)
             {
-                for (var j=0; j < docRow.Rows.Count(); j++)
-                {
-                    var row = docRow.Rows.Get(j);
-                    collapse ? tree.Collapse(row) : tree.Expand(row, true);
-                }
-            }
-            else
-            {
-                collapse ? tree.Collapse(docRow) : tree.Expand(docRow, true);            
+                var row = this.results.Rows.Get(rowNo);
+                collapse ? tree.Collapse(row) : tree.Expand(row, true);
             }
         }
     },
-        
-    getWindowObject : function (view) {
-       
-        if (view.mdObj && view.mdProp) 
-            return new MdObject(view.mdObj, view.mdProp, view.title);
-            
-        var obj = view.getObject();
-        if (obj && toV8Value(obj).typeName(0) == 'TextDocument')
-            return new TextDocObject(obj, view.title);        
-            
-        if (obj) Message('Неподдерживаемый тип объекта для поиска: ' + toV8Value(obj).typeName(0));
-        
-        return null;
-    },
-    
-    searchOpenedWindows: function (fromHotKey) {
 
-        var activeWindow = this.watcher.getActiveTextWindow();
-        if (!activeWindow) return;
-        
-        var activeView = activeWindow.GetView();
-        if (!activeView) return;
-
-        this.clearSearchResults();
-                     
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
-        
-        var activeWndResRow = null;
-        
-        var es = this;
-        (function (views) {        
-            for(var i = 0; i < views.count; i++) 
-            {
-                var v = views.item(i);
-                if(v.isContainer != vctNo)
-                {
-                    // Если окно - контейнер, то обходим рекурсивно его потомков.
-                    arguments.callee(v.enumChilds());
-                    continue;
-                }
-                                
-                var obj = es.getWindowObject(v);
-                if (!obj) continue;
+    runSearch : function (fromHotKey) {
                 
-                var docRow = es.search(obj, re);
-                if (v == activeView)
-                    activeWndResRow = docRow;
-            }
-        })(windows.mdiView.enumChilds());
-        
-        this.showSearchResult(activeWndResRow, fromHotKey);
-    },
-        
-    searchActiveDoc : function (fromHotKey) {
-        
+        this.targetWindow = this.watcher.getActiveTextWindow();
+        if (!this.targetWindow) return;
+
         this.clearSearchResults();
         
-        var activeWindow = this.watcher.getActiveTextWindow();
-        if (!activeWindow) return;
-             
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
-
-        var obj = this.getWindowObject(activeWindow.GetView());
-        if (!obj) return;
-        
-        var docRow = this.search(obj, re);
-        
-        this.showSearchResult(docRow, fromHotKey);
-    },
-
-    buildSearchRegExpObject : function () {
-    
         var pattern = this.form.Query;
-        
         if (!this.form.IsRegExp) 
         {
             pattern = StringUtils.addSlashes(pattern);
@@ -289,87 +178,56 @@ ExtSearch = ScriptForm.extend({
         var iFlag = !this.form.CaseSensetive;
         
         var re = null;
-        
         try 
         {
             re = new RegExp(pattern, iFlag ? 'i' : '');
         }
         catch (e)
         {
-            //DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
-            stdlib.require('NotifySend.js').GetNotifySend().Error("Ошибка в регулярном выражении" , "выражение '" + pattern+"', описание ошибки'"+e.message+"'", undefined, undefined, "Встроенный1С");
-            return null;
+            DoMessageBox("В регулярном выражении допущена ошибка: \n" + e.message);
+            return;
         }
-    
-        return re;
-    },
-    
-    search : function (obj, re) {
-          
-        var docRow = this.results.Rows.Add();
-        docRow.FoundLine = obj.getTitle();
-        docRow._object = obj;
-        docRow.RowType = RowTypes.SearchDoc;
-        docRow.groupsCache = v8New('Map');
-          
+                
         var curMethod = { 
             'Name'      : 'Раздел описания переменных',
             'IsProc'    : undefined,
             'StartLine' : 0
         }
-                                
-        var lines = StringUtils.toLines(obj.getText());
-        for(var lineIx=0; lineIx < lines.length; lineIx++)
+                
+        var re_method_start = /^\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\s+([\wА-яёЁ\d]+)\s*\(/i;
+        var re_method_end = /((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))/i;
+                
+        for(var lineNo=1; lineNo <= this.targetWindow.LinesCount(); lineNo++)
         {
-            var line = lines[lineIx];
+            var line = this.targetWindow.GetLine(lineNo);
             
             // Проверим, не встретилось ли начало метода.
-            var matches = line.match(RE.METHOD_START);
+            var matches = line.match(re_method_start);
             if (matches && matches.length)
             {
                 curMethod = {
                     'Name'      : matches[2],
                     'IsProc'    : matches[1].toLowerCase() == 'процедура' || matches[1].toLowerCase() == 'procedure',
-                    'StartLine' : lineIx
+                    'StartLine' : lineNo - 1
                 }
             }
             
             matches = line.match(re);
-            if (matches && matches.length)
-                this.addSearchResult(docRow, line, lineIx + 1, matches, curMethod);
+            if (matches && matches.length) //moduleData.getMethodByLineNumber(lineNo)
+                this.addSearchResult(line, lineNo, matches, curMethod);
                
             // Проверим, не встретился ли конец метода.
-            matches = line.match(RE.METHOD_END);
+            matches = line.match(re_method_end);
             if (matches && matches.length)
             {
                 curMethod = {
-                    'Name'      : '<Текст вне процедур и функций>',
+                    'Name'      : '',
                     'IsProc'    : undefined,
-                    'StartLine' : lineIx
+                    'StartLine' : lineNo
                 }
             }
-        }    
-        
-        if (this.form.TreeView && docRow.Rows.Count() > 0)
-        {
-            var lastGroup = this.results.Rows.Get(this.results.Rows.Count() - 1);
-            if (lastGroup.FoundLine == '<Текст вне процедур и функций>')
-                lastGroup.FoundLine = "Раздел основной программы";
         }
-        
-        if (!docRow.Rows.Count())
-        {
-            this.results.Rows.Delete(docRow);
-            docRow = null;
-        }
-        
-        return docRow;
-    },
-    
-    showSearchResult: function (docRow, fromHotKey) {
-        
-        this.results.Rows.Sort('FoundLine', false);
-        
+            
         this.expandTree();
         
         // Запомним строку поиска в истории.
@@ -377,71 +235,72 @@ ExtSearch = ScriptForm.extend({
         
         if (this.results.Rows.Count() == 0) 
         {
-            //DoMessageBox('Совпадений не найдено!');
-            stdlib.require('NotifySend.js').GetNotifySend().Warning("Поиск" , "Совпадений для '" + this.form.Query+"' не найдено!", undefined, undefined, "Встроенный1С");
-
+            DoMessageBox('Совпадений не найдено!');
             return;
         }
-                
+        
+        if (this.form.TreeView && this.results.Rows.Count() > 0)
+        {
+            var lastGroup = this.results.Rows.Get(this.results.Rows.Count() - 1);
+            if (lastGroup.FoundLine == '')
+                lastGroup.FoundLine = "Раздел основной программы";
+        }
+        
         if (fromHotKey == true)
         { 
             // Для того чтобы курсор не прыгал при поиске текущего слова, 
             // тут бы еще добавить чтобы активизировалась именно текущая строка
             this.form.Open();
             this.form.CurrentControl=this.form.Controls.SearchResults;
-            if (docRow) 
-            {
-                var curLineRow = this.getRowForTheCurrentLine(docRow);  
-                if (curLineRow)
-                    this.form.Controls.SearchResults.CurrentRow = curLineRow;            
-            }
+            var curLineRow = this.getRowForTheCurrentLine();  
+            if (curLineRow)
+                this.form.Controls.SearchResults.CurrentRow = curLineRow;            
         }
-        else if (docRow)
+        else
         {
             if (this.form.TreeView)
-                this.goToLine(docRow.Rows.Get(0).Rows.Get(0));
+                this.goToLine(this.results.Rows.Get(0).Rows.Get(0));
             else
-                this.goToLine(docRow.Rows.Get(0));        
-        }    
-    },
-    
-    getRowForTheCurrentLine: function(docRow) {
-        var twnd = docRow._object.activate();
-        return docRow.Rows.Find(twnd.GetCaretPos().beginRow, "LineNo", true);
+                this.goToLine(this.results.Rows.Get(0));        
+        }
     },
 
-    getGroupRow: function (docRow, methodData) {
+    getRowForTheCurrentLine: function() {
+        var rows = this.results.Rows;
+        var curLineNo = this.targetWindow.GetCaretPos().beginRow;
+        return  this.form.TreeView ? rows.Find(curLineNo, "LineNo", true) : rows.Find(curLineNo, "LineNo", true);
+    },
+
+    getGroupRow: function (methodData) {
 
         if (!this.form.TreeView)
-            return docRow;
+            return this.results;
 
-        var groupRow = docRow.groupsCache.Get(methodData);
+        var groupRow = this.groupsCache.Get(methodData);
         if (!groupRow) 
         {
-            groupRow = docRow.Rows.Add();
+            groupRow = this.results.Rows.Add();
             groupRow.FoundLine = methodData.Name;
             groupRow.Method = methodData.Name;
-            groupRow._object = docRow._object;
             
             if (methodData.IsProc !== undefined)
                 groupRow.RowType = methodData.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
                 
-            groupRow.lineNo = methodData.StartLine + 1;
+            groupRow.LineNo = methodData.StartLine + 1;
             groupRow._method = methodData;
             
-            docRow.groupsCache.Insert(methodData, groupRow); 
+            this.groupsCache.Insert(methodData, groupRow); 
         }
         return groupRow;
     },
     
-    addSearchResult : function (docRow, line, lineNo, matches, methodData) {
+    addSearchResult : function (line, lineNo, matches, methodData) {
 
-        var groupRow = this.getGroupRow(docRow, methodData);
+        var groupRow = this.getGroupRow(methodData);
 
         var resRow = groupRow.Rows.Add();
         resRow.FoundLine = line;
-        resRow.lineNo = lineNo;
-        resRow._object = docRow._object;
+        resRow.LineNo = lineNo;
         
         if(undefined != methodData)
             resRow.Method = methodData.Name;
@@ -453,23 +312,30 @@ ExtSearch = ScriptForm.extend({
         else
             resRow.ExactMatch = matches[0];
     },
+
+    activateEditor : function () {
+        if (!snegopat.activeTextWindow())
+            stdcommands.Frame.GotoBack.send();
+    },
     
     goToLine : function (row) {
 
         this.form.Controls.SearchResults.CurrentRow = row;    
 
-        // Откроем и/или активируем окно объекта, в котором выполнялся поиск.
-        var targetWindow = row._object.activate();
+        if (!this.targetWindow)
+            return;
      
-        if (!targetWindow.IsActive())
+        if (!this.targetWindow.IsActive())
         {
-            //DoMessageBox("Окно, для которого выполнялся поиск, было закрыто!\nОкно поиска с результатами стало не актуально и будет закрыто.");
-            stdlib.require('NotifySend.js').GetNotifySend().Error("Окно, для которого выполнялся поиск, было закрыто!" , "Окно поиска с результатами стало не актуально и будет закрыто.", undefined, undefined, "Встроенный1С");
+            DoMessageBox("Окно, для которого выполнялся поиск, было закрыто!\nОкно поиска с результатами стало не актуально и будет закрыто.");
             this.clearSearchResults();
             this.Close();
             return;
         }
      
+        // Переведем фокус в окно текстового редактора.
+        this.activateEditor();
+
         // Найдем позицию найденного слова в строке.
         var searchPattern = this.form.WholeWords ? "(?:[^\\w\\dА-я]|^)" + row.ExactMatch + "([^\\w\\dА-я]|$)" : StringUtils.addSlashes(row.ExactMatch); 
         var re = new RegExp(searchPattern, 'g');
@@ -486,82 +352,86 @@ ExtSearch = ScriptForm.extend({
         }
         
         // Установим выделение на найденное совпадение со строкой поиска.
-        targetWindow.SetCaretPos(row.LineNo, colNo);
-        targetWindow.SetSelection(row.LineNo, colNo, row.LineNo, colNo + row.ExactMatch.length);
+        this.targetWindow.SetCaretPos(row.LineNo, colNo);
+        this.targetWindow.SetSelection(row.LineNo, colNo, row.LineNo, colNo + row.ExactMatch.length);
     },
 
     moveRowCursor : function (forward) {
         
         if (!this.results.Rows.Count())
             return;
-                          
-        var row = this.form.Controls.SearchResults.CurrentRow;
+         
+        var row;     
+        var curRow = this.form.Controls.SearchResults.CurrentRow;
         
-        if (!row)
+        if (!curRow)
         {
-            row = this.results.Rows.Get(0).Get(0);
+            row = this.results.Rows.Get(0);
             if (this.form.TreeView)
                 row = row.Rows.Get(0);
                 
             this.goToLine(row);    
             return;
         }
+
+        function getNextRow(curRow, rows) {
+            
+            var curIndex = rows.indexOf(curRow);
+            
+            // Обеспечим возможность пролистывать результаты поиска по кругу.
+            if (forward && curIndex == rows.Count()-1)
+                curIndex = -1;
+            else if (!forward && curIndex == 0)
+                curIndex = rows.Count();
+                
+            return rows.Get(curIndex + (forward ? 1 : -1));
+        }
         
-        if (forward) 
-        {
-            if (row.RowType == RowTypes.SearchResult)
-            {    
-                while (row)
+        if (this.form.TreeView)
+        {        
+            if (curRow.Parent)
+            {
+                var rows = curRow.Parent.Rows;
+                var curIndex = rows.IndexOf(curRow);
+                
+                if (forward && curIndex == rows.Count()-1)
                 {
-                    var rows = row.Parent ? row.Parent.Rows : this.results.Rows;
-                    var index = rows.IndexOf(row);
-            
-                    if (index < rows.Count() - 1)
-                    {
-                        row = rows.Get(index + 1);
-                        break;
-                    }
-                    
-                    if (!row.Parent)
-                        break;
-                   
-                    row = row.Parent;                    
-                 }
+                    var groupRow = getNextRow(curRow.Parent, this.results.Rows);
+                    row = groupRow.Rows.Get(0);
+                }
+                else if (!forward && curIndex == 0)
+                {
+                    var groupRow = getNextRow(curRow.Parent, this.results.Rows);
+                    row = groupRow.Rows.Get(groupRow.Rows.Count() - 1);            
+                }
+                else
+                {
+                    row = getNextRow(curRow, rows);
+                }
             }
-            
-            while (row.Rows.Count() > 0)
-                row = row.Rows.Get(0);                        
+            else
+            {
+                if (forward)
+                {
+                    row = curRow.Rows.Get(0); 
+                }
+                else 
+                {
+                    var groupRow = getNextRow(curRow, this.results.Rows);
+                    row = groupRow.Rows.Get(groupRow.Rows.Count() - 1);
+                }
+            }
         }
         else
-        {   
-            if (row.RowType == RowTypes.SearchResult)
-            {    
-                while (row) 
-                {
-                    var rows = row.Parent ? row.Parent.Rows : this.results.Rows;
-                    var index = rows.IndexOf(row);
-            
-                    if (index > 0)
-                    {
-                        row = rows.Get(index - 1);
-                        break;
-                    }
-                    
-                    if (!row.Parent)
-                        break;
-                    
-                    row = row.Parent;                    
-                 }
-            }
-            
-            while (row.Rows.Count() > 0)
-                row = row.Rows.Get(row.Rows.Count() - 1);                        
+        {               
+            row = getNextRow(curRow, this.results.Rows);
         }
         
-        this.goToLine(row);
+        this.goToLine(row);        
     },
     
     clearSearchResults : function () {
+        this.groupsCache.Clear();
         this.results.Rows.Clear();
     },
     
@@ -583,9 +453,9 @@ ExtSearch = ScriptForm.extend({
             history.Insert(0, query);
         else
             history.Add(query);
-           
+            
         // Не позволяем истории расти более заданной глубины.
-        while (history.Count() > this.form.HistoryDepth)
+        while (history.Count() > this.settings.HistoryDepth)
             history.Delete(history.Count() - 1);
     },
     
@@ -598,15 +468,17 @@ ExtSearch = ScriptForm.extend({
         return '';
     },
     
-    Form_OnOpen : function () {   
+    OnOpen : function () {
+            
         if (!this.getRegExpEditorScriptPath())
             this.form.Controls.Query.ChoiceButton = false;
         
         this.SetControlsVisible();
     },
 
-    Form_OnClose : function () {
-        this.saveSettings();
+    OnClose : function () {
+        this.settings.ReadFromForm(this.form);
+        this.settings.SaveSettings();
     },
 
     CmdBar_BtPrev : function (control) {
@@ -619,7 +491,7 @@ ExtSearch = ScriptForm.extend({
     
     Query_OnChange : function (control) {
         if (this.form.Query != '')
-            this.searchActiveDoc();
+            this.runSearch();
     },
 
     Query_StartListChoice : function (control, defaultHandler) {
@@ -630,12 +502,11 @@ ExtSearch = ScriptForm.extend({
 
         if (this.form.Query == '')
         {
-            stdlib.require('NotifySend.js').GetNotifySend().Error("Поиск в модуле" , "Не задана строка поиска", undefined, undefined, "Встроенный1С");
-            //DoMessageBox('Не задана строка поиска');
+            DoMessageBox('Не задана строка поиска');
             return;
         }
         
-        this.searchActiveDoc();
+        this.runSearch();
     },
 
     CmdBarOptions_BtAbout : function (control) {
@@ -693,18 +564,12 @@ ExtSearch = ScriptForm.extend({
         case RowTypes.ProcGroup:
             cell.SetPicture(this.Icons.Proc);
             break;
-
-        case RowTypes.SearchDoc:
-            RowAppearance.val.Cells.LineNo.SetText('');
-            RowAppearance.val.Font = this.SearchDocRowFont;
-            RowAppearance.val.TextColor = WebColors.DarkBlue;
-            break;
             
         default:
             break;
         }
         
-        if (RowData.val._method && RowData.val._method.IsProc !== undefined)
+        if (RowData.val._method.IsProc !== undefined)
             RowAppearance.val.Cells.Method.SetPicture(RowData.val._method.IsProc ? this.Icons.Proc : this.Icons.Func);
         
     },
@@ -712,48 +577,41 @@ ExtSearch = ScriptForm.extend({
     switchView : function (setTreeView) {
         
         var results = this.results.Copy();
-        
+        //var curRow = this.form.Controls.SearchResults.CurrentRow;
+        //if (curRow)
         this.clearSearchResults();
         
-        for (var docRowIx = 0; docRowIx < results.Rows.Count(); docRowIx++)
+        if (setTreeView)
         {
-            var oldDocRow = results.Rows.Get(docRowIx);
-            var docRow = this.results.Rows.Add();
-            FillPropertyValues(docRow, oldDocRow);
-            docRow.groupsCache = v8New('Map');
-            
-            if (setTreeView)
+            for (var i=0; i<results.Rows.Count(); i++)
             {
-                for (var i=0; i<oldDocRow.Rows.Count(); i++)
+                var row = results.Rows.Get(i);
+                var groupRow = this.getGroupRow(row._method);
+                var resRow = groupRow.Rows.Add();
+                FillPropertyValues(resRow, row);
+            }
+            this.expandTree();
+        }
+        else
+        {
+            for (var i=0; i<results.Rows.Count(); i++)
+            {
+                var groupRow = results.Rows.Get(i);
+                for (var j=0; j<groupRow.Rows.Count(); j++)
                 {
-                    var row = oldDocRow.Rows.Get(i);
-                    var groupRow = this.getGroupRow(docRow, row._method);
-                    var resRow = groupRow.Rows.Add();
+                    var row = groupRow.Rows.Get(j);
+                    var resRow = this.results.Rows.Add();
                     FillPropertyValues(resRow, row);
                 }
             }
-            else
-            {
-                for (var i=0; i<oldDocRow.Rows.Count(); i++)
-                {
-                    var groupRow = oldDocRow.Rows.Get(i);
-                    for (var j=0; j<groupRow.Rows.Count(); j++)
-                    {
-                        var row = groupRow.Rows.Get(j);
-                        var resRow = docRow.Rows.Add();
-                        FillPropertyValues(resRow, row);
-                    }
-                }
-            }    
-        }
-        this.expandTree();        
+        }    
         this.SetControlsVisible();
     },
     
     CmdBar_TreeView : function (Button) {
         this.form.TreeView = !this.form.TreeView;
         Button.val.Check = this.form.TreeView;
-        //this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
+        this.form.Controls.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;
         this.switchView(this.form.TreeView);
     },
     
@@ -768,7 +626,7 @@ ExtSearch = ScriptForm.extend({
     SetControlsVisible : function() {
         
         var ctr = this.form.Controls;
-        //ctr.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;    
+        ctr.SearchResults.Columns.FoundLine.ShowHierarchy = this.form.TreeView;    
         ctr.CmdBar.Buttons.TreeView.Check = this.form.TreeView;
         this.form.Controls.SearchResults.Columns.Method.Visible = !this.form.TreeView;
         this.form.Controls.SearchResults.Columns.ExactMatch.Visible = this.form.IsRegExp;
@@ -784,61 +642,6 @@ ExtSearch = ScriptForm.extend({
 }); // end of ExtSearch class
 
 ////} ExtSearch
-
-////////////////////////////////////////////////////////////////////////////////////////
-////{ Вспомогательные объекты.
-////
-
-MdObject = stdlib.Class.extend({           
-    construct: function (obj, prop, title) {
-        this.obj = obj;
-        this.prop = prop;
-        this.title = title;
-    },
-    getText: function() {
-        return this.obj.getModuleText(this.prop.id);
-    },
-    activate: function() {
-        this.obj.openModule(this.prop.id);
-        return GetTextWindow();
-    },
-    getTitle: function() {
-        if (!this.title)
-        {
-            function getMdName(mdObj) {                             
-                if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
-                    return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
-                var cname = mdObj.mdClass.name(1);
-                return  (cname ? cname + ' ' : '') + mdObj.name;
-            }
-            this.title = getMdName(this.obj) + ': ' + this.prop.name(1);
-        }
-        return this.title;
-    }
-});
-
-TextDocObject = stdlib.Class.extend({
-    construct: function (txtDoc, title) {
-        this.obj = txtDoc;
-        this.title = title;
-    },
-    getText: function() {
-        return this.obj.GetText();
-    },
-    activate: function() {
-        this.obj.Show();
-        return GetTextWindow();
-    },
-    getTitle: function() {
-        if (!this.title)
-            this.title = this.obj.UsedFileName;
-        return this.title;
-    }
-});
-
-////
-////} Вспомогательные объекты.
-////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ TextWindowsWatcher - отслеживает активизацию текстовых окон и запоминает последнее.

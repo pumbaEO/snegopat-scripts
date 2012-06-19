@@ -214,7 +214,7 @@ function OnSnegopatWndEditScriptMenuItem(currentRow)
     if (!devFiles.Свойство(addinObject.uniqueName))
         devFiles.Вставить(addinObject.uniqueName, new AddinInfo(addinObject));
     
-    ЗапуститьПриложение(command);
+    stdlib.openFileIn1C(fullPath);//ЗапуститьПриложение(command);
 }
 
 function InitScriptAndRun()
