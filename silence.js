@@ -13,7 +13,7 @@ events.connect(windows, "onMessageBox", SelfScript.self)
 // Функция - обработчик
 function onMessageBox(param)
 {
-	Message(param.caption + " | " + param.text + " | " + param.type + " | " + param.timeout)
+	// Message(param.caption + " | " + param.text + " | " + param.type + " | " + param.timeout)
 	// При отработке события перехват с MessageBox'а снимается, и в обработчике
 	// можно смело его вызывать, не боясь зацикливания. Например мы сами хотим узнать ответ
 	// пользователя и в зависимости от него выполнить какие-то действия
