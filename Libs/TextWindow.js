@@ -24,7 +24,7 @@ _TextWindow = stdlib.Class.extend({
 
     construct : function (textWindow, view) {
         this.textWindow = textWindow;
-        this._view = textWindow.hwnd == view.hwnd ? view : undefined;
+        this._view = (view && (textWindow.hwnd == view.hwnd)) ? view : undefined;
     },
     
     IsActive : function() {
