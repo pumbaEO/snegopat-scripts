@@ -319,7 +319,7 @@ ExtractMethodRefactoring.prototype.fillParams = function (extArgs, extVars, sour
 }
 
 ExtractMethodRefactoring.prototype.fillReturnValues = function (extArgs, extVars, source) {
-    debugger;
+    //debugger;
     for (var i=0; i<extVars.length; i++)
     {
         var varName = extVars[i];
