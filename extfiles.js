@@ -25,6 +25,7 @@ function macrosОткрытьОкноВнешнихФайлов() {
     var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
     if(!мФормаСкрипта){
         мФормаСкрипта = loadScriptForm(pathToForm, SelfScript.self) // Обработку событий формы привяжем к самому скрипту
+        мФормаСкрипта.КлючСохраненияПоложенияОкна = SelfScript.uniqueName;
         мФормаСкрипта.Заголовок="Внешние файлы" //+мВерсияСкрипта        
         КэшКартинокТиповФайлов = ПолучитьКэшКартинокТиповФайлов(мФормаСкрипта);
         loadDiffBackends()

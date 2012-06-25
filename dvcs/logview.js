@@ -49,6 +49,7 @@ _LogView.prototype.open = function (caller, path) {
     this.backend = caller;
     this.rootpath = path;
     this.form.КвоРевизийПоУмолчанию = this.LimitRevisions;
+    this.form.Caption = "Просмотр истории "+ this.rootpath;
     
     if ((this.backend) && (this.rootpath))
         this.init()
