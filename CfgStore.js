@@ -36,7 +36,8 @@ SelfScript.self['macrosЗахватить объект в хранилище'] = function() {
         
         // view = w.GetView();
     view = windows.getActiveView();
-    if (!view) return false;
+    if (!view || !view.mdObj || view.mdObj.container != metadata.current) return false;
+    
     
     res1 = view.mdObj.activateInTree();
     
