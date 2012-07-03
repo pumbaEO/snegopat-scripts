@@ -34,6 +34,7 @@ SelfScript.self['macrosЗахватить объект в хранилище'] = function() {
 
     if(isEventConnected)
         events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
+    return true;
 }
 
 function hookCaptureCfgStoreWindow(dlgInfo)
