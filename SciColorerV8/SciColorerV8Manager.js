@@ -3,45 +3,58 @@ $uname SciColorerV8Manager
 $dname SciColorerV8 Manager
 $addin stdcommands
 
-function macrosOnHyperLinkClick(){ //вызывается при Ctrl+Click на любом идентификаторе в тексте модуля
+function macros_ПриКликеПоГиперссылке(){ //предопределенная, вызывается при Ctrl+Click на любом идентификаторе в тексте модуля
     addins.byUniqueName("SnegopatMainScript").invokeMacros("ПерейтиКОпределению")
 }
 
-function macrosOnLineNumbersContextMenu(){ //вызывается при правом клике на номерах строк
-    addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все"); // например
+function macros_ПриКонтекстномМенюНаНомерахСтрок(){ //предопределенная, вызывается при правом клике на номерах строк
+    addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе"); // например
 }
 
-function macrosСвернутьРазвернутьГруппу()
-{
-    addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть или развернуть текущий блок")
+function macrosОтключитьАвтосравнениеДляТекущегоОкнаОтладка(){
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ОтключитьАвтосравнениеДляТекущегоОкна")
 }
 
-function macrosСвернутьВсе()
-{
-    addins.byUniqueName("SciColorerV8").invokeMacros("Свернуть все")
+SelfScript.self['macrosСвернуть или развернуть текущий блок'] = function() {
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьРазвернутьТекущийБлок")
 }
 
-function macrosРазвернутьВсе()
+SelfScript.self['macrosСвернуть все'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("Развернуть все")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьВсе")
 }
 
-function macrosПрокруткаСтрокиВверх()
+SelfScript.self['macrosРазвернуть все'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("Прокрутка строки вверх")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе")
 }
 
-function macrosПрокруткаСтрокиВниз()
+SelfScript.self['macrosПрокрутка строки вверх'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("Прокрутка строки вниз")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПрокруткаСтрокиВверх")
+}
+
+SelfScript.self['macrosПрокрутка строки вниз'] = function()
+{
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПрокруткаСтрокиВниз")
+}
+
+SelfScript.self['macrosСброс модифицированности строк'] = function()
+{
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СбросМодифицированныхСтрок")
+}
+
+function macrosНастройка(){
+    addins.byUniqueName("SciColorerV8").invokeMacros("_Настройка")
 }
 
 function getPredefinedHotkeys(predef)
 {
-    predef.setVersion(2)
-    predef.add("СвернутьРазвернутьГруппу", "Ctrl + NumAdd")
-    predef.add("РазвернутьВсе", "Ctrl + Shift + NumAdd")
-    predef.add("СвернутьВсе", "Ctrl + Shift + Num-")
-    predef.add("ПрокруткаСтрокиВверх", "Ctrl + Up")
-    predef.add("ПрокруткаСтрокиВниз", "Ctrl + Down")
+    predef.setVersion(3)
+    predef.add("Свернуть или развернуть текущий блок", "Ctrl + NumAdd")
+    predef.add("Свернуть или развернуть текущий блок", "Ctrl + Num-")
+    predef.add("Развернуть все", "Ctrl + Shift + NumAdd")
+    predef.add("Свернуть все", "Ctrl + Shift + Num-")
+    predef.add("Прокрутка строки вверх", "Ctrl + Up")
+    predef.add("Прокрутка строки вниз", "Ctrl + Down")
 }
