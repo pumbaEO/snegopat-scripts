@@ -44,8 +44,8 @@ SelfScript.self['macrosСброс модифицированности стро�
     addins.byUniqueName("SciColorerV8").invokeMacros("_СбросМодифицированныхСтрок")
 }
 
-function macrosНастройка(){
-    addins.byUniqueName("SciColorerV8").invokeMacros("_Настройка")
+function macrosНастройки(){
+    addins.byUniqueName("SciColorerV8").invokeMacros("_Настройки")
 }
 
 function getPredefinedHotkeys(predef)
