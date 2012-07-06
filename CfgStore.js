@@ -48,6 +48,9 @@ SelfScript.self['macrosЗахватить объект в хранилище'] =
 
     if(isEventConnected)
         events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
+    if(view)
+        view.activate();
+
     return true;
 }
 
