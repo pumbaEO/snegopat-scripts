@@ -973,7 +973,6 @@ function мЗаписатьНастройки() {
     
     profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtShowExtInName, мОтображатьРасширениеФайлаВПредставлении)
-    profileRoot.setValue(pflExtFilesOpenOnStart, мОткрыватьПриСтарте)
     profileRoot.setValue(pflExtFilesPath, ValueToStringInternal(мТзКаталогиОбщие))
     profileRoot.setValue(pflExtFilesPathBase, ValueToStringInternal(мТзКаталогиБазы))
     profileRoot.setValue(pflExtOpen1CExtensions, мТзРасширенияФайлов)
