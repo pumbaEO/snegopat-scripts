@@ -230,14 +230,15 @@ WndList = stdlib.Class.extend({
                 }
                 else if(item.rowInVt)
                 {
-                    vt.Rows.Delete(item.rowInVt)
+					try{
+			            vt.Rows.Delete(item.rowInVt)
+			        }catch(e){}
                     item.rowInVt = null
                 }
             }
         }
         if(needUpdateColors && vt.Rows.Count())
         {
-            //debugger
             var prevItem = vt.Rows.Get(0).Окно
             prevItem.color = 0
             for(var k = 1; k < vt.Rows.Count(); k++)
@@ -307,7 +308,6 @@ function updateWndList()
 
 function onIdle()
 {
-    //debugger
     updateWndList()
     if(needHide)
     {
@@ -335,6 +335,7 @@ function withSelected(func)
 function WndListВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
     needActivate = ВыбраннаяСтрока.val.Окно.view
+    СтандартнаяОбработка.val = false
 }
 
 var boldFontV8, fontWin, boldFontWin
@@ -512,7 +513,7 @@ function НастройкиПриОткрытии() {
 
 function CmdsConfig(Кнопка)
 {
-    var pathToForm=SelfScript.fullPath.replace(/.js$/, 'param.ssf')
+	var pathToForm=SelfScript.fullPath.replace(/.js$/, 'param.ssf')
     мФормаНастройки=loadScriptForm(pathToForm, SelfScript.self) // Обработку событий формы привяжем к самому скрипту
     мФормаНастройки.ОткрытьМодально()
 }
