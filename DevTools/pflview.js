@@ -54,12 +54,23 @@ function walkProfile(pflFolder, parentRow)
 
 function macrosПоказатьПрофайл()
 {
+    refreshAll()
+        // if(!form)
+        // {
+            // form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, 'ssf'), SelfScript.self)
+            // walkProfile(profileRoot, form.ProfileTree)
+        // }
+    form.Открыть()
+}
+
+function refreshAll()
+{
     if(!form)
     {
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, 'ssf'), SelfScript.self)
-        walkProfile(profileRoot, form.ProfileTree)
+            //walkProfile(profileRoot, form.ProfileTree)
     }
-    form.Открыть()
+    walkProfile(profileRoot, form.ProfileTree)
 }
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
@@ -88,4 +99,13 @@ function КоманднаяПанельСвернутьВсеГруппы(Кно
         var row = rowsArray.item();
         form.ЭлементыФормы.ProfileTree.Свернуть(row)
     }
+}
+
+function КоманднаяПанельОбновить(Кнопка)
+{
+    if(form)
+        form.ProfileTree.Строки.Очистить()
+    refreshAll()
+    // if(form)
+        // form.Обновить()
 }
