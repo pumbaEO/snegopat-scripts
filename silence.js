@@ -29,7 +29,7 @@ function onMessageBox(param)
 	}
     
     // artbear сообщения типа "Объект Роль.Менеджер заблокирован." или "Объект Справочник.СохраненныеНастройки заблокирован."
-    reRoleBlock = /Объект\s*[\d\wzа-яё]+\.[\d\wzа-яё]+\s*заблокирован\./ig
+    reRoleBlock = /Объект\s*[\d\wzа-яё]+\.[\d\wzа-яё\.]+\s*заблокирован\./ig
     if(reRoleBlock.test(param.text)){
         Message(param.text)
 	    param.result = mbaYes
