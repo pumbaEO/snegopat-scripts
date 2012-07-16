@@ -31,25 +31,26 @@ isEventConnected = false
 
 SelfScript.self['macrosЗахватить объект в хранилище'] = function() {
 
-        // var w = GetTextWindow();
-        // if (!w) return false;
+    try{ //иногда вылетают странные исключения :( при работе с элементами форм
+        view = windows.getActiveView();
+        if (!view || !view.mdObj || view.mdObj.container != metadata.current) return false;
         
-        // view = w.GetView();
-    view = windows.getActiveView();
-    if (!view || !view.mdObj || view.mdObj.container != metadata.current) return false;
-    
-    
-    res1 = view.mdObj.activateInTree();
-    
-    res2 = events.connect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
-    isEventConnected = true
+        
+        res1 = view.mdObj.activateInTree();
+        
+        res2 = events.connect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
+        isEventConnected = true
 
-    res = stdcommands.CfgStore.CaptureIntoCfgStore.send() // true если успешно
+        res = stdcommands.CfgStore.CaptureIntoCfgStore.send() // true если успешно
 
-    if(isEventConnected)
-        events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
-    if(view)
-        view.activate();
+        if(isEventConnected)
+            events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
+        if(view)
+            view.activate();
+    }catch(e)
+    {
+        Message("Ошибка : " + e.description)
+    }
 
     return true;
 }
@@ -58,11 +59,16 @@ function hookCaptureCfgStoreWindow(dlgInfo)
 {
    if(dlgInfo.stage == openModalWnd)
    {
-        dlgInfo.form.getControl("GetRecursive").value = false;
-    
-        events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
-        isEventConnected = false
-      
-        new ActiveXObject("WScript.Shell").SendKeys("^{ENTER}")
+        try{ //иногда вылетают странные исключения :( при работе с элементами форм
+            dlgInfo.form.getControl("GetRecursive").value = false;
+        
+            events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
+            isEventConnected = false
+          
+            new ActiveXObject("WScript.Shell").SendKeys("^{ENTER}")
+        }catch(e)
+        {
+            Message("Ошибка : " + e.description)
+        }
    }
 }
