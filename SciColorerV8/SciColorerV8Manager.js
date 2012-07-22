@@ -9,7 +9,8 @@ function macros_ПриКликеПоГиперссылке(){ //предопре
 }
 
 function macros_ПриКонтекстномМенюНаНомерахСтрок(){ //предопределенная, вызывается при правом клике на номерах строк
-    addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе"); // например
+    //addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе"); // например
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПоказатьМеню");
 }
 
 function macrosОтключитьАвтосравнениеДляТекущегоОкнаОтладка(){
