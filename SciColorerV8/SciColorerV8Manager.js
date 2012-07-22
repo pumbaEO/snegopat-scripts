@@ -51,7 +51,7 @@ function macrosНастройки(){
 }
 
 SelfScript.self['macrosСкрыть\\Показать Scintilla'] = function(){
-    addins.byUniqueName("SciColorerV8").invokeMacros("Скрыть")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_Скрыть")
 }
 
 //подробное описание по работе с компонентой Scintilla находится здесь http://www.scintilla.org/ScintillaDoc.html
