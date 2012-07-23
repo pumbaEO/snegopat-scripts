@@ -34,9 +34,6 @@ function getPredefinedHotkeys(predef){
 // 4 толстый клиент (обычное приложение)
 // 5 веб-клиент
 
-var режимЗапуска1 = 4 // обычный толстый
-var режимЗапуска2 = 3 // управляемый толстый
-
 SelfScript.Self['macrosАльтернативный режим'] = function () {
     поменятьРежимЗапуска()
     
@@ -63,3 +60,42 @@ function поменятьРежимЗапуска()
 
     return былРежимЗапуска
 }
+
+SelfScript.Self['macrosНастроить режимы запуска'] = function () {
+
+    var путьПрофиля = "Launch/StartMode2";
+    var текущийРежимЗапуска = profileRoot.getValue(путьПрофиля);
+    
+    var ListMode = v8New("ValueList");
+    ListMode.add(1, "Тонкий клиент");
+    ListMode.add(2, "Автоматически");
+    ListMode.add(3, "Толстый клиент (управляемое приложение)");
+    ListMode.add(4, "Толстый клиент (обычное приложение)");
+    ListMode.add(5, "Веб-клиент");
+    
+    var defaultItem = ListMode.FindByValue(текущийРежимЗапуска);
+    var choice = ListMode.ChooseItem("Выбирете режим запуска по умолчанию", defaultItem);
+    if (choice!=undefined) {
+        режимЗапуска1 = choice.value;
+        profileRoot.setValue(путьПрофиля, режимЗапуска1);
+    } 
+    
+    var defaultItem = ListMode.FindByValue(режимЗапуска2);
+    var choice = ListMode.ChooseItem("Выбирете алтернативный режим запуска ", defaultItem);
+    if (choice!=undefined) {
+        режимЗапуска2 = choice.value;
+    } 
+    //Сохраним режимы запуска 
+    profileRoot.setValue(pflRunEnterpriseStartMode1, режимЗапуска1);
+    profileRoot.setValue(pflRunEnterpriseStartMode2, режимЗапуска2);
+    
+}
+
+var pflRunEnterpriseStartMode1  = "RunEnterprise/StartMode1";
+var pflRunEnterpriseStartMode2  = "RunEnterprise/StartMode2";
+
+profileRoot.createValue(pflRunEnterpriseStartMode1, 4, pflSnegopat); // обычный толстый
+profileRoot.createValue(pflRunEnterpriseStartMode2, 3, pflSnegopat); // управляемый толстый
+
+var режимЗапуска1 = profileRoot.getValue(pflRunEnterpriseStartMode1);
+var режимЗапуска2 = profileRoot.getValue(pflRunEnterpriseStartMode2);
