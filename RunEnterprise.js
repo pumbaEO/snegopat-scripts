@@ -27,13 +27,6 @@ function getPredefinedHotkeys(predef){
     predef.add("Альтернативный режим", "Ctrl + Alt + F5");
 }
 
-// режимы запуска 1С, заданные в профайле
-// 1 тонкий клиент
-// 2 автоматически
-// 3 толстый клиент (управляемое приложение)
-// 4 толстый клиент (обычное приложение)
-// 5 веб-клиент
-
 SelfScript.Self['macrosАльтернативный режим'] = function () {
     поменятьРежимЗапуска()
     
@@ -46,8 +39,6 @@ SelfScript.Self['macrosАльтернативный режим'] = function () {
 
 function поменятьРежимЗапуска()
 {
-    var путьПрофиля = "Launch/StartMode2"
-    
     var былРежимЗапуска = profileRoot.getValue(путьПрофиля)
 
     var новыйРежим = былРежимЗапуска;
@@ -63,9 +54,14 @@ function поменятьРежимЗапуска()
 
 SelfScript.Self['macrosНастроить режимы запуска'] = function () {
 
-    var путьПрофиля = "Launch/StartMode2";
     var текущийРежимЗапуска = profileRoot.getValue(путьПрофиля);
-    
+    ////{ режимы запуска 1С, заданные в профайле
+    // 1 тонкий клиент
+    // 2 автоматически
+    // 3 толстый клиент (управляемое приложение)
+    // 4 толстый клиент (обычное приложение)
+    // 5 веб-клиент
+    ////}
     var ListMode = v8New("ValueList");
     ListMode.add(1, "Тонкий клиент");
     ListMode.add(2, "Автоматически");
@@ -84,18 +80,17 @@ SelfScript.Self['macrosНастроить режимы запуска'] = functi
     var choice = ListMode.ChooseItem("Выберете альтернативный режим запуска", defaultItem);
     if (choice!=undefined) {
         режимЗапуска2 = choice.value;
-    } 
+    }
+    
     //Сохраним режимы запуска 
-    profileRoot.setValue(pflRunEnterpriseStartMode1, режимЗапуска1);
-    profileRoot.setValue(pflRunEnterpriseStartMode2, режимЗапуска2);
+    profileRoot.setValue(pflRunEnterpriseStartModeAlternative, режимЗапуска2);
     
 }
 
-var pflRunEnterpriseStartMode1  = "RunEnterprise/StartMode1";
-var pflRunEnterpriseStartMode2  = "RunEnterprise/StartMode2";
+var pflRunEnterpriseStartModeAlternative  = "RunEnterprise/StartAlternativeMode";
+profileRoot.createValue(pflRunEnterpriseStartModeAlternative, 3, pflSnegopat); // управляемый толстый, для алтернативного режима
 
-profileRoot.createValue(pflRunEnterpriseStartMode1, 4, pflSnegopat); // обычный толстый
-profileRoot.createValue(pflRunEnterpriseStartMode2, 3, pflSnegopat); // управляемый толстый
+var путьПрофиля = "Launch/StartMode2"
 
-var режимЗапуска1 = profileRoot.getValue(pflRunEnterpriseStartMode1);
-var режимЗапуска2 = profileRoot.getValue(pflRunEnterpriseStartMode2);
+var режимЗапуска1 = profileRoot.getValue(путьПрофиля);
+var режимЗапуска2 = profileRoot.getValue(pflRunEnterpriseStartModeAlternative);
