@@ -74,14 +74,14 @@ SelfScript.Self['macrosНастроить режимы запуска'] = functi
     ListMode.add(5, "Веб-клиент");
     
     var defaultItem = ListMode.FindByValue(текущийРежимЗапуска);
-    var choice = ListMode.ChooseItem("Выбирете режим запуска по умолчанию", defaultItem);
+    var choice = ListMode.ChooseItem("Выберете режим запуска по умолчанию", defaultItem);
     if (choice!=undefined) {
         режимЗапуска1 = choice.value;
-        profileRoot.setValue(путьПрофиля, режимЗапуска1);
+        if (режимЗапуска1!=текущийРежимЗапуска) profileRoot.setValue(путьПрофиля, режимЗапуска1);
     } 
     
     var defaultItem = ListMode.FindByValue(режимЗапуска2);
-    var choice = ListMode.ChooseItem("Выбирете алтернативный режим запуска ", defaultItem);
+    var choice = ListMode.ChooseItem("Выберете альтернативный режим запуска", defaultItem);
     if (choice!=undefined) {
         режимЗапуска2 = choice.value;
     } 
