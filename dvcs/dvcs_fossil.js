@@ -274,18 +274,50 @@ function fossil_getFileAtRevision(pathToFile, rev){
         return nell
     }
     var rootCatalog = fossil_getRootCatalog(pathToFile)
-    if (rev.length !=0) {
+    //Message(""+pathToFile)
     
-        var filerev = FSO.BuildPath(TempDir, rev+f.Имя);
-        
-        
+    if (rev.length !=0) {
+        //debugger
         TextDoc.AddLine('cd /d "' +rootCatalog +'"')
-        TextDoc.AddLine(PathToFossil+' revert -r '+rev +' "'+pathToFile +'" ')
-        TextDoc.AddLine('copy /Y "'+pathToFile +'" "'+filerev+'"')
-        TextDoc.AddLine(PathToFossil+' undo "'+pathToFile +'" ')
+        TextDoc.AddLine(PathToFossil+' artifact '+rev +' "'+PathToFossilOutput +'" ')
         TextDoc.Write(PathToBatFossil, 'cp866');
         TextDoc.Clear();
-        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1);
+        TextDoc.Read(PathToFossilOutput, "UTF-8");
+        if (TextDoc.LineCount() == 0) {
+            Message ("комманда отработала, но вывод не записался, надо отладить!")
+            return false //что то пошло не так. 
+        }
+        reStr = "^F\\s"+pathToFile.replace(rootCatalog+'\\', '')+"\\s([0-9,a-z]{40})\\s*$"
+        var re = new RegExp(reStr,'gm')
+        var r = TextDoc.ПолучитьТекст();
+        
+        var matches;
+        var artifactId = "";
+        var index=0;
+        while ((matches = re.exec(r)) != null)
+        {
+            var artifactId = matches[1];
+            break;
+        }
+        var filerev = FSO.BuildPath(TempDir, rev+f.Имя);
+        TextDoc.Clear();
+        if (artifactId.length==0){
+            
+            TextDoc.AddLine('cd /d "' +rootCatalog +'"');
+            TextDoc.AddLine(PathToFossil+' revert -r '+rev +' "'+pathToFile +'" ')
+            TextDoc.AddLine('copy /Y "'+pathToFile +'" "'+filerev+'"')
+            TextDoc.AddLine(PathToFossil+' undo "'+pathToFile +'" ')
+            TextDoc.Write(PathToBatFossil, 'cp866');
+            TextDoc.Clear();
+            ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        } else {
+            TextDoc.AddLine('cd /d "' +rootCatalog +'"');
+            TextDoc.AddLine(PathToFossil+' artifact '+artifactId +' "'+filerev +'" ')
+            TextDoc.Write(PathToBatFossil, 'cp866');
+            TextDoc.Clear();
+            ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        }
         return filerev;
     }
     return null
