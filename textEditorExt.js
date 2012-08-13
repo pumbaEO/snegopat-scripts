@@ -30,7 +30,7 @@ global.connectGlobals(SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 
 function getPredefinedHotkeys(predef){
-    predef.setVersion(6);
+    predef.setVersion(7);
     predef.add("НайтиВыделенныйТекстВниз", "Ctrl + Down");
     predef.add("НайтиВыделенныйТекстВверх", "Ctrl + Up");
     predef.add("КлонироватьТекст", "Ctrl + D");
@@ -38,6 +38,7 @@ function getPredefinedHotkeys(predef){
     predef.add("OnPressDeleteInComment", "Del");
     predef.add("OnPressBackspaceInComment", "BkSpace");
     predef.add("OnPressBackspaceInBracket", "BkSpace");
+    predef.add("OnPressDelInBracket", "Del");
     predef.add("Преобразовать регистр: ПРОПИСНЫЕ", "Ctrl + Shift + U");
     predef.add("Преобразовать регистр: строчные", "Ctrl + U");
 }
@@ -445,7 +446,7 @@ function macrosOnPressBackspaceInBracket(){
             //debugger;
             w.SetSelection(pos.beginRow, wordBacksp+1, pos.beginRow, wordBegPos+2);
             w.SetSelectedText("");
-            w.setCaretPos(pos.beginRow, wordBacksp+1);
+            w.setCaretPos(pos.beginRow, (line.charAt(wordBegPos+1)==";")?wordBegPos+1:wordBacksp+1);
             return true;
         } else {
             if (wordBacksp>0 
@@ -453,7 +454,7 @@ function macrosOnPressBackspaceInBracket(){
                 && line.charAt(wordBacksp-1)=="("){
                 w.SetSelection(pos.beginRow, wordBacksp, pos.beginRow, wordBegPos+1);
                 w.SetSelectedText("");
-                w.setCaretPos(pos.beginRow, wordBacksp);
+                w.setCaretPos(pos.beginRow, (line.charAt(wordBacksp+1)==";")?wordBacksp+1:wordBacksp);
                 return true;
             }
         }
@@ -462,4 +463,42 @@ function macrosOnPressBackspaceInBracket(){
     return false;
     
 }
+function macrosOnPressDelInBracket(){
+    var w = GetTextWindow();//snegopat.activeTextWindow();
+    if (!w) return false;
+
+    if (w.selectedText() != ""){
+        return false;    /// TODO: обработать этот вариант.
+    }
+    
+    var pos = w.getCaretPos();
+    
+    var beginRow = pos.beginRow;
+    var wordBegPos = pos.beginCol - 1;
+    var wordAfterPos = pos.beginCol;
+    var line = w.GetLine(pos.beginRow);
+    if (line.length < wordAfterPos || wordBegPos-1 < 0) return false;
+    
+    
+    var curChar = line.charAt(wordBegPos); 
+    if (curChar == ")" && line.charAt(wordBegPos-1)=="(")  {
+        w.SetSelection(pos.beginRow, wordBegPos, pos.beginRow, wordBegPos+2);
+        w.SetSelectedText("");
+        w.setCaretPos(pos.beginRow, (line.charAt(wordBegPos+1)==";")?wordBegPos+1:wordBegPos);
+        return true;
+    } else {
+            if (curChar == "(" 
+            && line.charAt(wordAfterPos)==")") {
+            
+            w.SetSelection(pos.beginRow, wordBegPos+1, pos.beginRow, wordBegPos+3);
+            w.SetSelectedText("");
+            w.setCaretPos(pos.beginRow, (line.charAt(wordAfterPos+1)==";")?wordBegPos+2:wordBegPos+1);
+            return true;
+        }
+    }
+    
+    return false;
+    
+}
+
 
