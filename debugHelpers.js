@@ -81,7 +81,11 @@ function onDoModal(dlgInfo) {
             var exprCtrl = dlgInfo.form.getControl('Expression');
             if (!exprCtrl.value.match(/^\s*$/)) 
             {            
-                exprCtrl.value = 'ВнешниеОбработки.Создать("' + params.path + '").Отладить(' + exprCtrl.value + ', ' + (params.doModal ? 'Истина' :  'Ложь') + ')';
+                if (!params.commandCheck) {
+                    exprCtrl.value = 'ВнешниеОбработки.Создать("' + params.path + '").Отладить(' + exprCtrl.value + ', ' + (params.doModal ? 'Истина' :  'Ложь') + ')';
+                } else {
+                    exprCtrl.value = ''+ params.command + '(' + exprCtrl.value + ', ' + (params.doModal ? 'Истина' :  'Ложь') + ')';
+                }
 
                 var wsh = new ActiveXObject("WScript.Shell");
                 
@@ -142,20 +146,23 @@ function getAbsolutePath(path) {
 function openQueryConsole(doModal) {
 
     var path = getAbsolutePath(settings.current.QueryConsolePath);
+    var query = settings.current.QueryCommand;
+    if (!settings.current.UseCommand) {
         
-    if (!fileExists(path))
-    {
-        DoMessageBox('Путь к обработке КонсольЗапросов не задан. Укажите путь в диалоге настроек скрипта.');
-        
-        var dsForm = new DebugHelperSettingsForm(settings);
-        if (!dsForm.ShowDialog())
+        if (!fileExists(path))
         {
-            Message('Консоль не будет открыта, т.к. путь к консоли не задан, либо файла по указанному пути не существует!');
-            return;
+            DoMessageBox('Путь к обработке КонсольЗапросов не задан. Укажите путь в диалоге настроек скрипта.');
+            
+            var dsForm = new DebugHelperSettingsForm(settings);
+            if (!dsForm.ShowDialog())
+            {
+                Message('Консоль не будет открыта, т.к. путь к консоли не задан, либо файла по указанному пути не существует!');
+                return;
+            }
         }
     }
     
-    SelfScript.Self['RunQueryConsoleCommand'] = { 'path': path, 'doModal': doModal };
+    SelfScript.Self['RunQueryConsoleCommand'] = { 'path': path, 'doModal': doModal, "command": query, "commandCheck":settings.current.UseCommand};
     stdcommands.CDebug.EvalExpr.send();
 }
 
@@ -173,14 +180,17 @@ DebugHelperSettingsForm.prototype.ShowDialog = function () {
 }
 
 DebugHelperSettingsForm.prototype.saveSettings = function () {
-
-    var path = getAbsolutePath(this.form.QueryConsolePath);
-    Message("path: " + path);
-    if (!fileExists(path))
-    {
-        DoMessageBox('Указанный файл не существует! Настройки не могут быть сохранены.');
-        return;
-    }
+    
+    if (!this.form.UseCommand) {
+        var path = getAbsolutePath(this.form.QueryConsolePath);
+        Message("path: " + path);
+        //Уберем проверку, а вдруг снегопат перенесли и случайно открыли настройку. 
+        /* if (!fileExists(path))
+        {
+            DoMessageBox('Указанный файл не существует! Настройки не могут быть сохранены.');
+            return;
+        } */
+    } 
     
     this.settings.ReadFromForm(this.form);
     this.settings.SaveSettings();
@@ -236,7 +246,7 @@ DebugHelperSettingsForm.prototype.BeforeClose = function (Cancel, DefaultHandler
 ////{ Start up
 ////
 
-settings = SettingsManagement.CreateManager('debugHelpers', { 'QueryConsolePath': '' })
+settings = SettingsManagement.CreateManager('debugHelpers', { 'QueryConsolePath': '' , 'QueryCommand': '', 'UseCommand':'false'})
 settings.LoadSettings();
 
 events.connect(windows, "onDoModal", SelfScript.Self)
