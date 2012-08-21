@@ -484,7 +484,8 @@ function macrosOnPressDelInBracket(){
     if (curChar == ")" && line.charAt(wordBegPos-1)=="(")  {
         w.SetSelection(pos.beginRow, wordBegPos, pos.beginRow, wordBegPos+2);
         w.SetSelectedText("");
-        w.setCaretPos(pos.beginRow, (line.charAt(wordBegPos+1)==";")?wordBegPos+1:wordBegPos);
+        //w.setCaretPos(pos.beginRow, (line.charAt(wordBegPos+1)==";")?wordBegPos+1:wordBegPos);
+        w.setCaretPos(pos.beginRow, wordBegPos);
         return true;
     } else {
             if (curChar == "(" 
@@ -492,7 +493,8 @@ function macrosOnPressDelInBracket(){
             
             w.SetSelection(pos.beginRow, wordBegPos+1, pos.beginRow, wordBegPos+3);
             w.SetSelectedText("");
-            w.setCaretPos(pos.beginRow, (line.charAt(wordAfterPos+1)==";")?wordBegPos+2:wordBegPos+1);
+            w.setCaretPos(pos.beginRow, wordBegPos+1);
+            //w.setCaretPos(pos.beginRow, (line.charAt(wordAfterPos+1)==";")?wordBegPos+2:wordBegPos+1);
             return true;
         }
     }
