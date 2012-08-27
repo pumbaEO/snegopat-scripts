@@ -101,6 +101,8 @@ function _SpellChecker(settings) {
     this.formParams = loadScriptForm(pathToFormSettings, this) // Обработку событий формы привяжем к самому скрипту
     
     this.extSearch = stdlib.require(mainFolder+'scripts\\extSearch.js').GetExtSearch();
+    this.wnd = GetTextWindow();
+    
     if (this.provider==null)
         Message("Не удалось подключиться к "+this.settings.provider + " проверьте настройки! \n (клацните 2 раза на этой сообщении)", mExc1, (function(param){
             
@@ -333,7 +335,7 @@ _SpellChecker.prototype.ДеревоПроверкиПередНачаломИз
     var selText = ТекСтрока.Слово;
     this.activateEditor();
     this.extSearch.setSimpleQuery(selText);
-    this.extSearch.Show();
+    this.extSearch.show();
     
     if (selText == '')
     {
@@ -341,7 +343,7 @@ _SpellChecker.prototype.ДеревоПроверкиПередНачаломИз
         this.extSearch.setDefaultSearchQuery();
     }
     else
-        this.extSearch.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
+        this.extSearch.searchActiveDoc(true); // добавил параметр который сигнализирует что идет поиск текущего слова
 }
 
 _SpellChecker.prototype.ДеревоПроверкиВыбор = function(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка){
@@ -350,7 +352,7 @@ _SpellChecker.prototype.ДеревоПроверкиВыбор = function(Эле
     var selText = ТекСтрока.Слово;
     this.activateEditor();
     this.extSearch.setSimpleQuery(selText);
-    this.extSearch.Show();
+    this.extSearch.show();
     
     if (selText == '')
     {
@@ -358,7 +360,7 @@ _SpellChecker.prototype.ДеревоПроверкиВыбор = function(Эле
         this.extSearch.setDefaultSearchQuery();
     }
     else
-        this.extSearch.runSearch(true); // добавил параметр который сигнализирует что идет поиск текущего слова
+        this.extSearch.searchActiveDoc(true); // добавил параметр который сигнализирует что идет поиск текущего слова
 }
 _SpellChecker.prototype.ДеревоПроверкиПриВыводеСтроки = function (пЭлемент, пОформлениеСтроки, пДанныеСтроки) {
 	
@@ -485,8 +487,10 @@ _SpellChecker.prototype.ПараметрыКнОтменаНажатие = funct
 }
 
 _SpellChecker.prototype.activateEditor = function () {
-    if (!snegopat.activeTextWindow())
-        stdcommands.Frame.GotoBack.send();
+    var view = this.wnd.GetView();
+    if (view)
+        view.activate();
+    
 }
 
 
