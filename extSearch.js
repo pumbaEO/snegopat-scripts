@@ -71,7 +71,7 @@ SelfScript.self['macrosНайти во всех открытых докумен�
     return true;
 }
 
-SelfScript.self['macrosНайти текст в метаданных'] = function() {
+SelfScript.self['macrosГлобальный поиск'] = function() {
     
     var w = GetTextWindow();
     if (!w) return false;
@@ -97,8 +97,12 @@ SelfScript.self['macrosНайти текст в метаданных'] = functio
     return true;
 }
 
-
-
+SelfScript.self['macrosОтменить глобальный поиск'] = function() {
+    var es = GetExtSearch();
+    if (es.startGlobalSearch){
+        es.startGlobalSearch = false;
+    } 
+}
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
     GetExtSearch().show();
@@ -134,6 +138,7 @@ SelfScript.self['macrosРазвернуть группировки'] = function(
     var es = GetExtSearch();
     es.expandTree(false);
 }
+
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
@@ -285,87 +290,150 @@ ExtSearch = ScriptForm.extend({
         this.showSearchResult(activeWndResRow, fromHotKey);
     },
 
+    searchByUuid: function(row) {
+        mdObj = findMdObj(row.UUID);
+        var docRow = null;
+        if (mdObj){
+        
+            var obj = this.getWindowObject({
+                                mdObj:mdObj,
+                                mdProp:row.mdProp,
+                                title:row.title});
+            docRow = this.search(obj, this.re);
+        }
+        return docRow;
+    },
+    
     searchInMetadata : function(fromHotKey){
         var md = metadata.current.rootObject;
         if (!md) return;
         
         this.clearSearchResults();
-
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
+        //debugger;
+        this.re = this.buildSearchRegExpObject();
+        if (!this.re) return;
         
-        var curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
-        var docRow = null; 
-        var es = this;
-        //Реквизиты пропустим
-        var ignoredMdClass = {
-            "Реквизиты":"",
-            "Макеты" : "" ,
-            "ОбщиеКартинки" : "" ,
-            "Элементы стиля" : "" ,
-            "Подсистемы" : "" ,
-            "Языки" : "" ,
-            "Стили" : "" ,
-            "Интерфейсы" : "" ,
-            "ПараметрыСеанса" : "" ,
-            "Роли" : "" ,
-            "ОбщиеМакеты" : "" ,
-            "КритерииОтбора" : "" ,
-            "ОбщиеРеквизиты" : "" ,
-            "ТабличныеЧасти" : "" ,
-            "Параметры" : "" 
-            };
-            
-        var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
-                
-        (function (mdObj){
-            var mdc = mdObj.mdclass;
-            var row = {UUID : mdObj.id}
-
-            function getMdName(mdObj) {                             
-                if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
-                    return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
-                var cname = mdObj.mdClass.name(1);
-                return  (cname ? cname + ' ' : '') + mdObj.name;
-            }
-            var mdName = getMdName(mdObj)
-            windows.caption = ""+mdName;
-            for(var i = 0, c = mdc.propertiesCount; i < c; i++){
-                var mdProp = mdc.propertyAt(i);
-                var mdPropName = mdc.propertyAt(i).name(1);
-                if (mdObj.isPropModule(mdProp.id)){
-                    sort++;
-                    strSort = "000000"+sort;
-                    strSort = strSort.substr(strSort.length-5);
-                    title = ''+strSort+' '+mdName + ': ' + mdPropName;
-                    var obj = es.getWindowObject({
-                                mdObj:mdObj,
-                                mdProp:mdProp,
-                                title:title});
-                    docRow = es.search(obj, re);
-                }
-                
-            }
-            // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
-            for(var i = 0; i < mdc.childsClassesCount; i++)
-            {
-                var childMdClass = mdc.childClassAt(i)
-                
-                if (!(ignoredMdClass[childMdClass.name(1, true)]==undefined)){
-                    continue;
-                }
-                
-                // Для остального переберем потомков этого класса.
-                for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
-                    var childObject = mdObj.childObject(i, chldidx);
-                    arguments.callee(childObject);
-                }
-            }
-        })(md)
+        this.curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
         
-        this.showSearchResult(docRow, fromHotKey);
-        windows.caption = curCaption;
+        this.startGlobalSearch = true;
+        this.readMdToVt();
+        
+        this.curId = 0;
+        
+        events.connect(Designer, "onIdle", this);
+       
+        //this.showSearchResult(docRow, fromHotKey);
+        //windows.caption = curCaption;
     },
+    
+    onIdle:function(){
+        if (!this.startGlobalSearch) {
+            windows.caption = this.curCaption;
+            events.disconnect(Designer, "onIdle", this);
+            this.showSearchResult(docRow, false);
+            return;
+        }
+        //debugger;
+        if (this.vtMD.length<1) {
+            this.startGlobalSearch = false;
+            events.disconnect(Designer, "onIdle", this);
+            return;
+        }
+        
+        var count = 0;
+        var docRow = null;
+        while (count < 25){
+            if (this.curId<this.vtMD.length){
+                docRow = this.searchByUuid(this.vtMD[this.curId]);
+                windows.caption = this.vtMD[this.curId].mdName;
+            } else {
+                this.startGlobalSearch = false;
+                break;
+            }
+            this.curId ++;
+            count++;
+        }
+        this.showSearchResult(null, false);
+        
+    },
+    
+    readMdToVt:function(){
+        if (!this.vtMD){
+            var docRow = null; 
+            this.vtMD = [];
+            var es = this;
+            //Реквизиты пропустим
+            var ignoredMdClass = {
+                "Реквизиты":"",
+                "Макеты" : "" ,
+                "ОбщиеКартинки" : "" ,
+                "Элементы стиля" : "" ,
+                "Подсистемы" : "" ,
+                "Языки" : "" ,
+                "Стили" : "" ,
+                "Интерфейсы" : "" ,
+                "ПараметрыСеанса" : "" ,
+                "Роли" : "" ,
+                "ОбщиеМакеты" : "" ,
+                "КритерииОтбора" : "" ,
+                "ОбщиеРеквизиты" : "" ,
+                "ТабличныеЧасти" : "" ,
+                "Параметры" : "" 
+                };
+                
+            var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
+            
+            (function (mdObj){
+                //debugger;
+                if (!es.startGlobalSearch) {return} 
+                
+                var mdc = mdObj.mdclass;
+                var row = {UUID : mdObj.id}
+            
+                function getMdName(mdObj) {                             
+                    if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
+                        return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
+                    var cname = mdObj.mdClass.name(1);
+                    return  (cname ? cname + ' ' : '') + mdObj.name;
+                }
+                var mdName = getMdName(mdObj)
+                
+                for(var i = 0, c = mdc.propertiesCount; i < c; i++){
+                    var mdProp = mdc.propertyAt(i);
+                    var mdPropName = mdc.propertyAt(i).name(1);
+                    if (mdObj.isPropModule(mdProp.id)){
+                        row.mdProp = mdProp;
+                        row.mdName = mdName;
+                        
+                        sort++;
+                        strSort = "000000"+sort;
+                        strSort = strSort.substr(strSort.length-5);
+                        title = ''+strSort+' '+mdName + ': ' + mdPropName;
+                        row.title = title;
+                        
+                        es.vtMD.push(row);
+                    }
+                }
+                // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
+                for(var i = 0; i < mdc.childsClassesCount; i++)
+                {
+                    var childMdClass = mdc.childClassAt(i)
+                    
+                    if (!(ignoredMdClass[childMdClass.name(1, true)]==undefined)){
+                        continue;
+                    }
+                    
+                    // Для остального переберем потомков этого класса.
+                    for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
+                        var childObject = mdObj.childObject(i, chldidx);
+                        arguments.callee(childObject);
+                    }
+                }
+            })(metadata.current.rootObject)
+            
+        }
+    },
+    
     
     searchActiveDoc : function (fromHotKey) {
         
@@ -957,6 +1025,12 @@ TextDocObject = stdlib.Class.extend({
     }
 });
 
+function findMdObj(uuid)
+{
+    if(uuid == metadata.current.rootObject.id)
+        return metadata.current.rootObject
+    return metadata.current.findByUUID(uuid);
+}
 ////
 ////} Вспомогательные объекты.
 ////////////////////////////////////////////////////////////////////////////////////////
