@@ -285,10 +285,6 @@ ExtSearch = ScriptForm.extend({
         this.showSearchResult(activeWndResRow, fromHotKey);
     },
 
-    getMdObject: function(md, prop, title){
-        return new MdObject(md, prop, title);
-    },
-
     searchInMetadata : function(fromHotKey){
         var md = metadata.current.rootObject;
         if (!md) return;
@@ -298,77 +294,79 @@ ExtSearch = ScriptForm.extend({
         var re = this.buildSearchRegExpObject();
         if (!re) return;
         
+        var curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
         var docRow = null; 
         var es = this;
+        //Реквизиты пропустим
+        var ignoredMdClass = {
+            "Реквизиты":"",
+            "Макеты" : "" ,
+            "ОбщиеКартинки" : "" ,
+            "Элементы стиля" : "" ,
+            "Подсистемы" : "" ,
+            "Языки" : "" ,
+            "Стили" : "" ,
+            "Интерфейсы" : "" ,
+            "ПараметрыСеанса" : "" ,
+            "Роли" : "" ,
+            "ОбщиеМакеты" : "" ,
+            "КритерииОтбора" : "" ,
+            "ОбщиеРеквизиты" : "" ,
+            "ТабличныеЧасти" : "" ,
+            "Параметры" : "" 
+            };
+            
         var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
+                
         (function (mdObj){
             var mdc = mdObj.mdclass;
             var row = {UUID : mdObj.id}
-            var propsModules = [
-                {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
-                {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
-                {propName: "Форма",             title: "Открыть модуль",        hotkey: 13, modif: 0},
-                {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4}
-                ]
 
             function getMdName(mdObj) {                             
                 if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
                     return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
                 var cname = mdObj.mdClass.name(1);
                 return  (cname ? cname + ' ' : '') + mdObj.name;
-                }
+            }
+            var mdName = getMdName(mdObj)
+            windows.caption = ""+mdName;
             for(var i = 0, c = mdc.propertiesCount; i < c; i++){
                 var mdProp = mdc.propertyAt(i);
                 var mdPropName = mdc.propertyAt(i).name(1);
-                for(var k in propsModules) {
-
-                    if(propsModules[k].propName == mdPropName) {
-                        sort++;
-                        strSort = "000000"+sort;
-                        strSort = strSort.substr(strSort.length-5);
-                        title = ''+strSort+' '+getMdName(mdObj) + ': ' + mdPropName;
-                        var obj = es.getMdObject(mdObj, mdProp, title);
-                        docRow = es.search(obj, re);
-                    }
+                if (mdObj.isPropModule(mdProp.id)){
+                    sort++;
+                    strSort = "000000"+sort;
+                    strSort = strSort.substr(strSort.length-5);
+                    title = ''+strSort+' '+mdName + ': ' + mdPropName;
+                    var obj = es.getWindowObject({
+                                mdObj:mdObj,
+                                mdProp:mdProp,
+                                title:title});
+                    docRow = es.search(obj, re);
                 }
+                
             }
-
             // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
             for(var i = 0; i < mdc.childsClassesCount; i++)
             {
                 var childMdClass = mdc.childClassAt(i)
-                //Реквизиты пропустим
-                if (childMdClass.name(1, true) == "Реквизиты") {continue}
-                if (childMdClass.name(1, true) == "Табличные части") {continue}
-                if (childMdClass.name(1, true) == "Макеты") {continue}
-                if (childMdClass.name(1, true) == "ОбщиеКартинки") {continue}
-                if (childMdClass.name(1, true) == "Элементы стиля") {continue}
-                if (childMdClass.name(1, true) == "Подсистемы") {continue}
-                if (childMdClass.name(1, true) == "Языки") {continue}
-                if (childMdClass.name(1, true) == "Стили") {continue}
-                if (childMdClass.name(1, true) == "Интерфейсы") {continue}
-                if (childMdClass.name(1, true) == "ПараметрыСеанса") {continue}
-                if (childMdClass.name(1, true) == "Роли") {continue}
-                if (childMdClass.name(1, true) == "ОбщиеМакеты") {continue}
-                if (childMdClass.name(1, true) == "КритерииОтбора") {continue}
-                if (childMdClass.name(1, true) == "ОбщиеРеквизиты") {continue}
-                if (childMdClass.name(1, true) == "ТабличныеЧасти") {continue}
-                if (childMdClass.name(1, true) == "Параметры") {continue}
-
-
+                
+                if (!(ignoredMdClass[childMdClass.name(1, true)]==undefined)){
+                    continue;
+                }
+                
                 // Для остального переберем потомков этого класса.
                 for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
                     var childObject = mdObj.childObject(i, chldidx);
                     arguments.callee(childObject);
                 }
             }
-        })(metadata.current.rootObject)
+        })(md)
         
         this.showSearchResult(docRow, fromHotKey);
+        windows.caption = curCaption;
     },
     
-
-        
     searchActiveDoc : function (fromHotKey) {
         
         this.clearSearchResults();
@@ -490,7 +488,9 @@ ExtSearch = ScriptForm.extend({
         
         if (this.results.Rows.Count() == 0) 
         {
-            DoMessageBox('Совпадений не найдено!');
+            if(!this.isGlobalFind){
+                DoMessageBox('Совпадений не найдено!');
+            }
             return;
         }
                 
@@ -514,7 +514,7 @@ ExtSearch = ScriptForm.extend({
             else
                 this.goToLine(docRow.Rows.Get(0));        
         }
-        this.SetControlsVisible();    
+        //this.SetControlsVisible();    
     },
     
     getRowForTheCurrentLine: function(docRow) {
