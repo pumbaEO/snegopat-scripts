@@ -434,7 +434,6 @@ ExtSearch = ScriptForm.extend({
         }
     },
     
-    
     searchActiveDoc : function (fromHotKey) {
         
         this.clearSearchResults();
@@ -798,7 +797,9 @@ ExtSearch = ScriptForm.extend({
     
     Query_OnChange : function (control) {
         if (this.form.Query != '')
-            this.searchActiveDoc();
+            if (!this.isGlobalFind){ // Если глобальный поиск, тогда автоматом не будем искать. 
+                this.searchActiveDoc();
+            }
     },
 
     Query_StartListChoice : function (control, defaultHandler) {
