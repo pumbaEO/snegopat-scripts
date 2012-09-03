@@ -333,7 +333,6 @@ ExtSearch = ScriptForm.extend({
             this.showSearchResult(docRow, false);
             return;
         }
-        //debugger;
         if (this.vtMD.length<1) {
             this.startGlobalSearch = false;
             events.disconnect(Designer, "onIdle", this);
@@ -384,11 +383,9 @@ ExtSearch = ScriptForm.extend({
             var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
             
             (function (mdObj){
-                //debugger;
                 if (!es.startGlobalSearch) {return} 
                 
                 var mdc = mdObj.mdclass;
-                var row = {UUID : mdObj.id}
             
                 function getMdName(mdObj) {                             
                     if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
@@ -401,7 +398,9 @@ ExtSearch = ScriptForm.extend({
                 for(var i = 0, c = mdc.propertiesCount; i < c; i++){
                     var mdProp = mdc.propertyAt(i);
                     var mdPropName = mdc.propertyAt(i).name(1);
+
                     if (mdObj.isPropModule(mdProp.id)){
+                        var row = {UUID : mdObj.id}
                         row.mdProp = mdProp;
                         row.mdName = mdName;
                         
@@ -409,6 +408,7 @@ ExtSearch = ScriptForm.extend({
                         strSort = "000000"+sort;
                         strSort = strSort.substr(strSort.length-5);
                         title = ''+strSort+' '+mdName + ': ' + mdPropName;
+                        
                         row.title = title;
                         
                         es.vtMD.push(row);
