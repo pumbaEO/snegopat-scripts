@@ -12,6 +12,10 @@ $dname Группировка длинных строк
  *       литерала, в котором находится курсор.
  */
 
+var reMultiLine = /^\s*[|"]/
+var reMarkerOpen = /^\s*\/\/[^}]*{/
+var reMarkerClose = /^\s*\/\/[^{]*}/
+
 function getIndent(s)
 {
     var m = s.match(/^\s+/)
@@ -25,15 +29,15 @@ function macrosСгруппироватьТекущий()
         return false
     var sel = wnd.getSelection()
     var line = wnd.line(sel.beginRow)
-    if(!/^\s*\|/.test(line))    // Это не мульти-строка
+    if(!reMultiLine.test(line))    // Это не мульти-строка
         return
     var text = [line], modified = false
     for(var i = sel.beginRow - 1; i > 0; i--)
     {
         line = wnd.line(i)
-        if(!/^\s*[|"]/.test(line))    // это не мульти-строка
+        if(!reMultiLine.test(line))    // это не мульти-строка
         {
-            if(!/^\s*\/\/.*{/.test(line))   // это не открывающий маркер
+            if(!reMarkerOpen.test(line))   // это не открывающий маркер
             {
                 text.unshift(getIndent(wnd.line(i + 1)) + "//{")
                 modified = true;
@@ -45,9 +49,9 @@ function macrosСгруппироватьТекущий()
     for(var j = sel.beginRow + 1, c = wnd.linesCount; j <= c; j++)
     {
         line = wnd.line(j)
-        if(!/^\s*[|"]/.test(line))    // это не мульти-строка
+        if(!reMultiLine.test(line))    // это не мульти-строка
         {
-            if(!/^\s*\/\/.*}/.test(line))  // это не закрывающий маркер
+            if(!reMarkerClose.test(line))  // это не закрывающий маркер
             {
                 text.push(getIndent(wnd.line(j - 1)) + "//}")
                 modified = true
@@ -69,17 +73,20 @@ function macrosСгруппироватьВсе()
     var wnd = snegopat.activeTextWindow()
     if(!wnd || wnd.isReadOnly)
         return false
-    var inMultiLine = false, hasMarker = false
+    var inMultiLine = false, hasMarker = false, modified = false
     var text = []
     for(var i = 1, c = wnd.linesCount; i <= c; i++)
     {
         var line = wnd.line(i)
-        if(/^\s*[|"]/.test(line)) // это мульти-строка
+        if(reMultiLine.test(line)) // это мульти-строка
         {
             if(!inMultiLine)    // это первая мульти-строка
             {
                 if(!hasMarker)  // перед ней не было маркера //{
-                    line = getIndent(line) + "//{\n" + line
+                {
+                    text.push(getIndent(line) + "//{")
+                    modified = true
+                }
                 inMultiLine = true
             }
         }
@@ -87,15 +94,21 @@ function macrosСгруппироватьВсе()
         {
             if(inMultiLine) // До этого шли мульти-строки
             {
-                if(!/^\s*\/\/.*}/.test(line))   // это не закрывающий маркер
-                    line = getIndent(wnd.line(i - 1)) + "//}\n" + line
+                if(!reMarkerClose.test(line))   // это не закрывающий маркер
+                {
+                    text.push(getIndent(wnd.line(i - 1)) + "//}")
+                    modified = true
+                }
                 inMultiLine = false
             }
-            hasMarker = /^\s*\/\/.*{/.test(line)
+            hasMarker = reMarkerOpen.test(line)
         }
         text.push(line)
     }
-    wnd.setSelection(1, 1, c + 1, 1)
-    wnd.selectedText = text.join('\n')
+    if(modified)
+    {
+        wnd.setSelection(1, 1, c + 1, 1)
+        wnd.selectedText = text.join('\n')
+    }
     return true;
 }
