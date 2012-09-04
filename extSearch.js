@@ -83,6 +83,7 @@ SelfScript.self['macrosГлобальный поиск'] = function() {
         selText = w.GetWordUnderCursor();
     
     es.isGlobalFind = true;
+    es.isInCurrentMdConteinerFind = false;
     es.setSimpleQuery(selText);    
     es.show();
 
@@ -96,6 +97,39 @@ SelfScript.self['macrosГлобальный поиск'] = function() {
         
     return true;
 }
+
+SelfScript.self['macrosГлобальный поиск по текущему контейнеру'] = function() {
+    //Текущий контейнер метаданных определяем по активному окну. 
+    //будет открыта внешняя обработка, занчит ищем глобально только по этой обработке. 
+    //открыт cf файл или же cf базы данных и мы находимся в текстовом модуле определенной 
+    //конфигурации, значит искать будет по текущей контейнеру. 
+    
+    var w = GetTextWindow();
+    if (!w) return false;
+    
+    var es = GetExtSearch();
+
+    var selText = w.GetSelectedText();
+    if (selText == '')
+        selText = w.GetWordUnderCursor();
+    
+    es.isGlobalFind = true;
+    es.isInCurrentMdConteinerFind = true;
+    es.setSimpleQuery(selText);    
+    es.show();
+
+    if (selText == '')
+    {
+        es.clearSearchResults();
+        es.setDefaultSearchQuery();
+    }
+    else
+        es.searchInMetadata(true);
+        
+    return true;
+}
+
+
 
 SelfScript.self['macrosОтменить глобальный поиск'] = function() {
     var es = GetExtSearch();
@@ -291,7 +325,7 @@ ExtSearch = ScriptForm.extend({
     },
 
     searchByUuid: function(row) {
-        mdObj = findMdObj(row.UUID);
+        mdObj = findMdObj(this.currentMdContainer, row.UUID);
         var docRow = null;
         if (mdObj){
         
@@ -305,18 +339,40 @@ ExtSearch = ScriptForm.extend({
     },
     
     searchInMetadata : function(fromHotKey){
-        var md = metadata.current.rootObject;
-        if (!md) return;
+
+        var md = null;
+        if (this.isInCurrentMdConteinerFind ) {
+            var activeWindow = this.watcher.getActiveTextWindow();
+            if (!activeWindow) { 
+            } else {
+                var activeView = activeWindow.GetView();
+                if (!activeView) {
+                } else {
+                    if (activeView.mdObj && activeView.mdProp) {
+                        md = activeView.mdObj.container;    
+                    }
+                } 
+            }
+        }
         
+        
+        if (!md) {
+            md = metadata.current;   
+        }
+        if (!md) return;
+
+        this.currentMdContainer = md;
         this.clearSearchResults();
-        //debugger;
         this.re = this.buildSearchRegExpObject();
         if (!this.re) return;
         
         this.curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
         
         this.startGlobalSearch = true;
-        this.readMdToVt();
+        if (!this.vtMD){
+            this.vtMD = {};
+        }
+        this.readMdToVt(this.currentMdContainer);
         
         this.curId = 0;
         
@@ -333,7 +389,8 @@ ExtSearch = ScriptForm.extend({
             this.showSearchResult(docRow, false);
             return;
         }
-        if (this.vtMD.length<1) {
+        var currentId = this.currentMdContainer.rootObject.id;
+        if (this.vtMD[currentId].length<1) {
             this.startGlobalSearch = false;
             events.disconnect(Designer, "onIdle", this);
             return;
@@ -342,9 +399,9 @@ ExtSearch = ScriptForm.extend({
         var count = 0;
         var docRow = null;
         while (count < 25){
-            if (this.curId<this.vtMD.length){
-                docRow = this.searchByUuid(this.vtMD[this.curId]);
-                windows.caption = this.vtMD[this.curId].mdName;
+            if (this.curId<this.vtMD[currentId].length){
+                docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
+                windows.caption = this.vtMD[currentId][this.curId].mdName;
             } else {
                 this.startGlobalSearch = false;
                 break;
@@ -356,10 +413,11 @@ ExtSearch = ScriptForm.extend({
         
     },
     
-    readMdToVt:function(){
-        if (!this.vtMD){
+    readMdToVt:function(MdContainer){
+        var currentId = MdContainer.rootObject.id; 
+        if (!this.vtMD[currentId]){
             var docRow = null; 
-            this.vtMD = [];
+            this.vtMD[currentId] = [];
             var es = this;
             //Реквизиты пропустим
             var ignoredMdClass = {
@@ -411,7 +469,7 @@ ExtSearch = ScriptForm.extend({
                         
                         row.title = title;
                         
-                        es.vtMD.push(row);
+                        es.vtMD[currentId].push(row);
                     }
                 }
                 // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
@@ -429,7 +487,7 @@ ExtSearch = ScriptForm.extend({
                         arguments.callee(childObject);
                     }
                 }
-            })(metadata.current.rootObject)
+            })(MdContainer.rootObject)
             
         }
     },
@@ -1026,11 +1084,11 @@ TextDocObject = stdlib.Class.extend({
     }
 });
 
-function findMdObj(uuid)
+function findMdObj(currentmd, uuid)
 {
-    if(uuid == metadata.current.rootObject.id)
-        return metadata.current.rootObject
-    return metadata.current.findByUUID(uuid);
+    if(uuid == currentmd.rootObject.id)
+        return currentmd.rootObject
+    return currentmd.findByUUID(uuid);
 }
 ////
 ////} Вспомогательные объекты.
