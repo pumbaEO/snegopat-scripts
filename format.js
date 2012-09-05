@@ -72,7 +72,7 @@ function MoveBlock(toLeft, spaceChar)
 {
     //debugger
     var txtWnd = snegopat.activeTextWindow()
-    if(!txtWnd)
+    if(!txtWnd || txtWnd.isReadOnly)
         return
     var sel = txtWnd.getSelection()
     var endRow = sel.endRow
@@ -114,6 +114,35 @@ function macrosСдвинутьБлокВправоНаТаб() //hotkey: ctrl+s
 {
 	MoveBlock(false, "\t")
 }
+
+// Макрос удаляет white-space символы в конце строк, а также заменяет все \r\n на \n
+function macrosУдалитьКонцевыеПробелы()
+{
+    var txtWnd = snegopat.activeTextWindow()
+    if(!txtWnd || txtWnd.isReadOnly)
+        return
+    var replaces = 0, symbols = 0, crnl = 0
+    var text = txtWnd.text.replace(/[ \t]+\r*\n/g, function(str)
+        {
+            replaces++
+            symbols += str.length - 1
+            if(str.length > 2 && str.charAt(str.length - 2) == '\r')
+                crnl++, symbols--
+            return '\n'
+        }
+    )
+    if(replaces)
+    {
+        Message("Исправлено cтрок: " + replaces + "\nУбрано символов: " + symbols + "\nУбрано CR: " + crnl)
+        var caretPos = txtWnd.getCaretPos()
+        txtWnd.setSelection(1, 1, txtWnd.linesCount + 1, 1)
+        txtWnd.selectedText = text;
+        txtWnd.setCaretPos(caretPos.beginRow, caretPos.beginCol)
+    }
+    else
+        Message("Все чисто")
+}
+
 
 function getPredefinedHotkeys(predef)
 {
