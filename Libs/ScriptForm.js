@@ -57,9 +57,9 @@ ScriptForm = stdlib.Class.extend({
         return modal ? this.form.DoModal() : this.form.Open();
     },    
         
-    close: function () {
+    close: function (retVal) {
         if (this.isOpen())
-            this.form.Close();
+            this.form.Close(retVal);
     },
         
     isOpen: function () {
