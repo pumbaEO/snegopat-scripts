@@ -74,6 +74,36 @@ function macrosСформироватьКодОбработчиковФормы�
     return true;
 }
  
+function macrosПерезагрузитьТекущийСкрипт() {
+    
+    var w = stdlib.require('TextWindow.js').GetTextWindow();
+    if (!w) return;
+    
+    var view = w.GetView();
+    if (!view) return;
+    
+    var doc = view.getDocument();
+    if (doc.isModified || doc.path.match(/^\s*$/)) {
+    	var answer = (new QueryDialogEx("Скрипт был изменен и перед [пере]загрузкой будет записан. Продолжить?")).Show();
+    	if (answer == QueryDialogEx.ReturnCodes.No) {
+    		return;
+    	}
+    	stdcommands.Frame.FileSave.send();
+    }
+    
+    var fullpath = 'script:' + doc.path.replace(/^file:\/\//i, '').replace(/\//g, '\\');
+    
+    var addinGroup = addins.byUniqueName('SnegopatMainScript').object.AddinsTreeGroups.UserAddins;
+    
+    var scriptAddin	= addins.byFullPath(fullpath);
+    if (scriptAddin) {    	
+    	addinGroup = scriptAddin.group;
+    	addins.unloadAddin(scriptAddin);
+    }
+    addins.loadAddin(fullpath, addinGroup);
+    Message("Скрипт " + fullpath + " перезагружен!");
+}
+
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
