@@ -104,6 +104,23 @@ function macrosПерезагрузитьТекущийСкрипт() {
     Message("Скрипт " + fullpath + " перезагружен!");
 }
 
+function macrosСохранитьСкриптЗаменивПробелыНаТабуляцию() {
+    var w = stdlib.require('TextWindow.js').GetTextWindow();
+    if (!w) return;
+    var sel = w.GetCaretPos();
+    var teExt = stdlib.require(stdlib.getSnegopatMainFolder() + 'scripts\\textEditorExt.js');
+    stdcommands.Frame.SelectAll.send();
+    teExt.replaceTabsToSpacesInSelectedText(true);
+    stdcommands.Frame.FileSave.send();
+    w.SetCaretPos(sel.beginRow - 15, sel.beginCol);
+    w.SetCaretPos(sel.beginRow, sel.beginCol);
+}
+
+function macrosСохранитьСкриптЗаменитьТабуляциюПерезагрузить() {
+    macrosСохранитьСкриптЗаменивПробелыНаТабуляцию();
+    macrosПерезагрузитьТекущийСкрипт();
+}
+
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
@@ -361,13 +378,13 @@ function runEditorCmdНачалоВыбора(Элемент, Стандартн
 {
     СтандартнаяОбработка.val = false;
     
-	var selDlg = v8New("ДиалогВыбораФайла", v8New("ПеречислениеРежимДиалогаВыбораФайла").Открытие);
-	selDlg.Заголовок = "Выберите исполняемый файл редактора/IDE";
-	selDlg.ПолноеИмяФайла = "";
-	selDlg.ПредварительныйПросмотр = false;
-	selDlg.Фильтр = "Исполняемые файлы (*.exe)|*.exe|Все файлы|*";
+    var selDlg = v8New("ДиалогВыбораФайла", v8New("ПеречислениеРежимДиалогаВыбораФайла").Открытие);
+    selDlg.Заголовок = "Выберите исполняемый файл редактора/IDE";
+    selDlg.ПолноеИмяФайла = "";
+    selDlg.ПредварительныйПросмотр = false;
+    selDlg.Фильтр = "Исполняемые файлы (*.exe)|*.exe|Все файлы|*";
 
-	if (selDlg.Выбрать())
+    if (selDlg.Выбрать())
     {
         form.runEditorCmd = selDlg.ПолноеИмяФайла;
         if (form.runEditorCmd.match(/exe$/)) 
@@ -388,5 +405,5 @@ function lbScriptAboutНажатие()
 
 function macrostestThrow()
 {
-	throw "exception"
+    throw "exception"
 }
