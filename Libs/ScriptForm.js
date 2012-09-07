@@ -44,13 +44,14 @@ ScriptForm = stdlib.Class.extend({
         //pflSeanse: {}
     },
 
-    // Вспомогательные свойства.
-    form: null,
-    handlers: {},
     //} Свойства
 
     construct: function (formPath) {
-        this.loadForm(formPath);
+
+	    this.form = null;
+    	this.handlers = {};
+        
+        this.loadForm(formPath);        
     },
     
     show: function (modal) {
