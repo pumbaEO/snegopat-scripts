@@ -177,6 +177,20 @@ SelfScript.Self['macrosВыделить текст в скобках'] = functio
     return true;
 }
 
+SelfScript.Self['macrosЗаменить табуляцию в отступах на пробелы'] = function() {
+	return replaceTabsToSpacesInSelectedText();
+}
+
+function replaceTabsToSpacesInSelectedText(doNotRestoreSelection) {	
+    return processSelectedText(function(selText){
+        var tabSize = profileRoot.getValue("ModuleTextEditor/TabSize");
+        var spaces = ''; for (var i=0; i<tabSize; i++) { spaces += ' ' };
+        return selText.replace(/^((<[^>]+>|\t)+)/gm, function(match, p1, offset, s) {
+            return p1.replace(/\t/g, spaces);
+        });
+    }, doNotRestoreSelection);
+}
+
 function selectNextPattern(dir){
     //debugger;
     var w = GetTextWindow(); //snegopat.activeTextWindow();
