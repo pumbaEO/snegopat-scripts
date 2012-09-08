@@ -262,7 +262,6 @@ function КонтекстноеМенюКнDvcsПоказатьЖурнал(Кн
     if (ТекущаяСтрока) {
         caller = getDvcsBackendForPath(ТекущаяСтрока.ИмяФайла);
         if (caller!=null){
-            var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
             var pathToLog = mainFolder + "\\scripts\\dvcs\\logview.js";
             var f = v8New("File", pathToLog);
             if (!f.Exist()) return
@@ -409,90 +408,16 @@ function ТзКаталоговИнициализировать(пТзКатал
     return пТзКаталоги
 }
 
-function GetAbsolutePathName(pathToFile) {
+function getAbsolutePath(path) {
 
-    if (pathToFile.length == 0) return pathToFile
-    //код взят из python для определеня abspath
-    //debugger; 
-    backslash = "\\"
-    if (pathToFile.substr(0,4)=='\\\\.\\' ||  pathToFile.substr(0,4)=='\\\\?\\') return pathToFile
+    // Путь относительный?
+    if (path.match(/^\.{1,2}[\/\\]/))
+    {
+        // Относительные пути должны задаваться относительно главного каталога Снегопата.
+        return mainFolder + path;
+    }
     
-    path = pathToFile.replace("/", "\\")
-    prefix = ''
-    if (path.substr(1,1) == ":") {
-        prefix = path.substr(0,2)
-        path = path.substr(2)
-    }
-    if (prefix == '') {
-        while (path.substr(0,1) == "\\"){
-            prefix = prefix + backslash
-            path = path.substr(1)
-        }
-    }
-    else {
-        if (path.substr(0,1)=="\\") {
-            prefix = prefix + backslash
-            while (path.substr(0,1) == "\\"){
-                path = path.substr(1)
-            }
-        }
-    }
-    comps = path.split("\\")
-    i = 0
-    while (i < comps.length){
-        if (comps[i]=="." || comps[i]=="") {
-            var sl1 = comps.slice(0,i)
-            var sl2 = comps.slice(i+1)
-            comps = sl1.concat(sl2)
-            continue;
-        } else {
-            if (comps[i] == "..") {
-                if (i > 0 && comps[i-1] != "..") {
-                var sl1 = comps.slice(0,i-1)
-                var sl2 = comps.slice(i+1)
-                comps = sl1.concat(sl2)
-                i -= 1;
-                continue;
-                } else {
-                if (i==0 && prefix.substr(prefix.length -1, 1) == "\\") {
-                    var sl1 = comps.slice(0,i)
-                    var sl2 = comps.slice(i+1)
-                    comps = sl1.concat(sl2)
-                    continue;
-                } else {
-                    i +=1
-                    continue4
-                }
-                continue;
-            }
-            continue;
-            }
-            i += 1;
-        } 
-    }
-    if (comps.length == 0) comps.push('.')
-    return prefix + comps.join(backslash)
-}
-
-function buildPath (a, b) {
-    if (a == "") return b
-
-    var is_a_drive = a.substr(1,1) == ":" ? true:false
-    var is_b_drive = b.substr(1,1) == ":" ? true:false
-    if (is_b_drive == true) return b
-    var path = a;
-    if (path.substr(path.length-1,1) == "\\" && b.substr(0,1) == "\\") {
-        return path+b.substr(1)
-    }
-    if (path.substr(path.length-1,1) == "\\" && b.substr(0,1) != "\\") {
-        return path+b;
-    }
-    if (path.substr(path.length-1,1) != "\\" && b.substr(0,1) != "\\") {
-        return path+"\\"+b
-    }
-    if (path.substr(path.length-1,1) != "\\" && b.substr(0,1) == "\\") {
-        return path+b;
-    }
+    return path;
 }
 
 function ExpandTreeForFile(лТекСтрока, лРазворачивать) {
@@ -613,32 +538,19 @@ function мДобавитьФайлы(пПуть, пУзел) {
 
 function ДобавитьКаталоги(пТзКаталоги) {
 
-    var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
-    try {
-        var fso = new ActiveXObject ("Scripting.FileSystemObject")
-    }
-    catch (er) {
-        var fso = null
-    }
     for (var лИнд=0; лИнд<пТзКаталоги.Количество(); лИнд++)
     {
         var лКаталог=пТзКаталоги.Получить(лИнд).ИмяКаталога;
         //Добавим возможность формирования пути каталога, относительно Снегопата. 
         // путь начинаться должен с ".." или ".", по просбе 
-        if (лКаталог.substr(0,1) == ".") {
-            if (fso == null) {
-                var млКаталог = GetAbsolutePathName(buildPath(mainFolder, лКаталог))
-            } else {
-                var млКаталог = fso.GetAbsolutePathName(fso.buildPath(mainFolder, лКаталог))    
-            }
-            //Сделаем проверку существования каталога от 1С.
-            var f = v8New("File", млКаталог); 
-            if (f.Exist()) {
-                лКаталог = млКаталог;
-            } else {
-                Message("Каталог отностельно Снегопата не существует, пропускаем " + млКаталог);
-                continue; //
-            }
+        var млКаталог = getAbsolutePath(лКаталог)
+        //Сделаем проверку существования каталога от 1С.
+        var f = v8New("File", млКаталог); 
+        if (f.Exist()) {
+            лКаталог = млКаталог;
+        } else {
+            Message("Каталог отностельно Снегопата не существует, пропускаем " + млКаталог);
+            continue; //
         }
         лСтрокаДереваФайлов=мФормаСкрипта.ДеревоФайлов.Строки.Добавить()
         лСтрокаДереваФайлов.Имя=лКаталог
@@ -908,8 +820,7 @@ function registerDvcsBackend(description, caller) {
 function loadDiffBackends() {
     //TODO: добавить на форму, таблицу значений с настройками. Что бы можно было выбрать какие diff и для каких файлов можно использовать, а какие нет. 
     DiffBackends = {}
-    var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
-    
+        
     var МассивФайлов = НайтиФайлы(mainFolder + "\\scripts\\dvcs\\", "diff*.js");
     for (var i =0; i<МассивФайлов.Количество(); i++) {
         var лФайл = МассивФайлов.Get(i);
@@ -926,7 +837,6 @@ function loadDiffBackends() {
 function loadDvcsBackends() {
     DvcsBackends = {}
     if (!мИспользоватьВерсионирование) return 
-    var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
     var МассивФайлов = НайтиФайлы(mainFolder + "\\scripts\\dvcs\\", "dvcs*.js");
     for (var i =0; i<МассивФайлов.Количество(); i++) {
         var лФайл = МассивФайлов.Get(i);
@@ -1121,6 +1031,8 @@ var МассивФайловДляСравнения = [];
 
 var Path1 = null
 var Path2 = null
+
+var mainFolder = stdlib.getSnegopatMainFolder();
 
 global.connectGlobals(SelfScript)
 
