@@ -23,6 +23,15 @@ function onDoModal(dlgInfo)
     {
         if(dlgInfo.stage == openModalWnd)
         {
+            var ds = dlgInfo.form.getControl("tblTopics").dataSource
+            Message("DataSourceType=" + ds.type)
+            Message("hasCellAppearance=" + ds.hasCellAppearance)
+            
+            for(var rowID = ds.getRow(0, grtFirstChild); rowID; rowID = ds.getRow(rowID, grtNext))
+            {
+                Message(ds.getCellValue(rowID, 0))
+            }
+            /*
             var vt = dlgInfo.form.getControl("tblTopics").value
             if(vt.Count() > 3)
             {
@@ -44,6 +53,7 @@ function onDoModal(dlgInfo)
                     new ActiveXObject("WScript.Shell").SendKeys(sk + "~")
                 }
             }
+            */
         }
     }
 }

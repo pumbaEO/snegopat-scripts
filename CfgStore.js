@@ -65,7 +65,10 @@ function hookCaptureCfgStoreWindow(dlgInfo)
             events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
             isEventConnected = false
           
-            new ActiveXObject("WScript.Shell").SendKeys("^{ENTER}")
+            //new ActiveXObject("WScript.Shell").SendKeys("^{ENTER}")
+            // Более идеологически верный способ
+            dlgInfo.cancel = true
+            dlgInfo.result = mbaOK
         }catch(e)
         {
             Message("Ошибка : " + e.description)

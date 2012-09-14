@@ -143,6 +143,59 @@ function macrosУдалитьКонцевыеПробелы()
         Message("Все чисто")
 }
 
+/*
+ * Макрос для выравнивания текста по первой запятой
+ * Выстраивает знаки = в выделенном тексте в одну колонку.
+ */
+function macrosВыровнятьПоПервойЗапятой()
+{
+    var txtWnd = snegopat.activeTextWindow()
+    if(!txtWnd)
+        return
+    var sel = txtWnd.getSelection()
+    var endRow = sel.endRow
+    if(sel.endCol == 1)
+        endRow--
+    if(endRow <= sel.beginRow)
+        return
+    var tabSize = profileRoot.getValue("ModuleTextEditor/TabSize")
+    lines = new Array()
+    var maxEqualPos = -1
+    for(var l = sel.beginRow; l <= endRow; l++)
+    {
+        var line = {text: txtWnd.line(l)}
+        line.eqRealPos = line.text.indexOf(",")
+        if(line.eqRealPos >= 0)
+        {
+            line.eqPosInSpaces = 0
+            for(var k = 0; k < line.eqRealPos; k++)
+            {
+                if(line.text.charAt(k) == "\t")
+                    line.eqPosInSpaces += tabSize - (line.eqPosInSpaces % tabSize)
+                else
+                    line.eqPosInSpaces++
+            }
+            if(line.eqPosInSpaces > maxEqualPos)
+                maxEqualPos = line.eqPosInSpaces
+        }
+        lines.push(line)
+    }
+    var text = ""
+    for(var l in lines)
+    {
+        var line = lines[l]
+        if(line.eqRealPos < 0)
+            text += line.text + "\n"
+        else
+        {
+            var t1 = line.text.substr(0, line.eqRealPos + 1)
+            var t2 = line.text.substr(line.eqRealPos + 1).replace(/^\s+/, "")
+            text += t1 + fillLine(" ", maxEqualPos - line.eqPosInSpaces + 1) + t2 + "\n"
+        }
+    }
+    txtWnd.setSelection(sel.beginRow, 1, endRow + 1, 1)
+    txtWnd.selectedText = text
+}
 
 function getPredefinedHotkeys(predef)
 {
