@@ -259,7 +259,7 @@ BackendGit = stdlib.Class.extend({
         //если каталог, тогда информация для каталога, если файл, тогда лог для файла. 
         //Возвращаем массив со стурктурой:
         // arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
-        var result = []
+        var result = [];
         f = v8New("File", pathToFile);
         if (!f.Exist()) return result;
         var rootCatalog = this.getRootCatalog(pathToFile);
@@ -276,22 +276,50 @@ BackendGit = stdlib.Class.extend({
             return result 
         }
         var index=0;
-        //Message("re:"+re);
         for (var i=1; i<=TextDoc.LineCount(); i++)
         {
             var r = TextDoc.GetLine(i);
-            var re = new RegExp(/^(.*)\t(.*)\t(.*)\t(.*)$/gm);
+            var re = new RegExp(/^(.*)\t(.*)\t(.*)\t(.*)$/);
             var mathes = r.match(re);
             if (mathes && mathes.length) {
-
                 result[index] = {"version":mathes[1], "comment":''+mathes[4], "date":mathes[3], "author":mathes[2]}
-                Message("i "+result[index]);
                 index++;
             }
         }
         // git log --date=iso --encoding=UTF-8 --pretty=format:"%h%x09%an%x09%ad%x09%s"
         return result;    
     }, // getLog
+
+    getInfo : function(pathToFile, ver){
+
+        var result = {"comment":"", "files":[]}
+        var rootCatalog = this.getRootCatalog(pathToFile);
+        var TextDoc = v8New("TextDocument");
+        TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+        TextDoc.AddLine(' git log --no-color --encoding=UTF-8 --raw --date=iso --pretty=fuller --parents -1 '+ver +' > "'+this.pathToTempOutput+'"')
+        TextDoc.Write(this.pathToCmd, 'cp866');
+        ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1)
+        TextDoc.Clear();
+        TextDoc.Read(this.pathToTempOutput, "UTF-8");
+        if (TextDoc.LineCount() == 0) {
+            return result 
+        }
+        var index=0;
+        for (var i=1; i<=TextDoc.LineCount(); i++)
+        {
+            var r = TextDoc.GetLine(i);
+            re_files = new RegExp(/^:\d+\s+\d+\s+[0-9a-f.]+\s+[0-9a-f.]+\s+(\w)\t(.+)$/);
+            var mathes = r.match(re_files);
+            if (mathes && mathes.length) {
+                result['files'][index] = {"version":ver, "file":''+mathes[2], "status":mathes[1], "fullpath":FSO.BuildPath(rootCatalog, mathes[2].replace(/\//g, '\\'))}
+                index++;
+            }
+        }
+        result["comment"] = TextDoc.GetText();
+
+        return result
+    },
+
 
     run : function(pathToFile){
         var rootCatalog = this.getRootCatalog(pathToFile);
@@ -336,6 +364,9 @@ function backend_git (command, param1, param2) {
         break;
     case "GETLOG":
         result = git.getLog(param1, param2);
+        break
+    case "GETINFO":
+        result = git.getInfo(param1, param2);
         break
     
     }
