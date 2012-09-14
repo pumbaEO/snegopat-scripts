@@ -18,7 +18,6 @@ var TempDir = WshShell.ExpandEnvironmentStrings("%temp%") + "\\";
 BackendGit = stdlib.Class.extend({
 
     construct : function() {
-        Message("construct");
         this.mainFolder = mainFolder;
         this.pathToBin = "git";
         this.CatalogAndFilesStatus = [];
@@ -86,19 +85,20 @@ BackendGit = stdlib.Class.extend({
     	TextDoc.AddLine('git status -s -u --porcelain > "'+this.pathToTempOutput+'"');
     	TextDoc.Write(this.pathToCmd, "cp866");
     	ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1);
-    	TextDoc.Read(this.pathToTempOutput, "cp866 ");
+    	TextDoc.Read(this.pathToTempOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
                 return false //что то пошло не так. 
         }
         var i=0;
-        re = new RegExp(/.*(M|A|D|\?\?|R|C|U)\s*(.*)/);
+        re = new RegExp(/^(M|A|D|\?\?|R|C|U)\s{1,2}(.*)$/);
         for (var i=1; i<=TextDoc.LineCount(); i++)
         {
 	        var r = TextDoc.GetLine(i);
 	        var mathes = r.match(re);
 	        if (mathes && mathes.length) {
-	            filename = ""+mathes[2]
+	            filename = ""+mathes[2] 
 	            filename = filename.replace(/\//g, '\\'); 
+                filename = filename.replace(/"/g, ''); //FIXME: для линукс версии это неправильно. 
 	            switch (mathes[1]) 
 	            {
 	                case "M":
@@ -134,12 +134,14 @@ BackendGit = stdlib.Class.extend({
         }
 
         //TODO: тут получим имя ветки текущей.
-        TextDoc.Write(this.pathToTempOutput, "UTF-8");
+        var TextDoc = v8New("TextDocument");
+        //TextDoc.Write(this.pathToTempOutput, "UTF-8");
+        TextDoc.Write(this.pathToCmd, "UTF-8");
         TextDoc.AddLine('cd /d "' +pathToCatalog+'"');
         TextDoc.AddLine('git branch --no-color -l > "'+this.pathToTempOutput+'"');
-        TextDoc.Write(this.pathToCmd, "cp866");
+        //TextDoc.Write(this.pathToCmd, "cp866");
         ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1);
-        TextDoc.Read(this.pathToTempOutput, "cp866 ");
+        TextDoc.Read(this.pathToTempOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
                 return false //что то пошло не так. 
         }
@@ -258,7 +260,36 @@ BackendGit = stdlib.Class.extend({
         //Возвращаем массив со стурктурой:
         // arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
         var result = []
-        Message("Еще не реализованно. ")
+        f = v8New("File", pathToFile);
+        if (!f.Exist()) return result;
+        var rootCatalog = this.getRootCatalog(pathToFile);
+        var TextDoc = v8New("TextDocument");
+        TextDoc.AddLine('cd /d "'+rootCatalog+'"');
+        var textLimit = limit>0?'-'+limit : '';
+        TextDoc.AddLine('git log --date=iso --encoding=UTF-8 --pretty=format:"%%h%%x09%%an%%x09%%ad%%x09%%s" '+textLimit+' '+pathToFile.replace(rootCatalog+'\\', '')+' >"'+this.pathToTempOutput+'"');
+        TextDoc.Write(this.pathToCmd, 'cp866');
+        ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1)
+        TextDoc.Clear();
+        TextDoc.Read(this.pathToTempOutput, "cp1251");
+        
+        if (TextDoc.LineCount() == 0) {
+            return result 
+        }
+        var index=0;
+        //Message("re:"+re);
+        for (var i=1; i<=TextDoc.LineCount(); i++)
+        {
+            var r = TextDoc.GetLine(i);
+            var re = new RegExp(/^(.*)\t(.*)\t(.*)\t(.*)$/gm);
+            var mathes = r.match(re);
+            if (mathes && mathes.length) {
+
+                result[index] = {"version":mathes[1], "comment":''+mathes[4], "date":mathes[3], "author":mathes[2]}
+                Message("i "+result[index]);
+                index++;
+            }
+        }
+        // git log --date=iso --encoding=UTF-8 --pretty=format:"%h%x09%an%x09%ad%x09%s"
         return result;    
     }, // getLog
 
