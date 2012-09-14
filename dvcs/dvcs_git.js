@@ -270,7 +270,7 @@ BackendGit = stdlib.Class.extend({
         TextDoc.Write(this.pathToCmd, 'cp866');
         ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1)
         TextDoc.Clear();
-        TextDoc.Read(this.pathToTempOutput, "cp1251");
+        TextDoc.Read(this.pathToTempOutput, "UTF-8");
         
         if (TextDoc.LineCount() == 0) {
             return result 
@@ -320,6 +320,31 @@ BackendGit = stdlib.Class.extend({
         return result
     },
 
+    commit : function(pathToFile, message) {
+        var rootCatalog = this.getRootCatalog(pathToFile);
+        var tempfile = GetTempFileName("txt");
+        var f = v8New("File", pathToFile);
+        if (f.IsDirectory()) {
+            pathToFile = ' -a'
+        } else { 
+            pathToFile = '"'+pathToFile.replace(rootCatalog+'\\', '')+'"'
+        }
+        var TextDoc = v8New("TextDocument");
+        TextDoc.Write(this.pathToCmd);
+        TextDoc.AddLine('cd /d "'+rootCatalog+'"')
+        TextDoc.AddLine('git commit ' +pathToFile+' --file="'+tempfile+'"');
+        TextDoc.AddLine('exit');
+        
+        TextDoc.Write(this.pathToCmd, 'cp866');
+        
+        TextDoc.Clear();
+        TextDoc.SetText(message);
+        TextDoc.Write(tempfile, 'UTF-8');
+        ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 1, 1)
+        return ErrCode
+    }, //commit
+
+
 
     run : function(pathToFile){
         var rootCatalog = this.getRootCatalog(pathToFile);
@@ -368,6 +393,9 @@ function backend_git (command, param1, param2) {
     case "GETINFO":
         result = git.getInfo(param1, param2);
         break
+    case "COMMIT":
+        result = git.commit(param1, param2);
+        break;
     
     }
     return result
