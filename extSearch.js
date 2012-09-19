@@ -76,7 +76,7 @@ SelfScript.self['macrosГлобальный поиск'] = function() {
     var w = GetTextWindow();
     if (!w) return false;
     
-    var es = GetExtSearch();
+    var es = GetExtSearchGlobal();
 
     var selText = w.GetSelectedText();
     if (selText == '')
@@ -107,7 +107,7 @@ SelfScript.self['macrosГлобальный поиск по текущему к�
     var w = GetTextWindow();
     if (!w) return false;
     
-    var es = GetExtSearch();
+    var es = GetExtSearchGlobal();
 
     var selText = w.GetSelectedText();
     if (selText == '')
@@ -132,7 +132,7 @@ SelfScript.self['macrosГлобальный поиск по текущему к�
 
 
 SelfScript.self['macrosОтменить глобальный поиск'] = function() {
-    var es = GetExtSearch();
+    var es = GetExtSearchGlobal();
     if (es.startGlobalSearch){
         es.startGlobalSearch = false;
     } 
@@ -213,8 +213,9 @@ ExtSearch = ScriptForm.extend({
         }
     },
 
-    construct : function () {
-    
+    construct : function (isExtend) {
+        
+        if (isExtend == undefined) isExtend = false;
         this._super("scripts\\extSearch.results.ssf");
                 
         this.form.КлючСохраненияПоложенияОкна = "extSearch.js"
@@ -239,8 +240,7 @@ ExtSearch = ScriptForm.extend({
         this.isGlobalFind = false;
         
         this.SetControlsVisible();
-        
-        ExtSearch._instance = this;
+        if (!isExtend) ExtSearch._instance = this;
     
     },
     
@@ -324,174 +324,6 @@ ExtSearch = ScriptForm.extend({
         this.showSearchResult(activeWndResRow, fromHotKey);
     },
 
-    searchByUuid: function(row) {
-        mdObj = findMdObj(this.currentMdContainer, row.UUID);
-        var docRow = null;
-        if (mdObj){
-        
-            var obj = this.getWindowObject({
-                                mdObj:mdObj,
-                                mdProp:row.mdProp,
-                                title:row.title});
-            docRow = this.search(obj, this.re);
-        }
-        return docRow;
-    },
-    
-    searchInMetadata : function(fromHotKey){
-
-        var md = null;
-        if (this.isInCurrentMdConteinerFind ) {
-            var activeWindow = this.watcher.getActiveTextWindow();
-            if (!activeWindow) { 
-            } else {
-                var activeView = activeWindow.GetView();
-                if (!activeView) {
-                } else {
-                    if (activeView.mdObj && activeView.mdProp) {
-                        md = activeView.mdObj.container;    
-                    }
-                } 
-            }
-        }
-        
-        
-        if (!md) {
-            md = metadata.current;   
-        }
-        if (!md) return;
-
-        this.currentMdContainer = md;
-        this.clearSearchResults();
-        this.re = this.buildSearchRegExpObject();
-        if (!this.re) return;
-        
-        this.curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
-        
-        this.startGlobalSearch = true;
-        if (!this.vtMD){
-            this.vtMD = {};
-        }
-        this.readMdToVt(this.currentMdContainer);
-        
-        this.curId = 0;
-        
-        events.connect(Designer, "onIdle", this);
-       
-        //this.showSearchResult(docRow, fromHotKey);
-        //windows.caption = curCaption;
-    },
-    
-    onIdle:function(){
-        if (!this.startGlobalSearch) {
-            windows.caption = this.curCaption;
-            events.disconnect(Designer, "onIdle", this);
-            this.showSearchResult(docRow, false);
-            return;
-        }
-        var currentId = this.currentMdContainer.rootObject.id;
-        if (this.vtMD[currentId].length<1) {
-            this.startGlobalSearch = false;
-            events.disconnect(Designer, "onIdle", this);
-            return;
-        }
-        
-        var count = 0;
-        var docRow = null;
-        while (count < 25){
-            if (this.curId<this.vtMD[currentId].length){
-                docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
-                windows.caption = this.vtMD[currentId][this.curId].mdName;
-            } else {
-                this.startGlobalSearch = false;
-                break;
-            }
-            this.curId ++;
-            count++;
-        }
-        this.showSearchResult(null, false);
-        
-    },
-    
-    readMdToVt:function(MdContainer){
-        var currentId = MdContainer.rootObject.id; 
-        if (!this.vtMD[currentId]){
-            var docRow = null; 
-            this.vtMD[currentId] = [];
-            var es = this;
-            //Реквизиты пропустим
-            var ignoredMdClass = {
-                "Реквизиты":"",
-                "Макеты" : "" ,
-                "ОбщиеКартинки" : "" ,
-                "Элементы стиля" : "" ,
-                "Подсистемы" : "" ,
-                "Языки" : "" ,
-                "Стили" : "" ,
-                "Интерфейсы" : "" ,
-                "ПараметрыСеанса" : "" ,
-                "Роли" : "" ,
-                "ОбщиеМакеты" : "" ,
-                "КритерииОтбора" : "" ,
-                "ОбщиеРеквизиты" : "" ,
-                "ТабличныеЧасти" : "" ,
-                "Параметры" : "" 
-                };
-                
-            var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
-            
-            (function (mdObj){
-                if (!es.startGlobalSearch) {return} 
-                
-                var mdc = mdObj.mdclass;
-            
-                function getMdName(mdObj) {                             
-                    if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
-                        return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
-                    var cname = mdObj.mdClass.name(1);
-                    return  (cname ? cname + ' ' : '') + mdObj.name;
-                }
-                var mdName = getMdName(mdObj)
-                
-                for(var i = 0, c = mdc.propertiesCount; i < c; i++){
-                    var mdProp = mdc.propertyAt(i);
-                    var mdPropName = mdc.propertyAt(i).name(1);
-
-                    if (mdObj.isPropModule(mdProp.id)){
-                        var row = {UUID : mdObj.id}
-                        row.mdProp = mdProp;
-                        row.mdName = mdName;
-                        
-                        sort++;
-                        strSort = "000000"+sort;
-                        strSort = strSort.substr(strSort.length-5);
-                        title = ''+strSort+' '+mdName + ': ' + mdPropName;
-                        
-                        row.title = title;
-                        
-                        es.vtMD[currentId].push(row);
-                    }
-                }
-                // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
-                for(var i = 0; i < mdc.childsClassesCount; i++)
-                {
-                    var childMdClass = mdc.childClassAt(i)
-                    
-                    if (!(ignoredMdClass[childMdClass.name(1, true)]==undefined)){
-                        continue;
-                    }
-                    
-                    // Для остального переберем потомков этого класса.
-                    for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
-                        var childObject = mdObj.childObject(i, chldidx);
-                        arguments.callee(childObject);
-                    }
-                }
-            })(MdContainer.rootObject)
-            
-        }
-    },
-    
     searchActiveDoc : function (fromHotKey) {
         
         this.clearSearchResults();
@@ -506,7 +338,6 @@ ExtSearch = ScriptForm.extend({
         if (!obj) return;
         
         var docRow = this.search(obj, re);
-        this.isGlobalFind = false;
         
         this.showSearchResult(docRow, fromHotKey);
     },
@@ -601,24 +432,12 @@ ExtSearch = ScriptForm.extend({
         
         return docRow;
     },
-    
-    showSearchResult: function (docRow, fromHotKey) {
-        
+
+    showResult: function(docRow, fromHotKey){
         this.results.Rows.Sort('FoundLine', false);
-        
-        this.expandTree();
-        
         // Запомним строку поиска в истории.
         this.addToHistory(this.form.Query);
-        
-        if (this.results.Rows.Count() == 0) 
-        {
-            if(!this.isGlobalFind){
-                DoMessageBox('Совпадений не найдено!');
-            }
-            return;
-        }
-                
+
         if (fromHotKey == true)
         { 
             // Для того чтобы курсор не прыгал при поиске текущего слова, 
@@ -639,7 +458,21 @@ ExtSearch = ScriptForm.extend({
             else
                 this.goToLine(docRow.Rows.Get(0));        
         }
-        //this.SetControlsVisible();    
+
+    },
+    
+    showSearchResult: function (docRow, fromHotKey) {
+        
+        this.showResult(docRow, fromHotKey);
+        this.expandTree();
+        
+        if (this.results.Rows.Count() == 0) 
+        {
+            DoMessageBox('Совпадений не найдено!');
+            return;
+        }
+
+        this.SetControlsVisible();    
     },
     
     getRowForTheCurrentLine: function(docRow) {
@@ -855,9 +688,7 @@ ExtSearch = ScriptForm.extend({
     
     Query_OnChange : function (control) {
         if (this.form.Query != '')
-            if (!this.isGlobalFind){ // Если глобальный поиск, тогда автоматом не будем искать. 
                 this.searchActiveDoc();
-            }
     },
 
     Query_StartListChoice : function (control, defaultHandler) {
@@ -871,12 +702,8 @@ ExtSearch = ScriptForm.extend({
             DoMessageBox('Не задана строка поиска');
             return;
         }
-        if (this.isGlobalFind) {
-            this.searchInMetadata(true);
-        } else {
-            this.searchActiveDoc();
-        }
         
+        this.searchActiveDoc();
     },
 
     CmdBarOptions_BtAbout : function (control) {
@@ -1020,16 +847,242 @@ ExtSearch = ScriptForm.extend({
         buttons.CollapseAll.Enabled = this.form.TreeView;
         buttons.Actions.Buttons.CollapseAll.Enabled = this.form.TreeView;
 
-        if (this.isGlobalFind){
-            this.form.caption = "Расширенный поиск в модуле (глобальный)";
-        } else {
-            this.form.caption = "Расширенный поиск в модуле";
-
-        }
-
+        this.form.caption = "Расширенный поиск в модуле";
     }
   
 }); // end of ExtSearch class
+
+ExtSearchGlobal = ExtSearch.extend({
+
+    settingsRootPath : SelfScript.uniqueName+"Global", // тест, пускай у нас и настройки будут глобальными. 
+    
+    settings : {
+        pflSnegopat : {
+            'IsRegExp'      : false, // Поиск регулярными выражениями.
+            'CaseSensetive' : false, // Учитывать регистр при поиске.
+            'WholeWords'    : false, // Поиск слова целиком.
+            'SearchHistory' : v8New('ValueList'), // История поиска.
+            'HistoryDepth'  : 15, // Количество элементов истории поиска.
+            'TreeView'      : false // Группировать результаты поиска по методам.            
+        }
+    },
+
+    construct : function () {
+    
+        this._super(true);
+
+        this._instance = null;
+
+        this.form.КлючСохраненияПоложенияОкна = "extGlobalSearch.js";
+
+        this.isGlobalFind = true;
+        
+        this.SetControlsVisible();
+
+        ExtSearchGlobal._instance = this;
+    },
+
+    searchByUuid: function(row) {
+        mdObj = findMdObj(this.currentMdContainer, row.UUID);
+        var docRow = null;
+        if (mdObj){
+        
+            var obj = this.getWindowObject({
+                                mdObj:mdObj,
+                                mdProp:row.mdProp,
+                                title:row.title});
+            docRow = this.search(obj, this.re);
+        }
+        return docRow;
+    },
+    
+    searchInMetadata : function(fromHotKey){
+
+        var md = null;
+        if (this.isInCurrentMdConteinerFind ) {
+            var activeWindow = this.watcher.getActiveTextWindow();
+            if (!activeWindow) { 
+            } else {
+                var activeView = activeWindow.GetView();
+                if (!activeView) {
+                } else {
+                    if (activeView.mdObj && activeView.mdProp) {
+                        md = activeView.mdObj.container;    
+                    }
+                } 
+            }
+        }
+        
+        
+        if (!md) {
+            md = metadata.current;   
+        }
+        if (!md) return;
+
+        this.currentMdContainer = md;
+        this.clearSearchResults();
+        this.re = this.buildSearchRegExpObject();
+        if (!this.re) return;
+        
+        this.curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
+        
+        this.startGlobalSearch = true;
+        if (!this.vtMD){
+            this.vtMD = {};
+        }
+        this.readMdToVt(this.currentMdContainer);
+        
+        this.curId = 0;
+        
+        events.connect(Designer, "onIdle", this);
+       
+        //this.showSearchResult(docRow, fromHotKey);
+        //windows.caption = curCaption;
+    },
+    
+    onIdle:function(){
+        if (!this.startGlobalSearch) {
+            windows.caption = this.curCaption;
+            events.disconnect(Designer, "onIdle", this);
+            this.showSearchResult(docRow, false);
+            return;
+        }
+        var currentId = this.currentMdContainer.rootObject.id;
+        if (this.vtMD[currentId].length<1) {
+            this.startGlobalSearch = false;
+            events.disconnect(Designer, "onIdle", this);
+            return;
+        }
+        
+        var count = 0;
+        var docRow = null;
+        while (count < 25){
+            if (this.curId<this.vtMD[currentId].length){
+                docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
+                windows.caption = this.vtMD[currentId][this.curId].mdName;
+            } else {
+                this.startGlobalSearch = false;
+                break;
+            }
+            this.curId ++;
+            count++;
+        }
+        this.showSearchResult(null, false);
+        
+    },
+    
+    readMdToVt:function(MdContainer){
+        var currentId = MdContainer.rootObject.id; 
+        if (!this.vtMD[currentId]){
+            var docRow = null; 
+            this.vtMD[currentId] = [];
+            var es = this;
+            //Реквизиты пропустим
+            var ignoredMdClass = {
+                "Реквизиты":"",
+                "Макеты" : "" ,
+                "ОбщиеКартинки" : "" ,
+                "Элементы стиля" : "" ,
+                "Подсистемы" : "" ,
+                "Языки" : "" ,
+                "Стили" : "" ,
+                "Интерфейсы" : "" ,
+                "ПараметрыСеанса" : "" ,
+                "Роли" : "" ,
+                "ОбщиеМакеты" : "" ,
+                "КритерииОтбора" : "" ,
+                "ОбщиеРеквизиты" : "" ,
+                "ТабличныеЧасти" : "" ,
+                "Параметры" : "" 
+                };
+                
+            var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
+            
+            (function (mdObj){
+                if (!es.startGlobalSearch) {return} 
+                
+                var mdc = mdObj.mdclass;
+            
+                function getMdName(mdObj) {                             
+                    if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
+                        return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
+                    var cname = mdObj.mdClass.name(1);
+                    return  (cname ? cname + ' ' : '') + mdObj.name;
+                }
+                var mdName = getMdName(mdObj)
+                
+                for(var i = 0, c = mdc.propertiesCount; i < c; i++){
+                    var mdProp = mdc.propertyAt(i);
+                    var mdPropName = mdc.propertyAt(i).name(1);
+
+                    if (mdObj.isPropModule(mdProp.id)){
+                        var row = {UUID : mdObj.id}
+                        row.mdProp = mdProp;
+                        row.mdName = mdName;
+                        
+                        sort++;
+                        strSort = "000000"+sort;
+                        strSort = strSort.substr(strSort.length-5);
+                        title = ''+strSort+' '+mdName + ': ' + mdPropName;
+                        
+                        row.title = title;
+                        
+                        es.vtMD[currentId].push(row);
+                    }
+                }
+                // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
+                for(var i = 0; i < mdc.childsClassesCount; i++)
+                {
+                    var childMdClass = mdc.childClassAt(i)
+                    
+                    if (!(ignoredMdClass[childMdClass.name(1, true)]==undefined)){
+                        continue;
+                    }
+                    
+                    // Для остального переберем потомков этого класса.
+                    for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
+                        var childObject = mdObj.childObject(i, chldidx);
+                        arguments.callee(childObject);
+                    }
+                }
+            })(MdContainer.rootObject)
+            
+        }
+    },
+    
+
+    Query_OnChange : function(Control){
+
+        return;
+
+    },
+
+    BtSearch_Click : function (control) {
+
+        if (this.form.Query == '')
+        {
+            DoMessageBox('Не задана строка поиска');
+            return;
+        }
+
+        this.searchInMetadata(true);
+    },
+
+
+    SetControlsVisible : function(){
+        this._super();
+        if (this.isGlobalFind){
+            this.form.caption = "Расширенный поиск в модуле (глобальный)";
+        }
+    }, 
+
+    showSearchResult: function (docRow, fromHotKey) {
+        this.showResult(docRow, fromHotKey);
+        this.expandTree();
+    }
+
+
+})
 
 ////} ExtSearch
 
@@ -1147,5 +1200,14 @@ function GetExtSearch() {
     return ExtSearch._instance;
 }
 
+function GetExtSearchGlobal() {
+    if (!ExtSearchGlobal._instance)
+        new ExtSearchGlobal();
+    
+    return ExtSearchGlobal._instance;
+}
+
+
 events.connect(Designer, "beforeExitApp", GetExtSearch());
+events.connect(Designer, "beforeExitApp", GetExtSearchGlobal());
 ////}
