@@ -53,6 +53,7 @@ function FuncProcPanel() {
     this.form.КлючСохраненияПоложенияОкна = "FuncProcPanel.js"
     this.results = this.form.FunctionList;
     this.results.Columns.Add('_method');
+    this.results.Columns.Add('isActive');
     //Таблица, на основании которой будет делать или дерево или просто список... 
     this.methods = this.results.Copy();
     
@@ -189,6 +190,7 @@ FuncProcPanel.prototype.GetList = function () {
         return
 
     cnt = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
+    currentMethod = cnt.getActiveLineMethod();
     vtModules = cnt.getMethodsTable();
     for (var i = 0; i<vtModules.Count(); i++) {
         var thisRow = vtModules.Get(i);
@@ -197,6 +199,11 @@ FuncProcPanel.prototype.GetList = function () {
         newRow.Method = thisRow.Name;
         newRow.Context =this.isForm?thisRow.Context:" ";
         newRow._method = thisRow._method;
+        if (currentMethod!=undefined) {
+            if (thisRow.Name == currentMethod.Name){
+                newRow.isActive = true;
+            }
+        }
         if (this.isForm) {
             var filter_struct = v8New("Структура");
             //FIXME: исправить при определении наименований функций, убрать лишние ковычки "
@@ -1080,6 +1087,9 @@ FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
         newRow.ТипЭлемента = thisRow.ТипЭлемента;
         newRow.КонтролТип = thisRow.КонтролТип;
         newRow.RowType = thisRow._method.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
+        if (thisRow.isActive){
+            this.form.Controls.FunctionList.CurrentRow = newRow;
+        }
     }
     this.expandTree();
     this.form.Controls.FunctionList.Columns.Context.Visible = !this.form.TreeView;
