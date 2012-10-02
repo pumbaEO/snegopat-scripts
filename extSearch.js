@@ -135,7 +135,7 @@ SelfScript.self['macrosОтменить глобальный поиск'] = func
     var es = GetExtSearchGlobal();
     if (es.startGlobalSearch){
         es.startGlobalSearch = false;
-    } 
+    }
 }
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
@@ -876,6 +876,7 @@ ExtSearchGlobal = ExtSearch.extend({
         this.form.КлючСохраненияПоложенияОкна = "extGlobalSearch.js";
 
         this.isGlobalFind = true;
+        this.expandetRows = {};
         
         this.SetControlsVisible();
 
@@ -931,9 +932,8 @@ ExtSearchGlobal = ExtSearch.extend({
             this.vtMD = {};
         }
         this.readMdToVt(this.currentMdContainer);
-        
+        this.expandetRows = {};
         this.curId = 0;
-        
         events.connect(Designer, "onIdle", this);
        
         //this.showSearchResult(docRow, fromHotKey);
@@ -945,6 +945,7 @@ ExtSearchGlobal = ExtSearch.extend({
             windows.caption = this.curCaption;
             events.disconnect(Designer, "onIdle", this);
             this.showSearchResult(docRow, false);
+            this.expandetRows = {};
             return;
         }
         var currentId = this.currentMdContainer.rootObject.id;
@@ -1079,7 +1080,36 @@ ExtSearchGlobal = ExtSearch.extend({
     showSearchResult: function (docRow, fromHotKey) {
         this.showResult(docRow, fromHotKey);
         this.expandTree();
+    },
+    
+    expandTree : function (collapse) {
+        var tree = this.form.Controls.SearchResults;
+        for (var i=0; i < this.results.Rows.Count(); i++)
+        {        
+            var docRow = this.results.Rows.Get(i);
+            if (this.form.TreeView)
+            {
+                for (var j=0; j < docRow.Rows.Count(); j++)
+                {
+                    var row = docRow.Rows.Get(j);
+                    if (this.expandetRows[""+row.LineNo+row.FoundLine]){
+                        continue;
+                    }
+                    collapse ? tree.Collapse(row) : tree.Expand(row, true);
+                    this.expandetRows[""+row.LineNo+row.FoundLine] = "1";
+                }
+            }
+            else
+            {
+                if (this.expandetRows[""+docRow.LineNo+docRow.FoundLine]){
+                    continue;
+                }
+                collapse ? tree.Collapse(docRow) : tree.Expand(docRow, true);            
+                this.expandetRows[""+docRow.LineNo+docRow.FoundLine] = "1";
+            }
+        }
     }
+     
 
 
 })
