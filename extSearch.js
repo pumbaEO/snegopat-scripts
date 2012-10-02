@@ -4,6 +4,7 @@ $dname Расширенный поиск
 $addin global
 $addin stdcommands
 $addin stdlib
+$addin hotkeys
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Cкрипт "Расширенный поиск" (extSearch.js) для проекта "Снегопат"
@@ -934,6 +935,7 @@ ExtSearchGlobal = ExtSearch.extend({
         this.readMdToVt(this.currentMdContainer);
         this.expandetRows = {};
         this.curId = 0;
+        hotkeys.AddHotKey("Ctrl+Shift+BkSpace", "ExtendedSearch", "Отменить глобальный поиск");
         events.connect(Designer, "onIdle", this);
        
         //this.showSearchResult(docRow, fromHotKey);
@@ -946,6 +948,17 @@ ExtSearchGlobal = ExtSearch.extend({
             events.disconnect(Designer, "onIdle", this);
             this.showSearchResult(docRow, false);
             this.expandetRows = {};
+            
+            for(var i = 0; i < HotKeys.count; i++)
+            {
+                var hk = HotKeys.item(i);
+                Команда = hk.addin + "::" + hk.macros
+                if (Команда.indexOf("ExtendedSearch::Отменить глобальный поиск")!=-1){
+                    try {
+                        HotKeys.remove(i);
+                    } catch (e) {}
+                }
+            }
             return;
         }
         var currentId = this.currentMdContainer.rootObject.id;
