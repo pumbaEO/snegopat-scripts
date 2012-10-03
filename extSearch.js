@@ -877,6 +877,18 @@ ExtSearchGlobal = ExtSearch.extend({
         this.form.КлючСохраненияПоложенияОкна = "extGlobalSearch.js";
 
         this.isGlobalFind = true;
+        //TODO: признак автомтически назначаемого хоткей, если уже назначен на отмену поиска, автоматом не будет назначаться. 
+        this.dynamicHotKey = true; 
+        for(var i = 0; i < HotKeys.count; i++)
+        {
+            var hk = HotKeys.item(i);
+            Команда = hk.addin + "::" + hk.macros
+            if (Команда.indexOf("ExtendedSearch::Отменить глобальный поиск")!=-1){
+                this.dynamicHotKey = false;
+                break;
+            }
+        }
+        
         this.expandetRows = {};
         
         this.SetControlsVisible();
@@ -935,7 +947,8 @@ ExtSearchGlobal = ExtSearch.extend({
         this.readMdToVt(this.currentMdContainer);
         this.expandetRows = {};
         this.curId = 0;
-        hotkeys.AddHotKey("Ctrl+Shift+BkSpace", "ExtendedSearch", "Отменить глобальный поиск");
+        if (this.dynamicHotKey) 
+            hotkeys.AddHotKey("Ctrl+Shift+BkSpace", "ExtendedSearch", "Отменить глобальный поиск");
         events.connect(Designer, "onIdle", this);
        
         //this.showSearchResult(docRow, fromHotKey);
@@ -949,14 +962,16 @@ ExtSearchGlobal = ExtSearch.extend({
             this.showSearchResult(docRow, false);
             this.expandetRows = {};
             
-            for(var i = 0; i < HotKeys.count; i++)
-            {
-                var hk = HotKeys.item(i);
-                Команда = hk.addin + "::" + hk.macros
-                if (Команда.indexOf("ExtendedSearch::Отменить глобальный поиск")!=-1){
-                    try {
-                        HotKeys.remove(i);
-                    } catch (e) {}
+            if (this.dynamicHotKey) {
+                for(var i = 0; i < HotKeys.count; i++)
+                {
+                    var hk = HotKeys.item(i);
+                    Команда = hk.addin + "::" + hk.macros
+                    if (Команда.indexOf("ExtendedSearch::Отменить глобальный поиск")!=-1){
+                        try {
+                            HotKeys.remove(i);
+                        } catch (e) {}
+                    }
                 }
             }
             return;
@@ -1109,7 +1124,9 @@ ExtSearchGlobal = ExtSearch.extend({
                         continue;
                     }
                     collapse ? tree.Collapse(row) : tree.Expand(row, true);
-                    this.expandetRows[""+row.LineNo+row.FoundLine] = "1";
+                    if (this.startGlobalSearch){
+                        this.expandetRows[""+row.LineNo+row.FoundLine] = "1";
+                    }
                 }
             }
             else
@@ -1118,7 +1135,10 @@ ExtSearchGlobal = ExtSearch.extend({
                     continue;
                 }
                 collapse ? tree.Collapse(docRow) : tree.Expand(docRow, true);            
-                this.expandetRows[""+docRow.LineNo+docRow.FoundLine] = "1";
+                
+                if (this.startGlobalSearch){
+                    this.expandetRows[""+docRow.LineNo+docRow.FoundLine] = "1";
+                }
             }
         }
     }
