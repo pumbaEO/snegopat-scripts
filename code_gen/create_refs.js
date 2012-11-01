@@ -6,19 +6,17 @@ $addin stdlib
 $addin vbs
 
 // (c) Александр Орефков orefkov at gmail.com
+//      Сосна Евгений <shenja@sosna.zp.ua>
 // Скрипт - генератор кода создания нового справочника
 //
 
 var attrTypeCategory        = "{30E571BC-A897-4A78-B2E5-1EA6D48B5742}" 
-//var defLangID = stdlib.getUuidFomMDRef(metadata.current.rootObject.property("Документы"));
-//Message("doc "+defLangID);
-//var defLangID = stdlib.getUuidFomMDRef(metadata.current.rootObject.property("Справочники"));
-//Message("doc "+defLangID);
-
+var СтандартныеРеквизиты = {"Код":"", "Наименование":"",
+                            "Родитель":"", "Владелец":"",
+                            "ПометкаУдаления":"", "Ссылка":""
+                            }
 codegen_manager.registerCodeGen("Справочники/Новый/Элемент с заполнением всех реквизитов", genarateNewRefsElement);
 codegen_manager.registerCodeGen("Справочники/Новый/Группа с заполнением всех реквизитов", genarateNewRefsGroup);
-//codegen_manager.registerCodeGen("Справочники/Новый элемент/С заполнением реквизтов группы", genarateNewRefsElement);
-//codegen_manager.registerCodeGen("Справочники/Новая группа/С заполнением всех реквизитов для группы", genarateNewRefsElement)
 
 function genarateNewRefsElement(param)
 {
@@ -42,6 +40,9 @@ function genarateNewRefsElement(param)
         syn = docKind
     
     var text = '//{ Создание справочника "' + syn + '" в ' + varName +'\n' + varName + ' = Справочники.' + docKind + '.СоздатьЭлемент();\n'
+    // Обработаем стандартные реквизиты справочника. 
+    text += processStanartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты,varName, mdObj, tf);
+ 
     // Обработаем реквизиты справочника
     text += processAttribs(" Заполнение реквизитов", "", "", varName, mdObj, tf)
     // Обработаем табличные части
@@ -99,6 +100,8 @@ function genarateNewRefsGroup(param)
         syn = docKind
     
     var text = '//{ Создание справочника "' + syn + '" в ' + varName +'\n' + varName + ' = Справочники.' + docKind + '.СоздатьГруппу();\n'
+    // Обработаем стандартные реквизиты справочника. 
+    text += processStanartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты,varName, mdObj, tf);
     // Обработаем реквизиты объекта
     text += processAttribsGroups(" Заполнение реквизитов", "", "", varName, mdObj, tf)
     // Обработаем табличные части
@@ -126,6 +129,18 @@ function genarateNewRefsGroup(param)
     text += "//} Создание справочника " + docKind + " в " + varName
     param.text = text
     return true
+}
+
+function processStanartAttribs(comment, header, footer, attributes, line, obj, tf) {
+    var lines = []
+    for (var key in attributes) {
+        var l = line + "." + key + " = ; // " //+ tf.getTypeString(attr) 
+        lines.push(l);
+    }
+    if(lines.length)
+        return "//{ " + comment + "\n" + header + codegen_manager.formatAssign(lines) + footer + "//} " + comment + "\n"
+    else
+        return ""
 }
 
 function processAttribs(comment, header, footer, line, obj, tf)
@@ -156,7 +171,6 @@ function processAttribs(comment, header, footer, line, obj, tf)
 
 function processAttribsGroups(comment, header, footer, line, obj, tf)
 {
-    //Message("processAttribsGroups "+obj.childObjectsCount("Реквизиты"));
     var lines = []
     for(var i = 0, cnt = obj.childObjectsCount("Реквизиты"); i < cnt; i++)
     {
