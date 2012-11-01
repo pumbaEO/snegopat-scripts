@@ -22,7 +22,7 @@ codegen_manager.registerCodeGen("Справочники/Новый/Группа 
 
 function genarateNewRefsElement(param)
 {
-    // Для начала выберем вид документа
+    // Для начала выберем вид справочника
     var docKind = snegopat.parseTemplateString('<?"Выберите вид справочника", Справочник>')
     if(!docKind.length)
         return false
@@ -42,7 +42,7 @@ function genarateNewRefsElement(param)
         syn = docKind
     
     var text = '//{ Создание справочника "' + syn + '" в ' + varName +'\n' + varName + ' = Справочники.' + docKind + '.СоздатьЭлемент();\n'
-    // Обработаем реквизиты документа
+    // Обработаем реквизиты справочника
     text += processAttribs(" Заполнение реквизитов", "", "", varName, mdObj, tf)
     // Обработаем табличные части
     var tabPartsCount = mdObj.childObjectsCount("ТабличныеЧасти")
@@ -66,14 +66,14 @@ function genarateNewRefsElement(param)
         if(tabPartsCount > 1)
             text += "//}  Заполнение табличных частей\n"
     }
-    text += "//} Создание документа " + docKind + " в " + varName
+    text += "//} Создание справочника " + docKind + " в " + varName
     param.text = text
     return true
 }
 
 function genarateNewRefsGroup(param)
 {
-    // Для начала выберем вид документа
+    // Для начала выберем вид справочника
     var docKind = snegopat.parseTemplateString('<?"Выберите вид справочника", Справочник>')
     if(!docKind.length)
         return false
@@ -123,7 +123,7 @@ function genarateNewRefsGroup(param)
         if(tabPartsCount > 1)
             text += "//}  Заполнение табличных частей\n"
     }
-    text += "//} Создание документа " + docKind + " в " + varName
+    text += "//} Создание справочника " + docKind + " в " + varName
     param.text = text
     return true
 }
