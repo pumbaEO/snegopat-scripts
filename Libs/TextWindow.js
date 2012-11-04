@@ -15,7 +15,7 @@ function GetTextWindow() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-//// TextWindow
+//// _TextWindow
 ////
 
 /** Класс-обертка вокруг ITextWindow, поддерживающий одновременно 
@@ -458,6 +458,22 @@ _TextWindow.prototype.readOnly = _TextWindow.prototype.IsReadOnly;
 _TextWindow.prototype.selectedText = _TextWindow.prototype.GetSelectedText;
 _TextWindow.prototype.text = _TextWindow.prototype.GetText;
 _TextWindow.prototype.hwnd = _TextWindow.prototype.GetHwnd;
+//}
+
+//{ Объект TextWindow - альтернатива использованию GetTextWindow().
+// Вместо 
+// 	var twnd = GetTextWindow();
+// 	if (twnd !== null) ...
+// Позволяет использовать объектную технику:
+// 	var twnd = new TextWindow();
+// 	if (twnd.IsActive()) ...
+TextWindow = _TextWindow.extend({
+    construct : function () {
+        var activeWnd = snegopat.activeTextWindow();	    
+        if (activeWnd)
+            this._super(activeWnd, windows.getActiveView());	        
+    }	
+});
 //}
 
 ////////////////////////////////////////////////////////////////////////////////////////
