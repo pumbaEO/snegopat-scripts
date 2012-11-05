@@ -19,6 +19,10 @@ $addin snegopatwnd
  *      необходимости перезагрузки скрипта.
  */
 
+stdlib.require("jshint.js", SelfScript);
+stdlib.require("TextWindow.js", SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
+
 /* **********************************************************
  *  Настройки скрипта по умолчанию.
  * ********************************************************* */
@@ -396,6 +400,131 @@ function lbScriptAboutНажатие()
 {
     ЗапуститьПриложение("http://snegopat.ru/scripts/wiki?name=DevTools/scriptdev.js");
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+//// Поддержка проверки синтаксиса скриптов (JSHint)
+//// 
+
+function macrosПроверитьСкрипт() {
+
+    var errCount = 0,
+        scr = new ScriptWindow();
+
+    if (!scr.IsScript()) {
+    	stdcommands.Frntend.SyntaxCheck.send();
+        return;
+    }
+
+    if (!JSHINT(scr.GetCodeLines())) {
+        if (JSHINT.errors.length) {
+            var offset = scr.GetCodeStartLine();
+            for (var i=0; i<JSHINT.errors.length; i++) {
+                if (JSHINT.errors[i]) {
+                    errCount++;
+                    showError(scr, JSHINT.errors[i], offset);
+                }
+            }
+        }        
+    }	
+    
+    if (errCount === 0) {
+        Message("Синтаксических ошибок не обнаружено!");
+    }         
+    
+    return true;   
+}
+
+function macrosПоказатьСписокМетодовСкрипта() {
+
+   var errCount = 0,
+        scr = new ScriptWindow(),
+        data = null,
+        vlFuncs = v8New('ValueList');
+
+    if (!scr.IsScript()) {
+    	snegopat.showMethodsList();
+        return;
+    }
+
+    JSHINT(scr.GetCodeLines());
+    
+	JSHINT.data().functions.forEach(function(func) {
+		vlFuncs.Add(func, func.name.replace(/^\"(.+?)\"$/, "$1"));
+	});
+	
+	var dlg = new SelectValueDialog("Выберите метод", vlFuncs);
+	if (dlg.selectValue()) {
+		scr.SetCaretPos(dlg.selectedValue.line + scr.GetCodeStartLine(), 1);
+	}
+	
+	return true;
+}
+
+ScriptWindow = TextWindow.extend({
+
+    construct: function() {
+        this._super();		
+    },
+    
+    IsScript: function() {
+    	if (this.IsActive()) {
+    		var view = this.GetView();
+ 			if (view) {
+ 				var doc = view.getDocument();
+ 				if (doc) {
+ 					if (doc.path.match(/\.(js|vbs)$/i)) {
+ 						return true;
+ 					}
+ 				}
+ 			}
+	        var lines = this.GetLines();
+	        return lines.length && lines[0].match(/^\$/);
+    	}
+    	return false;
+    },
+    
+    GetCodeStartLine: function() {	
+        var start = 0,
+            lines = this.GetLines();
+            
+        while (start < lines.length) {
+            if (!lines[start].match(/^\$/) && 
+                !lines[start].match(/^\s*$/)) {
+                break;
+            }
+            start++;
+        }			
+        return start;
+    },
+    
+    GetCodeLines : function() {
+        return this.GetLines().slice(this.GetCodeStartLine());
+    }
+    
+});
+
+function showError(tw, e, offset) {	
+    
+    var evidence = '';
+    
+    /* Формат вывода ошибки как в 1С:
+            {Где}: Что
+            часть строки с ошибкой<<?>>	
+        <<?>> - маркер позиции, в котором произошла ошибка.	
+    */
+    
+    if (e.evidence) { 
+        evidence = "\n" + e.evidence;
+    }
+    Message("{" + e.line + "} " + e.reason + evidence, mExc2, 
+    	function (o) {o.w.SetCaretPos(o.r, o.c);}, 
+    	{w:tw, r:e.line + offset, c:e.character}
+    );
+}
+
+//// 
+//// Поддержка проверки синтаксиса скриптов (JSHint)
+////////////////////////////////////////////////////////////////////////////////////////
 
 /* **********************************************************
  *  Инициализация скрипта.
