@@ -54,7 +54,7 @@ function macrosНайтиВыделенныйТекстВверх(){
 function macrosПоменятьОперандыПрисваиванияМестами() {
     
     var w = GetTextWindow(); 
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
     
     var selText = w.GetSelectedText();
     if (selText == '') return false;
@@ -94,7 +94,7 @@ SelfScript.Self['macrosПреобразовать регистр: строчны
 SelfScript.Self['macrosВыделить текст в скобках'] = function() {
 
     var w = GetTextWindow(); 
-    if (!w) return false;    
+    if (!w  || windows.modalMode != msNone) return false;    
         
     var sel = w.GetCaretPos();
     
@@ -194,7 +194,7 @@ function replaceTabsToSpacesInSelectedText(doNotRestoreSelection) {
 function selectNextPattern(dir){
     //debugger;
     var w = GetTextWindow(); //snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
     
 //debugger;    
     
@@ -247,7 +247,7 @@ function searchPatternUp(doc, pattern, startRow){
 
 function macrosКлонироватьТекст(){
     var w = GetTextWindow();//snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
     
     var sel = w.getSelection();
     var selText = w.selectedText();
@@ -265,7 +265,7 @@ function macrosКлонироватьТекст(){
 
 function macrosOnPressEnterInComment(){
     var w = GetTextWindow();//snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
     
     var pos = w.getCaretPos();
     var str = w.line(pos.beginRow);
@@ -297,7 +297,7 @@ function macrosOnPressEnterInComment(){
 
 function macrosOnPressDeleteInComment(){
     var w = GetTextWindow();//snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
 
     if (w.selectedText() != ""){
         return false;    /// TODO: обработать этот вариант.
@@ -331,7 +331,7 @@ function macrosOnPressDeleteInComment(){
 
 function macrosOnPressBackspaceInComment(){
     var w = GetTextWindow();//snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
 
     if (w.selectedText() != ""){
         return false;    /// TODO: обработать этот вариант.
@@ -383,7 +383,7 @@ function getCommentStringHeader(str){
 function processSelectedText(selTextHandler, doNotRestoreSelection) {
     
     var w = GetTextWindow(); 
-    if (!w) return false;    
+    if (!w || windows.modalMode != msNone) return false;    
     
     var sel = w.GetSelection();            
     var selText = w.GetSelectedText();
@@ -409,7 +409,7 @@ function processSelectedText(selTextHandler, doNotRestoreSelection) {
 SelfScript.Self['macrosУстановить символ | в строке/выделении'] = function() {
    
     var w = GetTextWindow(); //Получим активное текстовое окно
-    if (!w) return false;   
+    if (!w || windows.modalMode != msNone) return false;   
    
     // Проверем есть ли выделенный текс, если нет, то выделим текущую строку , в результате обработаем выделенный текст и вернем на место.
     var selText = w.GetSelectedText();
@@ -442,7 +442,7 @@ function setSymbolInBeginnLine(text, symbol){
 
 function macrosOnPressBackspaceInBracket(){
     var w = GetTextWindow();//snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
 
     if (w.selectedText() != ""){
         return false;    /// TODO: обработать этот вариант.
@@ -479,7 +479,7 @@ function macrosOnPressBackspaceInBracket(){
 }
 function macrosOnPressDelInBracket(){
     var w = GetTextWindow();//snegopat.activeTextWindow();
-    if (!w) return false;
+    if (!w || windows.modalMode != msNone) return false;
 
     if (w.selectedText() != ""){
         return false;    /// TODO: обработать этот вариант.
