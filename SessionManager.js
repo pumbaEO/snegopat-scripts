@@ -555,10 +555,13 @@ WndList = stdlib.Class.extend({
             }
             if (twnd!=null){
                 twndView = twnd.GetView();
-                if ((twnd!=null) && (v.id == twndView.id)){
-                    item = this.find[v.id];
-                    item.addCurPosition(twnd.GetCaretPos().beginRow);
-                }
+                try {
+                    if ((twnd!=null) && (v.id == twndView.id)){
+                        item = this.find[v.id];
+                        item.addCurPosition(twnd.GetCaretPos().beginRow);
+                    }
+                } catch (e) {}
+                
 
             }
         }
