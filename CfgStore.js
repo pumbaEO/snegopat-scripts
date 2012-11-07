@@ -55,6 +55,27 @@ SelfScript.self['macrosЗахватить объект в хранилище'] =
     return true;
 }
 
+SelfScript.self['macrosПоместить объект в хранилище'] = function() {
+
+    try{ //иногда вылетают странные исключения :( при работе с элементами форм
+        view = windows.getActiveView();
+        if (!view || !view.mdObj || view.mdObj.container != metadata.current) return false;
+        
+        
+        res1 = view.mdObj.activateInTree();
+        
+        isEventConnected = true
+
+        res = stdcommands.CfgStore.StoreIntoCfgStore.send() // true если успешно
+
+    }catch(e)
+    {
+        Message("Ошибка : " + e.description)
+    }
+
+    return true;
+}
+
 function hookCaptureCfgStoreWindow(dlgInfo)
 {
    if(dlgInfo.stage == openModalWnd)

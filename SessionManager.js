@@ -51,6 +51,18 @@ SelfScript.self['macrosОчистить всю историю'] = function() {
     sm.sessionTreeClear();
     return true;
 }
+
+SelfScript.self['macrosОткрыть настройку'] = function() {
+
+    var sms = GetSessionManagerSettings();
+    sms.show(true);
+    sms = null;
+    var sm = GetSessionManager();
+    sm.reloadSettings();
+    return true;
+}
+
+
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
@@ -68,10 +80,13 @@ SessionManager = ScriptForm.extend({
 
     settings : {
         pflBase : {
-            'SessionsHistory' : "", //Таблица значений.
-            'SassionSaved'     : v8New('ValueList'),
-            'AutoSave'      : false, // Автосохранение сессии.
-            'HistoryDepth'  : 15 // Количество элементов истории сессий.
+            'SessionsHistory' : "", //Таблица значений 
+            'SassionSaved'    : "",
+            'AutoSave'        : true, // Автосохранение сессии.
+            'HistoryDepth'    : 15, // Количество элементов истории сессий.
+            'AutoRestore'     : true,
+            'MarksSave'       : true,
+            'MarksRestore'    : true
 
         }
     },
@@ -112,6 +127,7 @@ SessionManager = ScriptForm.extend({
         }
         
         try{
+
             this.SessionTree.Columns.Add("curLine");
         } catch(e){  }
 
@@ -120,10 +136,16 @@ SessionManager = ScriptForm.extend({
     restoreSession:function(sessionName){
 
         var sessionsHistory = this.SessionTree;
+        
         if (sessionsHistory.Rows.Count()==0){
             return ;
         }
+
         if (sessionName==undefined) sessionName = ""
+
+        if (!this.form.AutoRestore) {
+            return;
+        }
 
         if (sessionName.length>0){
             for (var i = 0; i<sessionsHistory.Rows.Count(); i++){
@@ -239,6 +261,12 @@ SessionManager = ScriptForm.extend({
             newRow.curLine = item.curLine;
             
         }
+
+        // Не позволяем истории расти более заданной глубины.
+        while (this.SessionTree.Rows.Count() > this.form.HistoryDepth){
+            currRow = this.SessionTree.Rows.Get(0);
+            this.SessionTree.Rows.Delete(currRow);
+        }
         this.form.SessionsHistory = ValueToStringInternal(this.SessionTree);
     },
     saveSettings:function(){
@@ -249,8 +277,11 @@ SessionManager = ScriptForm.extend({
         
         this.watcher.onTimer(1);
         this.watcher.stopWatch();
-        
-        this.saveSession();
+
+        if (this.form.AutoSave){
+            this.saveSession();    
+        }
+
         this.saveSettings();
     },
 
@@ -355,10 +386,82 @@ SessionManager = ScriptForm.extend({
 
     sessionTreeClear:function(){
         this.SessionTree.Rows.Clear();
+    }, 
+    reloadSettings:function(){
+        this.loadSettings();
     }
 
 
 })
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ SessionManagerSettings - Настройки менеджера сессий. 
+////
+SessionManagerSettings = ScriptForm.extend({
+
+    settingsRootPath : SelfScript.uniqueName,
+
+    settings : {
+        pflBase : {
+            'SessionsHistory' : "", //Таблица значений 
+            'SassionSaved'    : "",
+            'AutoSave'        : false, // Автосохранение сессии.
+            'HistoryDepth'    : 15, // Количество элементов истории сессий.
+            'AutoRestore'     : true,
+            'MarksSave'       : true,
+            'MarksRestore'    : true
+
+        }
+    },
+
+    construct : function () {
+
+        this._super("scripts\\SessionManager.settings.ssf");
+
+        this.loadSettings();
+
+        SessionManagerSettings._instance = this;
+
+    },
+    loadSettings:function(){
+        this._super();
+        try{
+            this.SessionTree = ValueFromStringInternal(this.form.SessionsHistory);
+        } catch(e){
+            this.SessionTree = v8New("ValueTree");
+            this.SessionTree.Columns.Add("Name");
+            this.SessionTree.Columns.Add("path");
+            this.SessionTree.Columns.Add("uuid");
+            this.SessionTree.Columns.Add("prop");
+            this.SessionTree.Columns.Add("rootId");
+            this.SessionTree.Columns.Add("sortkey");
+            this.SessionTree.Columns.Add("curLine");
+        }
+        
+        try{
+
+            this.SessionTree.Columns.Add("curLine");
+        } catch(e){  }
+
+    },
+
+    saveSettings:function(){
+        this.form.SessionsHistory = ValueToStringInternal(this.SessionTree);
+        this._super();
+    },
+
+    Ok_Click:function(Button){
+        this.saveSettings();
+        this.form.Close();
+    }, 
+
+    Close_Click:function(Button){
+        this.form.Close();
+    }
+
+})
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ TextWindowsWatcher - отслеживает активизацию текстовых окон и запоминает последнее.
@@ -589,6 +692,13 @@ function GetSessionManager() {
         new SessionManager();
 
     return SessionManager._instance;
+}
+
+function GetSessionManagerSettings() {
+    if (!SessionManagerSettings._instance)
+        new SessionManagerSettings();
+
+    return SessionManagerSettings._instance;
 }
 
 function onTimer(Id) {
