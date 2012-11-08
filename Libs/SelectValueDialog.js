@@ -30,7 +30,8 @@ SelectValueDialog = ScriptForm.extend({
     settings : {
         pflSnegopat : {
             'DoNotFilter': false, 
-            'SortByName' : false
+            'SortByName' : false, 
+            'GreedySearch': false //Жадный поиск, ищем в независимости от порядка занесения строк.
         }
     },
 
@@ -40,7 +41,9 @@ SelectValueDialog = ScriptForm.extend({
         	values = [];
         }
         this.loadValues(values);
-        this.caption = caption;
+        this.caption = caption ? caption : "Выберите значение";
+        //Сохраним ключ положения окна.
+        this.form.WindowOptionsKey =this.caption;
         this.form.ValuesList.Columns.Add('Value');
         this.setValuesList(this.originalList);
         
@@ -157,24 +160,59 @@ SelectValueDialog = ScriptForm.extend({
                 if (currentRow)
                     this.form.Controls.ValuesList.CurrentRow = currentRow;
             }
+              
             else
             {
-                var vtList = this.form.Controls.ValuesList.Value;
-                vtList.Clear();    
-                for (var rowNo = 0; rowNo < this.originalList.Count(); rowNo++)
-                {
-                    var row = this.originalList.Get(rowNo);
-                    if (re.test(row.Name)) {						
-                        //FillPropertyValues(vtList.Add(), row);	                						
-                    	var newRow = vtList.Add();	                    
-                    	newRow.Value = row.Value;
-                    	newRow.Name = row.Name;
-                    	newRow.Order = row.Order
+                if (this.form.GreedySearch){
+                    var a = newText.split(/\s+/);
+                    var vtList = this.form.Controls.ValuesList.Value;
+                    vtList.Clear();    
+                    for (var rowNo = 0; rowNo < this.originalList.Count(); rowNo++)
+                    {
+                        var row = this.originalList.Get(rowNo);
+                        needAdd = true;
+                        var title = row.Name.toLowerCase();
+                        for (var i=0; i<a.length; i++){
+
+                            if(title.indexOf(a[i]) < 0)
+                            {
+                                needAdd = false;
+                                break;
+                            }
+                        }
+
+                        if (needAdd) {                        
+                            var newRow = vtList.Add();                      
+                            newRow.Value = row.Value;
+                            newRow.Name = row.Name;
+                            newRow.Order = row.Order
+                        }
                     }
+                    if (this.form.Controls.ValuesList.Value.Count()) {
+                        this.form.Controls.ValuesList.CurrentRow = this.form.Controls.ValuesList.Value.Get(0);
+                    }
+
+                }  else {
+
+                    var vtList = this.form.Controls.ValuesList.Value;
+                    vtList.Clear();    
+                    for (var rowNo = 0; rowNo < this.originalList.Count(); rowNo++)
+                    {
+                        var row = this.originalList.Get(rowNo);
+                        if (re.test(row.Name)) {                        
+                            //FillPropertyValues(vtList.Add(), row);                                            
+                            var newRow = vtList.Add();                      
+                            newRow.Value = row.Value;
+                            newRow.Name = row.Name;
+                            newRow.Order = row.Order
+                        }
+                    }
+                    if (this.form.Controls.ValuesList.Value.Count()) {
+                        this.form.Controls.ValuesList.CurrentRow = this.form.Controls.ValuesList.Value.Get(0);
+                    }
+
                 }
-                if (this.form.Controls.ValuesList.Value.Count()) {
-                    this.form.Controls.ValuesList.CurrentRow = this.form.Controls.ValuesList.Value.Get(0);
-                }
+
             }
         }
     
