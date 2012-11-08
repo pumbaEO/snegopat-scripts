@@ -103,3 +103,44 @@ function ReadScintillaMessageDefs()
         SelfScript.self[arr[0]] = arr[1]
     }
 }
+
+events.connect(snegopat, "onProcessTemplate", SelfScript.self)
+
+// Функции для фикса положения каретки после вставки шаблона
+// При вставке шаблона вычисляем, куда будет вставллена каретка,
+// подписываемся на onIdle и там устанавливаем ее куда надо
+var fix
+function onProcessTemplate(param)
+{
+    var caretPos = param.text.indexOf("<?>")
+    if(-1 == caretPos)
+        caretPos = param.text.length
+    var tw = Snegopat.activeTextWindow()
+    if(tw)
+    {
+        fix =  {line: 0, col: 0}    // Вычисляем смещение позиции вставки каретки в строках и колонках
+        for(var i = 0; i < caretPos; i++)
+        {
+            if('\n' == param.text.charAt(i))
+            {
+                fix.line++;
+                fix.col = 1
+            }
+            else
+                fix.col++
+        }
+        events.connect(Designer, "onIdle", SelfScript.self)
+    }
+}
+function onIdle()
+{
+    var tw = Snegopat.activeTextWindow()
+    if(tw && fix)
+    {
+        // Ставим каретку куда надо
+        var sel = tw.getSelection()
+        tw.setCaretPos(sel.beginRow + fix.line, fix.line ? fix.col : sel.beginCol + fix.col)
+    }
+    // Отписываемся от события
+    events.disconnect(Designer, "onIdle", SelfScript.self)
+}
