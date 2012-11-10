@@ -18,6 +18,7 @@ $addin stdlib
 
 
 stdlib.require('TextWindow.js', SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
 global.connectGlobals(SelfScript)
 
 stdlib.require('ScriptForm.js', SelfScript);
@@ -230,10 +231,11 @@ SessionManager = ScriptForm.extend({
         //debugger;
         if (sessionName==undefined) sessionName = ""
         if (sessionName.length>0){
-            for (var i = 0; i<sessionsHistory.Rows.Count(); i++){
-                session  = sessionsHistory.Get(i);
+            for (var i = 0; i<this.SessionTree.Rows.Count(); i++){
+                session  = this.SessionTree.Rows.Get(i);
                 if (session.Name == sessionName){
-                    sessionRow = session;
+                    //sessionRow = session;
+                    this.SessionTree.Rows.Delete(session)
                     break;
                 }
             }
@@ -241,13 +243,25 @@ SessionManager = ScriptForm.extend({
             sessionName = "Session "+dateStr;
         }
 
-        if (sessionRow == undefined){
+        //if (sessionRow == undefined){
             sessionRow = this.SessionTree.Rows.Add();
             sessionRow.Name = sessionName;
-        }
+        //}
         if (views == undefined){
             //var dictViews = this.walkViews();
             var views = this.wndlist.find;
+        } else {
+            find = {};
+            var wndlist = this.wndlist.find;
+            for (var idx in views){
+                view = views[idx];
+                var id = view.view.id;
+                if (wndlist.hasOwnProperty(id)){
+                    find[id]=wndlist[id];
+                }
+            }
+            var views = find;
+
         }
         for (var key in views){
             
@@ -395,7 +409,34 @@ SessionManager = ScriptForm.extend({
             sett.LoadSettings()
             sett.ApplyToForm(this.form);
         }
-        
+    },
+
+    choiceSessionName:function(){
+
+        var values = v8New('СписокЗначений');
+        for (var i=0; i<this.SessionTree.Rows.Count(); i++){
+            currRow=this.SessionTree.Rows.Get(i);
+            values.Add(i, ''+currRow.Name);
+        }
+
+        values.Add("add", 'Добавить и ввести новое имя сессии');
+
+        var dlg = new SelectValueDialog("Выберите сессию", values);
+        if (dlg.selectValue()) {
+            if (dlg.selectedValue=="add"){
+                var vbs = addins.byUniqueName("vbs").object
+                vbs.var0 = ""; vbs.var1 = "Введите наименование "; vbs.var2 = 0, vbs.var3 = false;
+                if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
+                    var message  = vbs.var0;
+                    name = message;
+                }
+            } else {
+                currRow = this.SessionTree.Rows.Get(dlg.selectedValue);
+                name = currRow.Name;
+            }
+            return (name.length>0)?name:null
+        }
+        return null;
     }
 
 

@@ -16,6 +16,7 @@ $addin stdcommands
 
 global.connectGlobals(SelfScript)
 
+
 var form
 var needActivate, needHide
 var api = stdlib.require('winapi.js')
@@ -443,6 +444,9 @@ function ПриОткрытии()
 {
     updateWndList()
     events.connect(Designer, "onIdle", SelfScript.self)
+    form.Controls.Cmds.Кнопки.SaveSession.Доступность = мИспользоватьСессии;
+    form.Controls.Cmds.Кнопки.RestoreSession.Доступность = мИспользоватьСессии;
+    
 }
 function ПриЗакрытии()
 {
@@ -507,8 +511,36 @@ function CmdsPrint(Кнопка)
     })
 }
 
+function CmdsSaveSession(Кнопка){
+
+    if (!sessionManager)
+        return
+    nameSession = sessionManager.choiceSessionName();
+    if (!nameSession)
+        return;
+    var views = {};
+    for(var rows = new Enumerator(form.Controls.WndList.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()) {
+        item = rows.item().Окно;
+        views[item.view.id] = item;
+    }
+    sessionManager.saveSession(nameSession, views);
+
+}
+
+function CmdsRestoreSession(Кнопка){
+
+    if (!sessionManager)
+        return
+    nameSession = sessionManager.choiceSessionName();
+    if (!nameSession)
+        return;
+    sessionManager.restoreSession(nameSession);
+    
+}
+
 function НастройкиПриОткрытии() {
     мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла=мДляВнешнихФайловОтображатьТолькоИмяФайла
+    мФормаНастройки.ИспользоватьСессии = мИспользоватьСессии;
 }
 
 function CmdsConfig(Кнопка)
@@ -520,7 +552,13 @@ function CmdsConfig(Кнопка)
 
 function мЗаписатьНастройки() {
     мДляВнешнихФайловОтображатьТолькоИмяФайла=мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла
+    мИспользоватьСессии = мФормаНастройки.ИспользоватьСессии;
     profileRoot.setValue(pflOnlyNameForExtFiles, мДляВнешнихФайловОтображатьТолькоИмяФайла)
+    profileRoot.setValue(pflUseSessions, мИспользоватьСессии);
+    if (!sessionManager && мИспользоватьСессии){
+        Message("test load settings")
+        loadSessionManager();
+    }
 }
 
 function CmdsConfigSaveClose(Кнопка) {
@@ -572,8 +610,24 @@ function WndListПередУдалением(Элемент, Отказ)
         '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
 })()
 
+function loadSessionManager(){
+    try {
+        sessionManager = stdlib.require(stdlib.getSnegopatMainFolder()+"scripts\\SessionManager.js").GetSessionManager();    
+    } catch(e){
+        Message("Невозможно загрузить Менеджер сессий "+e.description());
+    };
+}
+
 var pflOnlyNameForExtFiles = "WndPanel/OnlyNameForExtFiles"
+var pflUseSessions = "WndPanel/UseSessions";
 profileRoot.createValue(pflOnlyNameForExtFiles, false, pflSnegopat)
+profileRoot.createValue(pflUseSessions, false, pflSnegopat)
 var мДляВнешнихФайловОтображатьТолькоИмяФайла = profileRoot.getValue(pflOnlyNameForExtFiles);
+var мИспользоватьСессии = profileRoot.getValue(pflUseSessions);
+
+sessionManager = null;
+if (мИспользоватьСессии){
+    loadSessionManager();
+}
 
 мФормаНастройки=null
