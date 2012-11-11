@@ -146,10 +146,17 @@ ScriptForm = stdlib.Class.extend({
         if (!this.hasSettings())
             return false;
             
+        if (!this._defaultSettings) {
+        	this._defaultSettings = {};
+        	for(var prop in this.settings) {
+	        	this._defaultSettings[prop] = this.settings[prop];
+        	}
+        }    
+            
         var sm = stdlib.require('SettingsManagement.js').SettingsManagement;
-        for (var pflType in this.settings) 
+        for (var pflType in this._defaultSettings) 
         {
-            var defaults = this.settings[pflType];
+            var defaults = this._defaultSettings[pflType];
             // Имя ключа = строка - имя значения перечисления. Выполняя строку получаем необходимое значение. 
             var pflTypeValue = eval(pflType); 
             var settings = sm.CreateManager(this.settingsRootPath, defaults, pflTypeValue);
