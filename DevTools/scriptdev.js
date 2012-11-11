@@ -125,6 +125,35 @@ function macrosСохранитьСкриптЗаменитьТабуляцию�
     macrosПерезагрузитьТекущийСкрипт();
 }
 
+function macrosВставитьRequire() {
+
+	var tw = new TextWindow();
+	if (!tw.IsActive()) {
+		return;
+	}
+
+	var requires = {};
+	
+	// Сформируем список файлов-библиотек из каталога Libs.
+	var re_js = /\.js$/i;
+	
+	var fso = new ActiveXObject("Scripting.FileSystemObject");
+	var libsFolder = fso.GetFolder(stdlib.getSnegopatMainFolder() + 'scripts\\Libs');
+	var files = new Enumerator(libsFolder.Files);
+	for (; !files.atEnd(); files.moveNext()) {
+		if (re_js.test(files.item().Name)) {
+			requires[files.item().Name] = 'stdlib.require("' + files.item().Name + '", SelfScript);';
+		}
+	}
+
+	// Предложим пользователю выбрать библиотеку из списка.
+	var dlg = new SelectValueDialog("Выберите скрипт-библиотеку");
+	if (dlg.selectValue(requires)) {
+		tw.InsertLine(tw.GetCaretPos().beginRow, dlg.selectedValue);
+		tw.SetCaretPos(tw.GetCaretPos().beginRow, dlg.selectedValue.length + 1);
+	}
+}
+
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
