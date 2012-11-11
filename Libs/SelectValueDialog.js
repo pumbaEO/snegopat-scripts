@@ -54,6 +54,7 @@ SelectValueDialog = ScriptForm.extend({
     selectValue: function (values) {
         if (values) {
             this.loadValues(values);
+            this.setValuesList(this.originalList);
         }
         this.selectedValue = this.form.DoModal();
         return this.selectedValue ? true : false;
