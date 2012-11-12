@@ -18,7 +18,7 @@ function macrosВыбратьТипПараметра()
         var types = new VBArray(snegopat.paramsTypes()).toArray()
         if(types.length > 1)
         {
-            var useSvcsvc = false;
+            var useSvcsvc = true;
             try{
             var sel = new ActiveXObject('Svcsvc.Service')
             }catch(e)

@@ -177,7 +177,7 @@ SnippetsManager.prototype.selectValue = function(values) {
     }
     catch(e)
     {
-        Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll");
+        //Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll");
         useSvcsvc = false;
     }
     //debugger;
