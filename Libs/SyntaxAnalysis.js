@@ -70,6 +70,7 @@ SyntaxAnalysis.CONTEXT = { "atclientatservernocontext"   :"AtClientAtServerNoCon
     
 
 SyntaxAnalysis.AnalyseParams = function(sourceCode, Meth) {
+	var Matches;
     while( (Matches = SyntaxAnalysis.RE_PARAM_TORMOZIT.exec(sourceCode)) != null ) { 
         Meth.Params.push(Matches[2]);
     }
@@ -147,7 +148,7 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
                         }
                     }
                     this.AnalyseParams(strParams, Meth);
-                    endproc = Matches[2]
+                    var endproc = Matches[2]
                     
                     moduleContext.addMethod(Meth); 
                     proc_count++;
