@@ -204,12 +204,14 @@ SessionManager = ScriptForm.extend({
                 var mdObj = this.findMdObj(md, currRow.uuid);
                 if (mdObj){
                     n = currRow.prop;
+                    text = '1';
                     if (n =="Форма"){
                         mdObj.openModule(n.toString());
                     } else {
+                        text = mdObj.getModuleText(n.toString());
                         mdObj.editProperty(n.toString());
                     }
-                    if (currRow.curLine) {
+                    if (currRow.curLine && text.length>0) { //Нужно ли позиционироваться? Если текст пустой или модуль запоролен, то и не надо. 
                         //попробуем обойтись без таймера... 
                         twnd = new TextWindow;
                         if (twnd.IsActive()) {
@@ -415,7 +417,7 @@ SessionManager = ScriptForm.extend({
 
         var values = v8New('СписокЗначений');
         for (var i=0; i<this.SessionTree.Rows.Count(); i++){
-            currRow=this.SessionTree.Rows.Get(i);
+            var currRow=this.SessionTree.Rows.Get(i);
             values.Add(i, ''+currRow.Name);
         }
 
@@ -431,7 +433,7 @@ SessionManager = ScriptForm.extend({
                     name = message;
                 }
             } else {
-                currRow = this.SessionTree.Rows.Get(dlg.selectedValue);
+                var currRow = this.SessionTree.Rows.Get(dlg.selectedValue);
                 name = currRow.Name;
             }
             return (name.length>0)?name:null
@@ -524,6 +526,7 @@ TextWindowsWatcher = stdlib.Class.extend({
             wndlist = new WndList;
         }
         this.wndlist = wndlist;
+        this.oldActiveViewId = 0;
         this.startWatch();
     },
 
@@ -553,8 +556,17 @@ TextWindowsWatcher = stdlib.Class.extend({
         else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive())
             this.lastActiveTextWindow = null;
         
+        activeView = windows.getActiveView();
+        if (!activeView){
+            return
+        }
+        if (activeView.id == this.oldActiveViewId){
+            return;
+        }
+        this.oldActiveViewId = activeView.id;
         this.wndlist.removeOldViews();
         this.wndlist.addNewViews(this.getActiveTextWindow());
+
     }
     
 }); // end of TextWindowsWatcher class
