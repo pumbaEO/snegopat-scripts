@@ -1,0 +1,5 @@
+﻿Перем Конфигуратор Экспорт;
+
+Function Init(Designer)
+	Конфигуратор = Designer;
+EndFunction
