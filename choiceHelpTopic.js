@@ -59,7 +59,7 @@ function getDefaultMacros() {
             {
                 Message("choiceHelpTopic.js: ошибка при инициализации. " + e.description);
                 Message("Будим использовать нативные окна");
-                this.settings[pflSnegopat]['useNative'] = true;
+                this.settings.current.useNative = true;
 
             }
 
@@ -133,7 +133,9 @@ function getDefaultMacros() {
             for (var i = 0; i<=dlg.selectedValue; i++) {
                 sk += "{DOWN}"
             };
-            new ActiveXObject("WScript.Shell").SendKeys(sk + "~");
+            sk +="~"; //enter
+            sk +="{TAB}"; // tab, переместимся сразу в нижние окно справки, что бы работали стрелки вверх и вниз, если српавка не вмещается и появляется скролл. 
+            new ActiveXObject("WScript.Shell").SendKeys(sk);
 
 
         }

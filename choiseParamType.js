@@ -1,5 +1,8 @@
 ﻿$engine JScript
 $dname Выбор типа в подсказке о параметрах
+$addin stdlib
+
+stdlib.require("SelectValueDialog.js", SelfScript);
 
 /* (c) Александр Орефков
  * Скрипт содержит макрос, позволяющий при наличии в подсказке о параметрах нескольких методов
@@ -15,14 +18,27 @@ function macrosВыбратьТипПараметра()
         var types = new VBArray(snegopat.paramsTypes()).toArray()
         if(types.length > 1)
         {
+            var useSvcsvc = true;
             try{
             var sel = new ActiveXObject('Svcsvc.Service')
             }catch(e)
             {
-                Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll")
-                return false
+                //Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll")
+                useSvcsvc=false;
             }
-            var choice = sel.FilterValue(types.join("\r\n"), 1 | 8, '', paramPos.beginCol + 10, paramPos.beginRow + 20, paramPos.endCol - paramPos.beginCol - 20)
+            if(useSvcsvc){
+                var choice = sel.FilterValue(types.join("\r\n"), 1 | 8, '', paramPos.beginCol + 10, paramPos.beginRow + 20, paramPos.endCol - paramPos.beginCol - 20);    
+            } else {
+                var dlg = new SelectValueDialog("Выбор типа в подсказке о параметрах", types);
+                dlg.form.GreedySearch = true; 
+                sel = dlg.selectValue();
+                var choice = '';
+                if (sel){
+                    choice = dlg.selectedValue;
+                }
+                
+            }
+            
             if(choice.length)
             {
                 for(var k in types)
@@ -34,7 +50,7 @@ function macrosВыбратьТипПараметра()
             }
         }
     }
-    return false
+    return false;
 }
 
 function getPredefinedHotkeys(predef)

@@ -1,7 +1,9 @@
 ﻿$engine JScript
 $uname selectColumn
 $dname Выбор колонки табличного поля
+$addin stdlib
 
+stdlib.require("SelectValueDialog.js", SelfScript);
 // (c) Александр Орефков
 // Небольшой скрипт, позволяющий быстро вставить в код название любой из колонок табличных
 // полей, расположенных на обычной форме
@@ -9,12 +11,14 @@ $dname Выбор колонки табличного поля
 
 SelfScript.self['macrosВыбрать колонку ТабличногоПоля'] = function()
 {
+    var useSvcsvc = true;
     try{
         var sel = new ActiveXObject('Svcsvc.Service')
     }catch(e)
     {
-        Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll")
-        return
+        //Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll")
+        //return
+        useSvcsvc = false;
     }
     // Получаем активное текстовое окно
     var wnd = snegopat.activeTextWindow()
@@ -47,7 +51,17 @@ SelfScript.self['macrosВыбрать колонку ТабличногоПол�
         var arrOfColumns = []
         for(var k in columns)
             arrOfColumns.push(k)
-        var choice = sel.FilterValue(arrOfColumns.join("\r\n"), 1 | 4)
+        if (useSvcsvc){
+            var choice = sel.FilterValue(arrOfColumns.join("\r\n"), 1 | 4);    
+        } else {
+            var dlg = new SelectValueDialog("Выбор колонки табличного поля", arrOfColumns);
+            sel = dlg.selectValue();
+            var choice = '';
+            if (sel){
+                choice = dlg.selectedValue;
+            }
+        }
+        
         if(choice.length)
         {
             wnd.selectedText = choice

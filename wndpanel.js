@@ -556,7 +556,6 @@ function мЗаписатьНастройки() {
     profileRoot.setValue(pflOnlyNameForExtFiles, мДляВнешнихФайловОтображатьТолькоИмяФайла)
     profileRoot.setValue(pflUseSessions, мИспользоватьСессии);
     if (!sessionManager && мИспользоватьСессии){
-        Message("test load settings")
         loadSessionManager();
     }
 }
