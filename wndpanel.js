@@ -523,7 +523,7 @@ function CmdsSaveSession(Кнопка){
         item = rows.item().Окно;
         views[item.view.id] = item;
     }
-    sessionManager.saveSession(nameSession, views);
+    sessionManager.saveSession(nameSession, views, 'SessionSaved');
 
 }
 
@@ -534,7 +534,7 @@ function CmdsRestoreSession(Кнопка){
     nameSession = sessionManager.choiceSessionName();
     if (!nameSession)
         return;
-    sessionManager.restoreSession(nameSession);
+    sessionManager.restoreSession(nameSession, 'SessionSaved');
     
 }
 
@@ -556,6 +556,7 @@ function мЗаписатьНастройки() {
     profileRoot.setValue(pflOnlyNameForExtFiles, мДляВнешнихФайловОтображатьТолькоИмяФайла)
     profileRoot.setValue(pflUseSessions, мИспользоватьСессии);
     if (!sessionManager && мИспользоватьСессии){
+        Message("test load settings")
         loadSessionManager();
     }
 }

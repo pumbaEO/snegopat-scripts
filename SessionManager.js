@@ -32,6 +32,7 @@ SelfScript.self['macrosСохранить текущие окна'] = function()
     var sm = GetSessionManager();
     sm.saveSession();
     sm.saveSettings();
+    sm.loadSettings();
     return true;
 }
 
@@ -82,12 +83,13 @@ SessionManager = ScriptForm.extend({
     settings : {
         "pflBase" : {
             'SessionsHistory' : "", //Таблица значений 
-            'SassionSaved'    : "",
+            'SessionSaved'    : "",
             'AutoSave'        : true, // Автосохранение сессии.
             'HistoryDepth'    : 15, // Количество элементов истории сессий.
             'AutoRestore'     : true,
             'MarksSave'       : true,
-            'MarksRestore'    : true
+            'MarksRestore'    : true,
+            'ColorSaved'      : v8New("Цвет", 229, 229, 229)
 
         }
     },
@@ -99,15 +101,13 @@ SessionManager = ScriptForm.extend({
 
         this.form.КлючСохраненияПоложенияОкна = "SessionManager.js"
         this.sessionsList = this.form.Controls.SessionsList.Value;
-        
+        this.sessionsList.Columns.Add('_object');
         this.wndlist = new WndList;
         
         this.watcher = new TextWindowsWatcher(this.wndlist);
         this.watcher.startWatch();
         //debugger;
         this.loadSettings();
-
-        this.sessionsList = this.SessionTree;
 
         if (!isExtend) SessionManager._instance = this;
 
@@ -132,11 +132,40 @@ SessionManager = ScriptForm.extend({
             this.SessionTree.Columns.Add("curLine");
         } catch(e){  }
 
+        try{
+            this.constantSessionTree = ValueFromStringInternal(this.form.SessionSaved);
+        } catch(e){
+            this.constantSessionTree = v8New("ValueTree");
+            this.constantSessionTree.Columns.Add("Name");
+            this.constantSessionTree.Columns.Add("path");
+            this.constantSessionTree.Columns.Add("uuid");
+            this.constantSessionTree.Columns.Add("prop");
+            this.constantSessionTree.Columns.Add("rootId");
+            this.constantSessionTree.Columns.Add("sortkey");
+            this.constantSessionTree.Columns.Add("curLine");
+        }
+        
+        try{
+
+            this.constantSessionTree.Columns.Add("curLine");
+        } catch(e){  }
+
+        this.sessions = {"SessionsHistory":this.SessionTree, 
+                        "SessionSaved":this.constantSessionTree
+                        }
+
+    },
+    autoRestoreSession:function(sessionName){
+        if (!this.form.AutoRestore) {
+            return;
+        }
+        this.restoreSession(sessionName);
     },
 
-    restoreSession:function(sessionName){
+    restoreSession:function(sessionName, table){
 
-        var sessionsHistory = this.SessionTree;
+        if (table==undefined) table = 'SessionsHistory';
+        var sessionsHistory = this.sessions[table];
         
         if (sessionsHistory.Rows.Count()==0){
             return ;
@@ -144,9 +173,6 @@ SessionManager = ScriptForm.extend({
 
         if (sessionName==undefined) sessionName = ""
 
-        if (!this.form.AutoRestore) {
-            return;
-        }
 
         if (sessionName.length>0){
             for (var i = 0; i<sessionsHistory.Rows.Count(); i++){
@@ -204,20 +230,23 @@ SessionManager = ScriptForm.extend({
                 var mdObj = this.findMdObj(md, currRow.uuid);
                 if (mdObj){
                     n = currRow.prop;
-                    text = '1';
-                    if (n =="Форма"){
-                        mdObj.openModule(n.toString());
-                    } else {
-                        text = mdObj.getModuleText(n.toString());
-                        mdObj.editProperty(n.toString());
-                    }
-                    if (currRow.curLine && text.length>0) { //Нужно ли позиционироваться? Если текст пустой или модуль запоролен, то и не надо. 
-                        //попробуем обойтись без таймера... 
-                        twnd = new TextWindow;
-                        if (twnd.IsActive()) {
-                            twnd.SetCaretPos(currRow.curLine, 2);
+                    try{
+                        if (n =="Форма"){
+                            mdObj.openModule(n.toString());
+                        } else {
+                            mdObj.editProperty(n.toString());
                         }
+                        if (currRow.curLine) {
+                            //попробуем обойтись без таймера... 
+                            twnd = new TextWindow;
+                            if (twnd.IsActive()) {
+                                twnd.SetCaretPos(currRow.curLine, 2);
+                            }
+                        }    
+                    } catch(e){
+                        Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
                     }
+                    
                 }
             }
         }
@@ -227,17 +256,19 @@ SessionManager = ScriptForm.extend({
             return md.rootObject
         return md.findByUUID(uuid);
     },
-    saveSession:function(sessionName, views){
+    saveSession:function(sessionName, views, table){
         var dateStr = new Date().toLocaleString();
         var sessionRow = undefined;
+        if (table==undefined) table = 'SessionsHistory';
+        var sessionsHistory = this.sessions[table];
         //debugger;
         if (sessionName==undefined) sessionName = ""
         if (sessionName.length>0){
-            for (var i = 0; i<this.SessionTree.Rows.Count(); i++){
-                session  = this.SessionTree.Rows.Get(i);
+            for (var i = 0; i<sessionsHistory.Rows.Count(); i++){
+                session  = sessionsHistory.Rows.Get(i);
                 if (session.Name == sessionName){
                     //sessionRow = session;
-                    this.SessionTree.Rows.Delete(session)
+                    sessionsHistory.Rows.Delete(session)
                     break;
                 }
             }
@@ -246,7 +277,7 @@ SessionManager = ScriptForm.extend({
         }
 
         //if (sessionRow == undefined){
-            sessionRow = this.SessionTree.Rows.Add();
+            sessionRow = sessionsHistory.Rows.Add();
             sessionRow.Name = sessionName;
         //}
         if (views == undefined){
@@ -279,14 +310,22 @@ SessionManager = ScriptForm.extend({
         }
 
         // Не позволяем истории расти более заданной глубины.
-        while (this.SessionTree.Rows.Count() > this.form.HistoryDepth){
-            currRow = this.SessionTree.Rows.Get(0);
-            this.SessionTree.Rows.Delete(currRow);
+        if (table=="SessionsHistory"){
+            while (this.SessionTree.Rows.Count() > this.form.HistoryDepth){
+                currRow = this.SessionTree.Rows.Get(0);
+                this.SessionTree.Rows.Delete(currRow);
+            }    
         }
-        this.form.SessionsHistory = ValueToStringInternal(this.SessionTree);
+        if (!sessionRow.Rows.Count()){
+            sessionsHistory.Rows.Delete(sessionRow);
+        }
+        
+        //this.form.SessionsHistory = ValueToStringInternal(this.SessionTree);
+
     },
     saveSettings:function(){
         this.form.SessionsHistory = ValueToStringInternal(this.SessionTree);
+        this.form.SessionSaved = ValueToStringInternal(this.constantSessionTree);
         this._super();
     },
     beforeExitApp:function(){
@@ -306,18 +345,19 @@ SessionManager = ScriptForm.extend({
         for (var i=0; i < this.form.SessionsList.Rows.Count(); i++)
         {
             var docRow = this.form.SessionsList.Rows.Get(i);
-
-            tree.Expand(docRow, true);
+            collapse ? tree.Collapse(docRow) : tree.Expand(docRow, true);            
+            //tree.Expand(docRow, true);
         }
     },
 
-    showSessionsTree: function(){
-        var SessionsList = this.form.SessionsList;
-        SessionsList.Rows.Clear();
-        for (var i = 0; i<this.SessionTree.Rows.Count(); i++){
-            var currRow = this.SessionTree.Rows.Get(i);
-            var newRow = SessionsList.Rows.Add();
+    showSessionsTree: function(table){
+        
+        for (var i = 0; i<this.sessions[table].Rows.Count(); i++){
+            var currRow = this.sessions[table].Rows.Get(i);
+            var newRow = this.sessionsList.Rows.Add();
             newRow.name = currRow.name;
+            newRow.RowType = table;
+            newRow._object = currRow;
             if (currRow.Rows.Count()>0){
                 for (var y = 0; y < currRow.Rows.Count(); y++) {
                     listRow =  currRow.Rows.Get(y);
@@ -333,91 +373,158 @@ SessionManager = ScriptForm.extend({
             };
 
         }
-        //SessionsList = this.SessionTree;
+        this.expandTree(true);
+        
     },
 
     Form_OnOpen : function () {
-        this.showSessionsTree();
-        this.expandTree();
+        this.sessionsList.Rows.Clear();
+        this.showSessionsTree("SessionsHistory");
+        this.showSessionsTree("SessionSaved");
 
-        //his.SetControlsVisible();
     },
 
     Form_OnClose : function () {
-        //debugger;
         this.saveSettings();
     },
 
     SessionsList_Selection:function(control, selectedRow, selectedCol, defaultHandler){
         defaultHandler.val = false;
         currRow = selectedRow.val;
+
         if (currRow.Строки.Count()>0){
-            this.restoreSession(currRow.Name);
+            this.restoreSession(currRow.Name, currRow.RowType);
         }
     }, 
     CmdBar_Restore:function(Button){
-        if (!this.SessionTree.Rows.Count())
-            return;
-                          
-        var row = this.form.Controls.SessionsList.CurrentRow;
-        
-        if (!row)
-        {
-            return
-        }
-            if (row.Строки.Count()>0){
-                this.restoreSession(row.Name);
+
+        for(var rows = new Enumerator(this.form.Controls.SessionsList.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()){
+            var item = rows.item();
+            var currRow = item._object;
+            if (!currRow){
+                continue;
             }
-                 
+            if (!currRow.Rows.Count())
+                continue;
+            
+            this.restoreSession(currRow.Name, item.RowType);
+
+        }
     }, 
 
     CmdBar_Delete:function(Button){
-        if (!this.SessionTree.Rows.Count())
-            return;
-                   
         
-        var row = this.form.Controls.SessionsList.CurrentRow;
-        
-        if (!row)
-        {
-            return
+        for(var rows = new Enumerator(this.form.Controls.SessionsList.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()){
+            var item = rows.item();
+            var currRow = item._object;
+            if (!currRow){
+                continue;
+            }
+            this.sessions[item.RowType].Rows.Delete(currRow);
         }
-         
-            //var name = row.name;
-         
-                //FIXME: исправить на нормальную функцию. 
-                //this.form.SessionsList.Delete(row);
-         
-                // for (var i = this.SessionTree.Rows.Count() - 1; i >= 0; i--) {
-                //     var curRow = this.SessionTree.Rows.Get(i);
-         
-                //     if (currRow.Name == name){
-         
-                //         this.SessionTree.Delete(currRow);
-                //         break;
-                //     }
-                // };
-                 
+        this.sessionsList.Rows.Clear();
+        this.showSessionsTree("SessionsHistory");
+        this.showSessionsTree("SessionSaved");
+        
+
     },
+    CmdBar_SaveToFile:function(Button){
+        Message("Еще не реализованно!");
+    },
+
+    CmdBar_RestoreFromFile:function(Button){
+        Message("Еще не реализованно!");
+    },
+
+    CmdBar_ChangeRowType:function(Button){
+        var values = v8New('СписокЗначений');
+        values.Add("SessionSaved", 'Постоянное хранение');
+        values.Add("SessionsHistory", 'Автоочищаемое хранение');
+        var dlg = new SelectValueDialog("Выберите сессию", values);
+        if (!dlg.selectValue()) {
+            return;
+        }
+    
+        var table = dlg.selectedValue;
+        for(var rows = new Enumerator(this.form.Controls.SessionsList.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()){
+            var item = rows.item();
+            var currRow = item._object;
+            if (!currRow)
+                continue;
+            if (item.RowType!=table){
+                var newRow = this.sessions[table].Rows.Add();
+                newRow.Name = item.Name;
+                if (item.Rows.Count()>0){
+                    for (var y = 0; y < item.Rows.Count(); y++) {
+                        listRow =  item.Rows.Get(y);
+                        newListRow = newRow.Rows.Add();
+                        newListRow.name = listRow.name;
+                        newListRow.rootId = listRow.rootId;
+                        newListRow.path = listRow.path;
+                        newListRow.uuid = listRow.uuid;
+                        newListRow.prop = listRow.prop; 
+                        newListRow.curLine = listRow.curLine; 
+                    };
+                };
+                this.sessions[item.RowType].Rows.Delete(currRow);
+                item._object = newRow;
+            }
+
+        }
+    },
+
+    CmdBar_Rename:function(Button){
+        var Rows = this.form.Controls.SessionsList.ВыделенныеСтроки;
+        if (!Rows.Count() || Rows.Count()>1) {
+            Message("Необходимо выбрать одну строку верхнего уровня");
+            return;
+        }
+        var item = Rows.Get(0);
+        var currRow = item._object;
+        if (!currRow){
+            return;
+        }
+        var vbs = addins.byUniqueName("vbs").object
+        vbs.var0 = currRow.Name; vbs.var1 = "Введите наименование "; vbs.var2 = 0, vbs.var3 = false;
+        if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
+            var message  = vbs.var0;
+            if (message!=currRow.Name){
+                currRow.Name = message;
+                item.Name = message;
+            }
+        }
+    },
+
+    CmdBar_ExpandAll : function (Button) {
+        this.expandTree(false);
+    },
+    
+    CmdBar_CollapseAll : function (Button) {
+        this.expandTree(true);
+    },
+
+    SessionsList_OnRowOutput : function (Control, RowAppearance, RowData) {
+        var RowType = RowData.val.RowType;
+        if (RowType=="SessionSaved"){
+            RowAppearance.val.Cells.Name.ЦветФона = this.form.ColorSaved;
+        }
+    },
+    
 
     sessionTreeClear:function(){
         this.SessionTree.Rows.Clear();
     }, 
+
     reloadSettings:function(){
         
-        for (var pflType in this.settings)
-        {
-            var sett = this.settings[pflType];
-            sett.LoadSettings()
-            sett.ApplyToForm(this.form);
-        }
+        this.loadSettings();
     },
 
     choiceSessionName:function(){
 
         var values = v8New('СписокЗначений');
-        for (var i=0; i<this.SessionTree.Rows.Count(); i++){
-            var currRow=this.SessionTree.Rows.Get(i);
+        for (var i=0; i<this.sessions['SessionSaved'].Rows.Count(); i++){
+            currRow=this.sessions['SessionSaved'].Rows.Get(i);
             values.Add(i, ''+currRow.Name);
         }
 
@@ -433,7 +540,7 @@ SessionManager = ScriptForm.extend({
                     name = message;
                 }
             } else {
-                var currRow = this.SessionTree.Rows.Get(dlg.selectedValue);
+                currRow = this.sessions['SessionSaved'].Rows.Get(dlg.selectedValue);
                 name = currRow.Name;
             }
             return (name.length>0)?name:null
@@ -454,12 +561,13 @@ SessionManagerSettings = ScriptForm.extend({
     settings : {
         "pflBase" : {
             'SessionsHistory' : "", //Таблица значений 
-            'SassionSaved'    : "",
+            'SessionSaved'    : "",
             'AutoSave'        : false, // Автосохранение сессии.
             'HistoryDepth'    : 15, // Количество элементов истории сессий.
             'AutoRestore'     : true,
             'MarksSave'       : true,
-            'MarksRestore'    : true
+            'MarksRestore'    : true,
+            'ColorSaved'      : v8New("Цвет", 229, 229, 229)
 
         }
     },
@@ -526,7 +634,6 @@ TextWindowsWatcher = stdlib.Class.extend({
             wndlist = new WndList;
         }
         this.wndlist = wndlist;
-        this.oldActiveViewId = 0;
         this.startWatch();
     },
 
@@ -556,17 +663,8 @@ TextWindowsWatcher = stdlib.Class.extend({
         else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive())
             this.lastActiveTextWindow = null;
         
-        activeView = windows.getActiveView();
-        if (!activeView){
-            return
-        }
-        if (activeView.id == this.oldActiveViewId){
-            return;
-        }
-        this.oldActiveViewId = activeView.id;
         this.wndlist.removeOldViews();
         this.wndlist.addNewViews(this.getActiveTextWindow());
-
     }
     
 }); // end of TextWindowsWatcher class
@@ -764,7 +862,7 @@ function GetSessionManagerSettings() {
 function onTimer(Id) {
 
     se = GetSessionManager();
-    se.restoreSession();
+    se.autoRestoreSession();
     if (!timerId)
         return;
     killTimer(timerId);
