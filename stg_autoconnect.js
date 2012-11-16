@@ -2,7 +2,9 @@
 $uname stg_autoconnect
 $dname Авто-подключение к хранилищу
 $addin stdcommands
+$addin global
 
+global.connectGlobals(SelfScript)
 // (с) Александр Орефков orefkov at gmail.com
 // Это небольшой скрипт для подстановки пути/имени/пароля в диалоге подключения к хранилищу.
 // Данные сохраняется в профайле база/пользователь.
@@ -14,6 +16,7 @@ $addin stdcommands
 var pflPath = "StgAutoConnect/"
 var pflData = pflPath + "data"                      // Данные
 var pflShowMessage = pflPath + "ShowMessage"        // Показывать сообщение при подстановке
+var pflCurrentBasePath = pflPath + "CurrentBasePath"; //Храними путь к базе данных, если поменялась, тогда будем спрашивать точно надо подключится.
 var prevConnectSuccessed = true
 
 // Настройку отображения сообщений будем хранить едино для всех баз, в профиле Снегопата
@@ -21,6 +24,16 @@ profileRoot.createValue(pflShowMessage, true, pflSnegopat)
 // Подцепляемся к событию показа модальных окон. Если со временем появится событие подключения к хранилищу,
 // то надо будет делать это в том событии, и после отключаться от перехвата модальных окон.
 events.connect(windows, "onDoModal", SelfScript.self)
+
+function cnnString()
+{
+    КаталогИБ = НСтр(СтрокаСоединенияИнформационнойБазы(), "File")
+    if(КаталогИБ)
+        return КаталогИБ
+    else
+        return НСтр(СтрокаСоединенияИнформационнойБазы(), "Srvr") + ":" + НСтр(СтрокаСоединенияИнформационнойБазы(), "Ref")
+}
+
 
 // Обработчик показа модальных окон.
 function onDoModal(dlgInfo)
@@ -39,6 +52,18 @@ function onDoModal(dlgInfo)
                 }
                 else
                 {
+                    var currentBasePath = profileRoot.getValue(pflCurrentBasePath);
+                    if (!currentBasePath)
+                        currentBasePath = cnnString();
+                    
+                    if (currentBasePath!=cnnString()){
+                        var questionStirng = " Для базы сохранена другая строка подключения. \n";
+                        questionStirng += "Текущий путь:"+cnnString()+"\n";
+                        questionStirng += "Сохраненный путь:"+currentBasePath+" \n";
+                        questionStirng += "\t ВНИМАНИЕ ВОПРОС \n"+"Продолжить автоподключение?";
+                        if(MessageBox( questionStirng, mbYesNo | mbDefButton1 | mbIconQuestion, "Авто-соединение к хранилищу!") == mbaNo)
+                            return;
+                    }
                     // Если есть сохраненные данные, то вводим их
                     dlgInfo.form.getControl("UserName").value = data.login
                     dlgInfo.form.getControl("UserPassword").value = data.password
@@ -64,8 +89,11 @@ function onDoModal(dlgInfo)
                     dlgInfo.form.getControl("UserName").value,
                     dlgInfo.form.getControl("UserPassword").value,
                     dlgInfo.form.getControl("DepotPath").value)
+                var currentBasePath = cnnString();
                 profileRoot.createValue(pflData, false, pflBaseUser)    // Храним отдельно для базы/пользователя
+                profileRoot.createValue(pflCurrentBasePath, false, pflBaseUser);
                 profileRoot.setValue(pflData, data)
+                profileRoot.setValue(pflCurrentBasePath, currentBasePath)
             }
         }
     }
@@ -86,7 +114,9 @@ function onIdle()
 
 SelfScript.self["macrosСбросить cохраненные данные"] = function()
 {
-    profileRoot.deleteValue(pflData)
+    profileRoot.deleteValue(pflData);
+    profileRoot.deleteValue(pflCurrentBasePath);
+
 }
 
 SelfScript.self["macrosПоказывать сообщение при подключении"] = function()
