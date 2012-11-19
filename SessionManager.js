@@ -890,8 +890,11 @@ FirstRunSession = stdlib.Class.extend({
                 //Подождем 2 секунды пока проинициализируется SciColorer. 
                 this.timerId = createTimer(1000, this, 'onTimer');        
             }
+        } 
+        else if (dlgInfo.stage == openModalWnd){
         }
     }, 
+
     disconnectOnModal: function() {
         try {
             events.disconnect(windows, "onDoModal", this);
@@ -901,6 +904,10 @@ FirstRunSession = stdlib.Class.extend({
     onTimer:function (Id) {
 
         se = GetSessionManager();
+        if (this.isModal) {
+            if (windows.modalMode == msNone)
+                this.isModal = false;
+        }
         if (!this.isModal){
             se.autoRestoreSession();    
             this.disconnectOnModal();
@@ -913,13 +920,14 @@ FirstRunSession = stdlib.Class.extend({
                 notify = null;        
             } catch(e){}
             this.isFirstMessage = false;
+            
         }
         if (!this.timerId)
             return;
         killTimer(this.timerId);
         this.timerId = 0;
         this.timerCount++;
-        if (this.timerCount>5){
+        if (this.timerCount>3){
             this.disconnectOnModal();
         }
     },
@@ -931,6 +939,11 @@ FirstRunSession = stdlib.Class.extend({
         //Подождем 2 секунды пока проинициализируется SciColorer. 
         this.timerId = createTimer(2000, this, 'onTimer');
 
+    }, 
+
+    onDoEvent:function(param){
+        this.isModal = false;
+        this.timerId = createTimer(1000, this, 'onTimer');
     }
 })
 

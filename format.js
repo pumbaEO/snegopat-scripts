@@ -28,7 +28,7 @@ function macrosВыровнятьЗнакиРавно()
         endRow--
     if(endRow <= sel.beginRow)
         return
-    var tabSize = profileRoot.getValue("ModuleTextEditor/TabSize")
+    var tabSize = profileRoot.getValue("ModuleTextEditor/TabSize");
     lines = new Array()
     var maxEqualPos = -1
     for(var l = sel.beginRow; l <= endRow; l++)
@@ -54,10 +54,18 @@ function macrosВыровнятьЗнакиРавно()
     for(var l in lines)
     {
         var line = lines[l]
-        if(line.eqRealPos < 0)
-            text += line.text + "\n"
-        else
-            text += line.text.substr(0, line.eqRealPos) + fillLine(" ", maxEqualPos - line.eqPosInSpaces) + line.text.substr(line.eqRealPos) + "\n"
+        
+        var replaceTabOnInput = profileRoot.getValue("ModuleTextEditor/ReplaceTabOnInput");
+        
+        var symbol = replaceTabOnInput ? ' ':'\t';
+        var count = (maxEqualPos - line.eqPosInSpaces);
+        
+        if (!replaceTabOnInput){
+            count = Math.ceil(count/tabSize);
+        } 
+
+        count = (count==0) ? 1 : count;
+        text += line.text.substr(0, line.eqRealPos) + fillLine(symbol, count) + line.text.substr(line.eqRealPos) + "\n"
     }
     txtWnd.setSelection(sel.beginRow, 1, endRow + 1, 1)
     txtWnd.selectedText = text
@@ -183,15 +191,23 @@ function macrosВыровнятьПоПервойЗапятой()
     var text = ""
     for(var l in lines)
     {
+
         var line = lines[l]
-        if(line.eqRealPos < 0)
-            text += line.text + "\n"
-        else
-        {
-            var t1 = line.text.substr(0, line.eqRealPos + 1)
-            var t2 = line.text.substr(line.eqRealPos + 1).replace(/^\s+/, "")
-            text += t1 + fillLine(" ", maxEqualPos - line.eqPosInSpaces + 1) + t2 + "\n"
-        }
+        
+        var replaceTabOnInput = profileRoot.getValue("ModuleTextEditor/ReplaceTabOnInput");
+
+        var symbol = replaceTabOnInput ? ' ':'\t';
+        var count = (maxEqualPos - line.eqPosInSpaces);
+        if (!replaceTabOnInput){
+            count = Math.ceil(count/tabSize);
+        } 
+
+        count = (count==0) ? 1 : count;
+
+        var t1 = line.text.substr(0, line.eqRealPos + 1)
+        var t2 = line.text.substr(line.eqRealPos + 1).replace(/^\s+/, "")
+        text += t1 + fillLine(" ", maxEqualPos - line.eqPosInSpaces + 1) + t2 + "\n"
+
     }
     txtWnd.setSelection(sel.beginRow, 1, endRow + 1, 1)
     txtWnd.selectedText = text
