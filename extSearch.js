@@ -894,20 +894,22 @@ ExtSearchGlobal = ExtSearch.extend({
         this.SetControlsVisible();
         //FIXME: вынести в настройку. 
         this.countRowsInIdleSearch = 25; //Количество объектов поиска в фоне(для слабеньких машин ставим меньше, для формула1 - как удобней)
-        this.re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|:)/i);
+        this.re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|\:)/i);
 
         ExtSearchGlobal._instance = this;
     },
 
-    searchByUuid: function(row) {
+    searchByUuid: function(row, sort) {
         mdObj = findMdObj(this.currentMdContainer, row.UUID);
+        if (sort == undefined) sort = 999;
         var docRow = null;
         if (mdObj){
-        
+            strSort = "000000"+sort;
+            strSort = strSort.substr(strSort.length-5);
             var obj = this.getWindowObject({
                                 mdObj:mdObj,
                                 mdProp:row.mdProp,
-                                title:row.title});
+                                title:strSort+" "+row.title});
             docRow = this.search(obj, this.re);
         }
         return docRow;
@@ -924,10 +926,13 @@ ExtSearchGlobal = ExtSearch.extend({
             var obj = this.getWindowObject(activeView);
             if (obj!=null){
                 objTitle = obj.getTitle();
-                var matches;
-                matches = this.re.exec(objTitle);
+                var matches = this.re.exec(objTitle);
                 if (matches!=null){
                     objTitle = matches[1];
+                } else {
+                    if (objTitle.indexOf(":")!=-1){
+                        objTitle = objTitle.substr(0, objTitle.indexOf(":"));
+                    }
                 }
             }
         }
@@ -963,13 +968,13 @@ ExtSearchGlobal = ExtSearch.extend({
         if (!this.vtMD){
             this.vtMD = {};
         }
-        this.reatingMdObjects = {"ОбщийМодуль":40, 
-                                "Конфигурация":30,
-                                "ПланОбмена":20,
-                                "ОбщаяФорма":10
+        this.reatingMdObjects = {"ОбщийМодуль":2, 
+                                "Конфигурация":3,
+                                "ПланОбмена":4,
+                                "ОбщаяФорма":5
                             };
         if (objTitle.length>0){
-            this.reatingMdObjects[objTitle]=999; //Самый высокий рейтинг...     
+            this.reatingMdObjects[objTitle]=1; //Самый высокий рейтинг...     
         }
         
 
@@ -1018,7 +1023,7 @@ ExtSearchGlobal = ExtSearch.extend({
             if (this.curId<this.vtMD[currentId].Count()){
                 //docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
                 var currRow = this.vtMD[currentId].Get(this.curId);
-                docRow = this.searchByUuid(currRow);
+                docRow = this.searchByUuid(currRow, this.curId);
                 windows.caption = currRow.mdName;
             } else {
                 this.startGlobalSearch = false;
@@ -1033,7 +1038,6 @@ ExtSearchGlobal = ExtSearch.extend({
     
     readMdToVt:function(MdContainer){
         var currentId = MdContainer.rootObject.id; 
-        Message("dddddddddddddddddddddddddddddddddddddddddddd");
         if (!this.vtMD[currentId]){
             var docRow = null; 
             //this.vtMD[currentId] = [];
@@ -1044,6 +1048,7 @@ ExtSearchGlobal = ExtSearch.extend({
             this.vtMD[currentId].Columns.Add("title");
             this.vtMD[currentId].Columns.Add("sortTitle");
             this.vtMD[currentId].Columns.Add("sort");
+            this.vtMD[currentId].Columns.Add("LineNumber");
 
             var es = this;
             //Реквизиты пропустим
@@ -1065,7 +1070,7 @@ ExtSearchGlobal = ExtSearch.extend({
                 "Параметры" : "" 
                 };
                 
-            var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
+            var LineNumber = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
             
             (function (mdObj){
                 if (!es.startGlobalSearch) {return} 
@@ -1091,28 +1096,23 @@ ExtSearchGlobal = ExtSearch.extend({
                         row.mdProp = mdProp;
                         row.mdName = mdName;
                         
-                        sort++;
-                        strSort = "000000"+sort;
-                        strSort = strSort.substr(strSort.length-5);
-                        var title = ''+strSort+' '+mdName + ': ' + mdPropName;
+                        LineNumber++;
+                        var title = mdName + ': ' + mdPropName;
                         row.title = title;
 
-                        row.sort = 0;
-
+                        row.sort = 9;
+                        row.LineNumber = LineNumber;
                         var matches;
 
-                        //Message(""+mdName + ': ' + mdPropName)
                         var re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|:)/i);
                         
                         matches = re.exec(mdName);
                         if (matches!=null){
                             row.sortTitle = matches[1];
-                            //Message(""+row.sortTitle);
-                            //Message(""+strSort+" "+matches[1]);
-                            
+
                             if (!es.reatingMdObjects[matches[1]]){
                                 if (!es.reatingMdObjects[matches[2]]) {
-                                    row.sort = 0; 
+                                    row.sort = 9; 
                                } else {
                                     row.sort = es.reatingMdObjects[matches[2]];
                                }
@@ -1123,7 +1123,6 @@ ExtSearchGlobal = ExtSearch.extend({
                             
                         }                        
                         
-                        //es.vtMD[currentId].push(row);
                     }
                 }
                 // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
@@ -1141,30 +1140,20 @@ ExtSearchGlobal = ExtSearch.extend({
                         arguments.callee(childObject);
                     }
                 }
-            })(MdContainer.rootObject)
-            var i = "";
-            Message("iiiiiiiiiii+1");
+                })(MdContainer.rootObject)
             
         } else {
-            Message("iiiiiiiiiii");
-        }
-
-        if (!this.vtMD[currentId]){
-
-        } else {
-            
-            
             for (var key in this.reatingMdObjects){
-                if (this.reatingMdObjects[key]>998) {
+                if (this.reatingMdObjects[key]<2) {
                     var filter = v8New("Structure");
-                    filter.Insert("sort", 999);
+                    filter.Insert("sort", 1);
             
                     var findRows = this.vtMD[currentId].FindRows(filter);
                     if (findRows.Count()>0){
                         for (var i=0; i<findRows.Count(); i++){
                             var currRow = findRows.Get(i);
                             if (currRow.sortTitle != key){
-                                currRow.sort = 0;
+                                currRow.sort = 9;
                             }
                         }
                     }
@@ -1173,22 +1162,20 @@ ExtSearchGlobal = ExtSearch.extend({
                     filter.Insert("sortTitle", key);
                     var findRows = this.vtMD[currentId].FindRows(filter);
                     if (findRows.Count()>0){
-                        Message("c"+findRows.Count());
                         for (var i=0; i<findRows.Count(); i++){
                             var currRow = findRows.Get(i);
                             if (currRow.sortTitle != key){
-                                currRow.sort = this.reatingMdObjects[key];
+                                currRow.sort = (!this.reatingMdObjects[key]) ? 9: this.reatingMdObjects[key];
                             }
                         }
                     }                    
 
                 }
+            }
             
-            
-        }   
         }
-        this.vtMD[currentId].Sort("sort Desc");
-        
+
+        this.vtMD[currentId].Sort("sort, LineNumber, title");
 
     },
     

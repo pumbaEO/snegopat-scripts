@@ -242,12 +242,25 @@ SessionManager = ScriptForm.extend({
                             twnd = new TextWindow;
                             if (twnd.IsActive()) {
                                 twnd.SetCaretPos(currRow.curLine, 1);
+                                //Запишем установленную позицию курсора. 
+                                var activeView = windows.getActiveView();
+                                if(!this.wndlist.find.hasOwnProperty(activeView.id))
+                                    {
+                                        
+                                        if (activeView.mdObj && activeView.mdProp){
+                                            var item = new WndListItem(activeView);
+                                            item.addCurPosition(currRow.curLine);
+                                            this.wndlist.list.push(item);
+                                            this.wndlist.find[activeView.id] = item;
+                                        }
+                                    }
                             }
                         }    
+
                     } catch(e){
                         Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
                     }
-                    
+
                 }
             }
         }
@@ -673,7 +686,6 @@ TextWindowsWatcher = stdlib.Class.extend({
             this.lastActiveTextWindow = wnd;
         else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive())
             this.lastActiveTextWindow = null;
-        
         this.wndlist.removeOldViews();
         this.wndlist.addNewViews(this.getActiveTextWindow());
     }
@@ -787,6 +799,7 @@ WndList = stdlib.Class.extend({
             {
                 delete this.find[item.view.id]
                 this.list.splice(i, 1)
+
                 removed = true
             }
         }
@@ -838,7 +851,7 @@ WndList = stdlib.Class.extend({
             }
         }
         if(added)   // Что-то добавилось, отсортируем список
-            this.list.sort(function(i1, i2){return i1.sortkey.localeCompare(i2.sortkey)})
+            //this.list.sort(function(i1, i2){return i1.sortkey.localeCompare(i2.sortkey)})
         var activeView = null
         if(childs.count > 0)
         {
@@ -850,8 +863,6 @@ WndList = stdlib.Class.extend({
         return {added: added, activeView: activeView}
     }
 })
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ StartUp
@@ -888,11 +899,9 @@ FirstRunSession = stdlib.Class.extend({
             this.isModal = false;
             if (!this.timerId){
                 //Подождем 2 секунды пока проинициализируется SciColorer. 
-                this.timerId = createTimer(1000, this, 'onTimer');        
+                this.timerId = createTimer(2000, this, 'onTimer');        
             }
         } 
-        else if (dlgInfo.stage == openModalWnd){
-        }
     }, 
 
     disconnectOnModal: function() {
@@ -939,11 +948,6 @@ FirstRunSession = stdlib.Class.extend({
         //Подождем 2 секунды пока проинициализируется SciColorer. 
         this.timerId = createTimer(2000, this, 'onTimer');
 
-    }, 
-
-    onDoEvent:function(param){
-        this.isModal = false;
-        this.timerId = createTimer(1000, this, 'onTimer');
     }
 })
 
