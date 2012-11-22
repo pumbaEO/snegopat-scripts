@@ -264,6 +264,15 @@ SessionManager = ScriptForm.extend({
                 }
             }
         }
+        //Попробуем рецепт от Орефкова, по максимизации окон. 
+        var activeView = windows.getActiveView();
+        if (!activeView){
+            return
+        }
+        try {
+            activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
+        } catch (e) {}
+        
     },
     findMdObj: function(md, uuid){
         if(uuid == md.rootObject.id)

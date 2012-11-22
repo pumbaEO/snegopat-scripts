@@ -29,6 +29,8 @@ function macrosВыровнятьЗнакиРавно()
     if(endRow <= sel.beginRow)
         return
     var tabSize = profileRoot.getValue("ModuleTextEditor/TabSize");
+    var replaceTabOnInput = profileRoot.getValue("ModuleTextEditor/ReplaceTabOnInput");
+    
     lines = new Array()
     var maxEqualPos = -1
     for(var l = sel.beginRow; l <= endRow; l++)
@@ -51,20 +53,20 @@ function macrosВыровнятьЗнакиРавно()
         lines.push(line)
     }
     var text = ""
+    if (!replaceTabOnInput){
+        maxEqualPos = Math.ceil(maxEqualPos/tabSize)*tabSize;
+    }
     for(var l in lines)
     {
         var line = lines[l]
-        
-        var replaceTabOnInput = profileRoot.getValue("ModuleTextEditor/ReplaceTabOnInput");
-        
+
         var symbol = replaceTabOnInput ? ' ':'\t';
         var count = (maxEqualPos - line.eqPosInSpaces);
-        
+
         if (!replaceTabOnInput){
             count = Math.ceil(count/tabSize);
-        } 
-
-        count = (count==0) ? 1 : count;
+        }
+        //count = (count==0) ? 1 : count;
         text += line.text.substr(0, line.eqRealPos) + fillLine(symbol, count) + line.text.substr(line.eqRealPos) + "\n"
     }
     txtWnd.setSelection(sel.beginRow, 1, endRow + 1, 1)
@@ -95,7 +97,7 @@ function MoveBlock(toLeft, spaceChar)
         var vlRealPos = str.indexOf("|")
         if(vlRealPos >= 0)
         {
-       	    if (toLeft) //to left
+               if (toLeft) //to left
                 str = str.replace("|" + spaceChar, "|")
             else //to right
                 str = str.replace("|", "|" + spaceChar)
@@ -108,19 +110,19 @@ function MoveBlock(toLeft, spaceChar)
 }
 function macrosСдвинутьБлокВлевоНаПробел() //hotkey: ctrl+;
 {
-	MoveBlock(true, " ")
+    MoveBlock(true, " ")
 }
 function macrosСдвинутьБлокВправоНаПробел() //hotkey: ctrl+'
 {
-	MoveBlock(false, " ")
+    MoveBlock(false, " ")
 }
 function macrosСдвинутьБлокВлевоНаТаб() //hotkey: ctrl+shift+;
 {
-	MoveBlock(true, "\t")
+    MoveBlock(true, "\t")
 }
 function macrosСдвинутьБлокВправоНаТаб() //hotkey: ctrl+shift+'
 {
-	MoveBlock(false, "\t")
+    MoveBlock(false, "\t")
 }
 
 // Макрос удаляет white-space символы в конце строк, а также заменяет все \r\n на \n
@@ -167,6 +169,7 @@ function macrosВыровнятьПоПервойЗапятой()
     if(endRow <= sel.beginRow)
         return
     var tabSize = profileRoot.getValue("ModuleTextEditor/TabSize")
+    var replaceTabOnInput = profileRoot.getValue("ModuleTextEditor/ReplaceTabOnInput");
     lines = new Array()
     var maxEqualPos = -1
     for(var l = sel.beginRow; l <= endRow; l++)
@@ -189,20 +192,21 @@ function macrosВыровнятьПоПервойЗапятой()
         lines.push(line)
     }
     var text = ""
+    if (!replaceTabOnInput){
+        maxEqualPos = Math.ceil(maxEqualPos/tabSize)*tabSize;
+    }
     for(var l in lines)
     {
 
         var line = lines[l]
-        
-        var replaceTabOnInput = profileRoot.getValue("ModuleTextEditor/ReplaceTabOnInput");
 
         var symbol = replaceTabOnInput ? ' ':'\t';
         var count = (maxEqualPos - line.eqPosInSpaces);
         if (!replaceTabOnInput){
             count = Math.ceil(count/tabSize);
-        } 
+        }
 
-        count = (count==0) ? 1 : count;
+        //count = (count==0) ? 1 : count;
 
         var t1 = line.text.substr(0, line.eqRealPos + 1)
         var t2 = line.text.substr(line.eqRealPos + 1).replace(/^\s+/, "")
