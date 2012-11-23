@@ -135,31 +135,45 @@ function РезультатПриВыводеСтроки(Элемент, Офо
         ОформлениеСтроки.val.Cells.Событие.УстановитьКартинку(ДанныеСтроки.val.mdobj.picture)
 }
 
+String.prototype.right = function(len)
+{
+    return this.substr(this.length - len)
+}
+
+function openModuleProc(name, container)
+{
+    var handler = name.split(".")
+    // Попробуем получить объект метаданных - общий модуль с указанным именем
+    try{
+    var modulMdObj = container.rootObject.childObject("ОбщиеМодули", handler[0])
+    }catch(e){}
+    if(modulMdObj)
+    {
+        // Откроем общий модуль
+        var txtEdt = modulMdObj.openModule("Модуль")
+        // Распарсим текст модуля
+        var parser = snegopat.parseSources(txtEdt.text)
+        var idxOfMethodName = parser.idxOfName(handler[1])  // Найдем индекс названия метода в списке идентификаторов
+        if(idxOfMethodName >= 0)
+        {
+            var found = parser.reStream.match(new RegExp("(Pc|Fu)Nm" + ("000000" + idxOfMethodName).right(6) + "Lp"))
+            if(found)
+            {
+                var line = parser.lexem(parser.posToLexem(found.index + 2)).line
+                txtEdt.setCaretPos(line + 1, 1) // Чтобы процедура по-любому развернулась и окно проскроллилось
+                txtEdt.setSelection(line, 1, line, txtEdt.line(line).length + 1)
+            }
+        }
+    }
+}
+
 function РезультатВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
     СтандартнаяОбработка.val = false
     var mdobj = ВыбраннаяСтрока.val.mdobj
     
     if(Колонка.val.Имя == "Обработчик")
-    {
-        var handler = ВыбраннаяСтрока.val.Обработчик.split(".")
-        try{
-        var modulMdObj = mdobj.container.rootObject.childObject("ОбщиеМодули", handler[0])
-        }catch(e){}
-        if(modulMdObj)
-        {
-            var txtEdt = modulMdObj.openModule("Модуль")
-            var text = txtEdt.text
-            var found = text.match(new RegExp("\\s*(процедура|функция|procedure|function)\\s+" + handler[1] + "\\s*\\(", "im"))
-            if(found)
-            {
-                var line = 1
-                text.substr(0, found.lastIndex).replace(/\n/g, function(){line++;return ''})
-                txtEdt.setCaretPos(line + 1, 1) // Чтобы процедура по-любому развернулась и окно проскроллилось
-                txtEdt.setSelection(line, 1, line, txtEdt.line(line).length + 1)
-            }
-        }
-    }
+        openModuleProc(ВыбраннаяСтрока.val.Обработчик, mdobj.container)
     else
     {
         try{
