@@ -22,7 +22,6 @@ stdlib.require("SelectValueDialog.js", SelfScript);
 global.connectGlobals(SelfScript)
 
 stdlib.require('ScriptForm.js', SelfScript);
-var timerId = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
@@ -231,25 +230,49 @@ SessionManager = ScriptForm.extend({
                 if (mdObj){
                     n = currRow.prop;
                     try{
+                        text = '1';
                         if (n =="Форма"){
                             mdObj.openModule(n.toString());
                         } else {
+                            text = mdObj.getModuleText(n.toString());
                             mdObj.editProperty(n.toString());
                         }
-                        if (currRow.curLine) {
+                        if (currRow.curLine && text.length>0) {
                             //попробуем обойтись без таймера... 
                             twnd = new TextWindow;
                             if (twnd.IsActive()) {
-                                twnd.SetCaretPos(currRow.curLine, 2);
+                                twnd.SetCaretPos(currRow.curLine, 1);
+                                //Запишем установленную позицию курсора. 
+                                var activeView = windows.getActiveView();
+                                if(!this.wndlist.find.hasOwnProperty(activeView.id))
+                                    {
+                                        
+                                        if (activeView.mdObj && activeView.mdProp){
+                                            var item = new WndListItem(activeView);
+                                            item.addCurPosition(currRow.curLine);
+                                            this.wndlist.list.push(item);
+                                            this.wndlist.find[activeView.id] = item;
+                                        }
+                                    }
                             }
                         }    
+
                     } catch(e){
                         Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
                     }
-                    
+
                 }
             }
         }
+        //Попробуем рецепт от Орефкова, по максимизации окон. 
+        var activeView = windows.getActiveView();
+        if (!activeView){
+            return
+        }
+        try {
+            activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
+        } catch (e) {}
+        
     },
     findMdObj: function(md, uuid){
         if(uuid == md.rootObject.id)
@@ -524,7 +547,7 @@ SessionManager = ScriptForm.extend({
 
         var values = v8New('СписокЗначений');
         for (var i=0; i<this.sessions['SessionSaved'].Rows.Count(); i++){
-            currRow=this.sessions['SessionSaved'].Rows.Get(i);
+            var currRow=this.sessions['SessionSaved'].Rows.Get(i);
             values.Add(i, ''+currRow.Name);
         }
 
@@ -537,11 +560,11 @@ SessionManager = ScriptForm.extend({
                 vbs.var0 = ""; vbs.var1 = "Введите наименование "; vbs.var2 = 0, vbs.var3 = false;
                 if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
                     var message  = vbs.var0;
-                    name = message;
+                    var name = message;
                 }
             } else {
-                currRow = this.sessions['SessionSaved'].Rows.Get(dlg.selectedValue);
-                name = currRow.Name;
+                var currRow = this.sessions['SessionSaved'].Rows.Get(dlg.selectedValue);
+                var name = currRow.Name;
             }
             return (name.length>0)?name:null
         }
@@ -634,6 +657,7 @@ TextWindowsWatcher = stdlib.Class.extend({
             wndlist = new WndList;
         }
         this.wndlist = wndlist;
+        this.oldActiveViewId = 0;
         this.startWatch();
     },
 
@@ -657,12 +681,20 @@ TextWindowsWatcher = stdlib.Class.extend({
     },
 
     onTimer : function (timerId) {
+        var activeView = windows.getActiveView();
+        if (!activeView){
+            return
+        }
+        if (activeView.id == this.oldActiveViewId){
+            return;
+        }
+        this.oldActiveViewId = activeView.id;
+
         var wnd = GetTextWindow();    
         if (wnd)
             this.lastActiveTextWindow = wnd;
         else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive())
             this.lastActiveTextWindow = null;
-        
         this.wndlist.removeOldViews();
         this.wndlist.addNewViews(this.getActiveTextWindow());
     }
@@ -776,6 +808,7 @@ WndList = stdlib.Class.extend({
             {
                 delete this.find[item.view.id]
                 this.list.splice(i, 1)
+
                 removed = true
             }
         }
@@ -827,7 +860,7 @@ WndList = stdlib.Class.extend({
             }
         }
         if(added)   // Что-то добавилось, отсортируем список
-            this.list.sort(function(i1, i2){return i1.sortkey.localeCompare(i2.sortkey)})
+            //this.list.sort(function(i1, i2){return i1.sortkey.localeCompare(i2.sortkey)})
         var activeView = null
         if(childs.count > 0)
         {
@@ -839,8 +872,6 @@ WndList = stdlib.Class.extend({
         return {added: added, activeView: activeView}
     }
 })
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ StartUp
@@ -859,20 +890,77 @@ function GetSessionManagerSettings() {
     return SessionManagerSettings._instance;
 }
 
-function onTimer(Id) {
+FirstRunSession = stdlib.Class.extend({
+    construct: function()
+    {
+        this.isModal = false;
+        this.timerCount = 0;
+        this.timerId = 0;
+        this.isFirstMessage = true;
+        this.startWatch();
+    }, 
 
-    se = GetSessionManager();
-    se.autoRestoreSession();
-    if (!timerId)
-        return;
-    killTimer(timerId);
-    timerId = 0;
+    onDoModal: function(dlgInfo){
+        if(dlgInfo.stage == beforeDoModal){
+            this.isModal = true;
+        }
+        else if (dlgInfo.stage == afterDoModal) {
+            this.isModal = false;
+            if (!this.timerId){
+                //Подождем 2 секунды пока проинициализируется SciColorer. 
+                this.timerId = createTimer(2000, this, 'onTimer');        
+            }
+        } 
+    }, 
+
+    disconnectOnModal: function() {
+        try {
+            events.disconnect(windows, "onDoModal", this);
+        } catch (e) { }
+    }, 
+
+    onTimer:function (Id) {
+
+        se = GetSessionManager();
+        if (this.isModal) {
+            if (windows.modalMode == msNone)
+                this.isModal = false;
+        }
+        if (!this.isModal){
+            se.autoRestoreSession();    
+            this.disconnectOnModal();
+        } 
+        else if (this.isFirstMessage) {
+            //Сообщим полезную информацию. 
+            try {
+                var notify = stdlib.require("NotifySend.js").GetNotifySend();
+                notify.Info("Менеджер сессий ждет...", "Открыто модальное окошко,\n как закроешь, запусти вручную восстановление сессии! \n \(если само не восстановиться \)", 5);
+                notify = null;        
+            } catch(e){}
+            this.isFirstMessage = false;
+            
+        }
+        if (!this.timerId)
+            return;
+        killTimer(this.timerId);
+        this.timerId = 0;
+        this.timerCount++;
+        if (this.timerCount>3){
+            this.disconnectOnModal();
+        }
+    },
+
+    startWatch:function(){
+        // Подцепляемся к событию показа модальных окон. Если со временем появится событие подключения к хранилищу,
+        // то надо будет делать это в том событии, и после отключаться от перехвата модальных окон.
+        events.connect(windows, "onDoModal", this);
+        //Подождем 2 секунды пока проинициализируется SciColorer. 
+        this.timerId = createTimer(2000, this, 'onTimer');
+
     }
+})
 
-(function(){
-    //Подождем 2 секунды пока проинициализируется SciColorer. 
-    timerId = createTimer(2000, SelfScript.self, 'onTimer');
-})()
+var first = new FirstRunSession();
 
 events.connect(Designer, "beforeExitApp", GetSessionManager());
 ////}

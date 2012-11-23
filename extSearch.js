@@ -892,19 +892,24 @@ ExtSearchGlobal = ExtSearch.extend({
         this.expandetRows = {};
         
         this.SetControlsVisible();
+        //FIXME: вынести в настройку. 
+        this.countRowsInIdleSearch = 25; //Количество объектов поиска в фоне(для слабеньких машин ставим меньше, для формула1 - как удобней)
+        this.re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|\:)/i);
 
         ExtSearchGlobal._instance = this;
     },
 
-    searchByUuid: function(row) {
+    searchByUuid: function(row, sort) {
         mdObj = findMdObj(this.currentMdContainer, row.UUID);
+        if (sort == undefined) sort = 999;
         var docRow = null;
         if (mdObj){
-        
+            strSort = "000000"+sort;
+            strSort = strSort.substr(strSort.length-5);
             var obj = this.getWindowObject({
                                 mdObj:mdObj,
                                 mdProp:row.mdProp,
-                                title:row.title});
+                                title:strSort+" "+row.title});
             docRow = this.search(obj, this.re);
         }
         return docRow;
@@ -913,6 +918,25 @@ ExtSearchGlobal = ExtSearch.extend({
     searchInMetadata : function(fromHotKey){
 
         var md = null;
+        var objTitle = "";
+        var activeWindow = this.watcher.getActiveTextWindow();
+        if (!activeWindow) { 
+        } else {
+            var activeView = activeWindow.GetView();
+            var obj = this.getWindowObject(activeView);
+            if (obj!=null){
+                objTitle = obj.getTitle();
+                var matches = this.re.exec(objTitle);
+                if (matches!=null){
+                    objTitle = matches[1];
+                } else {
+                    if (objTitle.indexOf(":")!=-1){
+                        objTitle = objTitle.substr(0, objTitle.indexOf(":"));
+                    }
+                }
+            }
+        }
+        
         if (this.isInCurrentMdConteinerFind ) {
             var activeWindow = this.watcher.getActiveTextWindow();
             if (!activeWindow) { 
@@ -921,7 +945,7 @@ ExtSearchGlobal = ExtSearch.extend({
                 if (!activeView) {
                 } else {
                     if (activeView.mdObj && activeView.mdProp) {
-                        md = activeView.mdObj.container;    
+                        md = activeView.mdObj.container;   
                     }
                 } 
             }
@@ -944,6 +968,16 @@ ExtSearchGlobal = ExtSearch.extend({
         if (!this.vtMD){
             this.vtMD = {};
         }
+        this.reatingMdObjects = {"ОбщийМодуль":2, 
+                                "Конфигурация":3,
+                                "ПланОбмена":4,
+                                "ОбщаяФорма":5
+                            };
+        if (objTitle.length>0){
+            this.reatingMdObjects[objTitle]=1; //Самый высокий рейтинг...     
+        }
+        
+
         this.readMdToVt(this.currentMdContainer);
         this.expandetRows = {};
         this.curId = 0;
@@ -977,7 +1011,7 @@ ExtSearchGlobal = ExtSearch.extend({
             return;
         }
         var currentId = this.currentMdContainer.rootObject.id;
-        if (this.vtMD[currentId].length<1) {
+        if (this.vtMD[currentId].Count()<1) {
             this.startGlobalSearch = false;
             events.disconnect(Designer, "onIdle", this);
             return;
@@ -985,10 +1019,12 @@ ExtSearchGlobal = ExtSearch.extend({
         
         var count = 0;
         var docRow = null;
-        while (count < 25){
-            if (this.curId<this.vtMD[currentId].length){
-                docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
-                windows.caption = this.vtMD[currentId][this.curId].mdName;
+        while (count < this.countRowsInIdleSearch){
+            if (this.curId<this.vtMD[currentId].Count()){
+                //docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
+                var currRow = this.vtMD[currentId].Get(this.curId);
+                docRow = this.searchByUuid(currRow, this.curId);
+                windows.caption = currRow.mdName;
             } else {
                 this.startGlobalSearch = false;
                 break;
@@ -1004,7 +1040,16 @@ ExtSearchGlobal = ExtSearch.extend({
         var currentId = MdContainer.rootObject.id; 
         if (!this.vtMD[currentId]){
             var docRow = null; 
-            this.vtMD[currentId] = [];
+            //this.vtMD[currentId] = [];
+            this.vtMD[currentId]=v8New("ValueTable");
+            this.vtMD[currentId].Columns.Add("UUID");
+            this.vtMD[currentId].Columns.Add("mdProp");
+            this.vtMD[currentId].Columns.Add("mdName");
+            this.vtMD[currentId].Columns.Add("title");
+            this.vtMD[currentId].Columns.Add("sortTitle");
+            this.vtMD[currentId].Columns.Add("sort");
+            this.vtMD[currentId].Columns.Add("LineNumber");
+
             var es = this;
             //Реквизиты пропустим
             var ignoredMdClass = {
@@ -1025,7 +1070,7 @@ ExtSearchGlobal = ExtSearch.extend({
                 "Параметры" : "" 
                 };
                 
-            var sort = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
+            var LineNumber = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
             
             (function (mdObj){
                 if (!es.startGlobalSearch) {return} 
@@ -1045,18 +1090,39 @@ ExtSearchGlobal = ExtSearch.extend({
                     var mdPropName = mdc.propertyAt(i).name(1);
 
                     if (mdObj.isPropModule(mdProp.id)){
-                        var row = {UUID : mdObj.id}
+                        //var row = {UUID : mdObj.id}
+                        var row = es.vtMD[currentId].Add();
+                        row.UUID = mdObj.id;
                         row.mdProp = mdProp;
                         row.mdName = mdName;
                         
-                        sort++;
-                        strSort = "000000"+sort;
-                        strSort = strSort.substr(strSort.length-5);
-                        title = ''+strSort+' '+mdName + ': ' + mdPropName;
-                        
+                        LineNumber++;
+                        var title = mdName + ': ' + mdPropName;
                         row.title = title;
+
+                        row.sort = 9;
+                        row.LineNumber = LineNumber;
+                        var matches;
+
+                        var re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|:)/i);
                         
-                        es.vtMD[currentId].push(row);
+                        matches = re.exec(mdName);
+                        if (matches!=null){
+                            row.sortTitle = matches[1];
+
+                            if (!es.reatingMdObjects[matches[1]]){
+                                if (!es.reatingMdObjects[matches[2]]) {
+                                    row.sort = 9; 
+                               } else {
+                                    row.sort = es.reatingMdObjects[matches[2]];
+                               }
+                            } else {
+                                row.sort = es.reatingMdObjects[matches[1]];   
+                            }
+                                
+                            
+                        }                        
+                        
                     }
                 }
                 // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
@@ -1074,9 +1140,43 @@ ExtSearchGlobal = ExtSearch.extend({
                         arguments.callee(childObject);
                     }
                 }
-            })(MdContainer.rootObject)
+                })(MdContainer.rootObject)
+            
+        } else {
+            for (var key in this.reatingMdObjects){
+                if (this.reatingMdObjects[key]<2) {
+                    var filter = v8New("Structure");
+                    filter.Insert("sort", 1);
+            
+                    var findRows = this.vtMD[currentId].FindRows(filter);
+                    if (findRows.Count()>0){
+                        for (var i=0; i<findRows.Count(); i++){
+                            var currRow = findRows.Get(i);
+                            if (currRow.sortTitle != key){
+                                currRow.sort = 9;
+                            }
+                        }
+                    }
+
+                    var filter = v8New("Structure");
+                    filter.Insert("sortTitle", key);
+                    var findRows = this.vtMD[currentId].FindRows(filter);
+                    if (findRows.Count()>0){
+                        for (var i=0; i<findRows.Count(); i++){
+                            var currRow = findRows.Get(i);
+                            if (currRow.sortTitle != key){
+                                currRow.sort = (!this.reatingMdObjects[key]) ? 9: this.reatingMdObjects[key];
+                            }
+                        }
+                    }                    
+
+                }
+            }
             
         }
+
+        this.vtMD[currentId].Sort("sort, LineNumber, title");
+
     },
     
 
