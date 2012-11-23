@@ -66,11 +66,14 @@ function macrosВыровнятьЗнакиРавно()
         if (!replaceTabOnInput){
             count = Math.ceil(count/tabSize);
         }
-        //count = (count==0) ? 1 : count;
-        text += line.text.substr(0, line.eqRealPos) + fillLine(symbol, count) + line.text.substr(line.eqRealPos) + "\n"
+        newLine = line.text.substr(0, line.eqRealPos) + fillLine(symbol, count) + line.text.substr(line.eqRealPos) + "\n";
+        text += newLine;
+
     }
     txtWnd.setSelection(sel.beginRow, 1, endRow + 1, 1)
     txtWnd.selectedText = text
+    txtWnd.setCaretPos(sel.beginRow+lines.length-1, newLine.length);
+
 }
 
 
@@ -210,11 +213,13 @@ function macrosВыровнятьПоПервойЗапятой()
 
         var t1 = line.text.substr(0, line.eqRealPos + 1)
         var t2 = line.text.substr(line.eqRealPos + 1).replace(/^\s+/, "")
-        text += t1 + fillLine(" ", maxEqualPos - line.eqPosInSpaces + 1) + t2 + "\n"
+        newLine = t1 + fillLine(" ", maxEqualPos - line.eqPosInSpaces + 1) + t2 + "\n"
+        text += newLine;
 
     }
     txtWnd.setSelection(sel.beginRow, 1, endRow + 1, 1)
     txtWnd.selectedText = text
+    txtWnd.setCaretPos(sel.beginRow+lines.length-1, newLine.length);
 }
 
 function getPredefinedHotkeys(predef)
