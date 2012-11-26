@@ -74,16 +74,19 @@ SelfScript.self['macrosНайти во всех открытых докумен�
 
 SelfScript.self['macrosГлобальный поиск'] = function() {
     
-    var w = GetTextWindow();
-    if (!w) return false;
-    
     var es = GetExtSearchGlobal();
 
-    var selText = w.GetSelectedText();
-    if (selText == '')
-        selText = w.GetWordUnderCursor();
+    var w = GetTextWindow();
+    if (!w) {
+        var selText = '';
+    } else {
+        var selText = w.GetSelectedText();
+        if (selText == '')
+            selText = w.GetWordUnderCursor();
+    }
     
     es.isGlobalFind = true;
+    es.activeView = windows.getActiveView();
     es.isInCurrentMdConteinerFind = false;
     es.setSimpleQuery(selText);    
     es.show();
@@ -105,16 +108,22 @@ SelfScript.self['macrosГлобальный поиск по текущему к�
     //открыт cf файл или же cf базы данных и мы находимся в текстовом модуле определенной 
     //конфигурации, значит искать будет по текущей контейнеру. 
     
-    var w = GetTextWindow();
-    if (!w) return false;
     
     var es = GetExtSearchGlobal();
 
-    var selText = w.GetSelectedText();
-    if (selText == '')
-        selText = w.GetWordUnderCursor();
+    
+    var w = GetTextWindow();
+    if (!w) {
+        var selText = '';
+    } else {
+        var selText = w.GetSelectedText();
+        if (selText == '')
+            selText = w.GetWordUnderCursor();
+    }
+    
     
     es.isGlobalFind = true;
+    es.activeView = windows.getActiveView();
     es.isInCurrentMdConteinerFind = true;
     es.setSimpleQuery(selText);    
     es.show();
@@ -936,25 +945,8 @@ ExtSearchGlobal = ExtSearch.extend({
                 }
             }
         }
-        
-        if (this.isInCurrentMdConteinerFind ) {
-            var activeWindow = this.watcher.getActiveTextWindow();
-            if (!activeWindow) { 
-            } else {
-                var activeView = activeWindow.GetView();
-                if (!activeView) {
-                } else {
-                    if (activeView.mdObj && activeView.mdProp) {
-                        md = activeView.mdObj.container;   
-                    }
-                } 
-            }
-        }
-        
-        
-        if (!md) {
-            md = metadata.current;   
-        }
+
+        md = this.getCurrentMd();
         if (!md) return;
 
         this.currentMdContainer = md;
@@ -987,6 +979,38 @@ ExtSearchGlobal = ExtSearch.extend({
        
         //this.showSearchResult(docRow, fromHotKey);
         //windows.caption = curCaption;
+    },
+
+    getCurrentMd:function(){
+        var md ;
+        if (this.isInCurrentMdConteinerFind ) {
+            if (!this.activeView){
+                var activeWindow = this.watcher.getActiveTextWindow();    
+                if (!activeWindow){
+                } else {
+                    var activeView = activeWindow.GetView();    
+                }
+            } else {
+
+                var activeView = this.activeView;    
+            }
+            //Определим объект конфигурации по текущему окну. 
+            if (!activeView) {
+            } else {
+                if (activeView.mdObj && activeView.mdProp) {
+                    md = activeView.mdObj.container;
+                } else if (activeView.mdObj) {
+                    md = activeView.mdObj.container;
+                }
+            } 
+            
+        }
+        
+        if (!md) {
+            md = metadata.current;   
+        }
+
+        return md;
     },
     
     onIdle:function(){
