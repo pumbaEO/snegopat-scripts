@@ -8,6 +8,7 @@ $addin stdlib
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
+stdlib.require('SettingsManagement.js', SelfScript);
 global.connectGlobals(SelfScript)
 
 
@@ -17,7 +18,7 @@ global.connectGlobals(SelfScript)
 var form = null
 var vtMD = null
 var currentFilter = ''
-var listOfFilters = []
+var listOfFilters = v8New("ValueList")
 var listOfChoices = []
 var fuctionlistview = false
 var vtModules = v8New("ValueTable");
@@ -26,6 +27,7 @@ vtModules.Колонки.Add("Наименование");
 vtModules.Колонки.Add("Module1C");
 var Icons = null;
 var ЦветФонаДляМодулейМенеджера = v8New("Цвет", 240, 255, 240);
+var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
 RowTypes = {
     'ProcGroup'     : 1,
@@ -357,17 +359,8 @@ function doAction(func)
     // Сохраним текущий фильтр в списке
     if(form.ТекстФильтра.length)
     {
-        for(var k in listOfFilters)
-        {
-            if(listOfFilters[k] == form.ТекстФильтра)
-            {
-                listOfFilters.splice(k, 1)
-                break
-            }
-        }
-        listOfFilters.unshift(form.ТекстФильтра)
-        if(listOfFilters.length > 15)
-            listOfFilters.pop()
+        addToHistory(form.ТекстФильтра);
+        
     }
     // Сохраним текущий объект в списке
     var row = {Name: curRow.Name, UUID: curRow.UUID}
@@ -389,6 +382,28 @@ function doAction(func)
     form.Close({mdObj:mdObj, func:func})
 }
 
+function addToHistory(query) {
+        
+        if (!query) 
+            return;
+        
+        // Добавляем в историю только если такой поисковой строки там нет.
+        if (!listOfFilters){
+            listOfFilters = v8New("ValueList");
+        }
+        var history = listOfFilters;
+        if (history.FindByValue(query))
+            return;
+            
+        if (history.Count())
+            history.Insert(0, query);
+        else
+            history.Add(query);
+           
+        // Не позволяем истории расти более заданной глубины.
+        while (history.Count() > 20)
+            history.Delete(history.Count() - 1);
+    }
 // Описание команд для обработки свойств
 var propsCommands = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
@@ -516,14 +531,19 @@ function ТекстФильтраРегулирование(Элемент, На
 function ТекстФильтраНачалоВыбора(Элемент, СтандартнаяОбработка)
 {
     СтандартнаяОбработка.val = false
-    if(listOfFilters.length)
+    if(listOfFilters.Count())
     {
-        var vl = v8New("СписокЗначений")
-        for(var k in listOfFilters)
-            vl.Add(listOfFilters[k])
-        var res = form.ВыбратьИзСписка(vl, Элемент.val)
-        if(res)
+        //var vl = v8New("СписокЗначений")
+        //for(var k in listOfFilters)
+        //    vl.Add(listOfFilters[k])
+        var res = form.ВыбратьИзСписка(listOfFilters, Элемент.val)
+        if(res){
             form.ТекстФильтра = res.Значение;
+
+            if (form.ТекстФильтра.length){
+                new ActiveXObject("WScript.Shell").SendKeys("{END}");
+            }
+        }
     }
 }
 
@@ -662,3 +682,12 @@ function getDefaultMacros()
     }
 })()
 
+settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList')}, pflBase);
+settings.LoadSettings();
+listOfFilters = settings.current.listOfFilters;
+function beforeExitApp(){
+    settings.current.listOfFilters = listOfFilters;
+    settings.SaveSettings();
+}
+
+events.connect(Designer, "beforeExitApp", SelfScript.self);
