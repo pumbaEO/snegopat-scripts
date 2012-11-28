@@ -11,10 +11,7 @@ $addin vbs
 //
 
 var attrTypeCategory        = "{30E571BC-A897-4A78-B2E5-1EA6D48B5742}" 
-var СтандартныеРеквизиты = {"Код":"", "Наименование":"",
-                            "Родитель":"", "Владелец":"",
-                            "ПометкаУдаления":"", "Ссылка":""
-                            }
+var СтандартныеРеквизиты    = ["Код", "Наименование", "Родитель", "Владелец", "ПометкаУдаления", "Ссылка"]
 codegen_manager.registerCodeGen("Справочники/Новый/Элемент с заполнением всех реквизитов", genarateNewRefsElement);
 codegen_manager.registerCodeGen("Справочники/Новый/Группа с заполнением всех реквизитов", genarateNewRefsGroup);
 
@@ -41,7 +38,7 @@ function genarateNewRefsElement(param)
     
     var text = '//{ Создание справочника "' + syn + '" в ' + varName +'\n' + varName + ' = Справочники.' + docKind + '.СоздатьЭлемент();\n'
     // Обработаем стандартные реквизиты справочника. 
-    text += processStanartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты,varName, mdObj, tf);
+    text += processStandartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты,varName, mdObj, tf);
  
     // Обработаем реквизиты справочника
     text += processAttribs(" Заполнение реквизитов", "", "", varName, mdObj, tf)
@@ -101,7 +98,7 @@ function genarateNewRefsGroup(param)
     
     var text = '//{ Создание справочника "' + syn + '" в ' + varName +'\n' + varName + ' = Справочники.' + docKind + '.СоздатьГруппу();\n'
     // Обработаем стандартные реквизиты справочника. 
-    text += processStanartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты,varName, mdObj, tf);
+    text += processStandartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты,varName, mdObj, tf);
     // Обработаем реквизиты объекта
     text += processAttribsGroups(" Заполнение реквизитов", "", "", varName, mdObj, tf)
     // Обработаем табличные части
@@ -131,10 +128,10 @@ function genarateNewRefsGroup(param)
     return true
 }
 
-function processStanartAttribs(comment, header, footer, attributes, line, obj, tf) {
+function processStandartAttribs(comment, header, footer, attributes, line, obj, tf) {
     var lines = []
     for (var key in attributes) {
-        var l = line + "." + key + " = ; // " //+ tf.getTypeString(attr) 
+        var l = line + "." + attributes[key] + " = ; // " //+ tf.getTypeString(attr) 
         lines.push(l);
     }
     if(lines.length)
