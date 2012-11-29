@@ -27,16 +27,11 @@ function getPredefinedHotkeys(predef){
     predef.add("Захватить объект в хранилище", "Ctrl + Alt + T");
 }
 
-isEventConnected = false
-
-SelfScript.self['macrosЗахватить объект в хранилище'] = function() {
-
-    try{ //иногда вылетают странные исключения :( при работе с элементами форм
-        view = windows.getActiveView();
-        if (!view || !view.mdObj || view.mdObj.container != metadata.current) return false;
-        
-        
-        res1 = view.mdObj.activateInTree();
+function CaptureIntoCfgStore(mdObj){
+    if (!mdObj)
+        return
+    try{
+        res1 = mdObj.activateInTree();
         
         res2 = events.connect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
         isEventConnected = true
@@ -44,7 +39,20 @@ SelfScript.self['macrosЗахватить объект в хранилище'] =
         res = stdcommands.CfgStore.CaptureIntoCfgStore.send() // true если успешно
 
         if(isEventConnected)
-            events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")
+            events.disconnect(windows, "onDoModal", SelfScript.self, "hookCaptureCfgStoreWindow")    
+    } catch (e) {
+        Message("Ошибка : " + e.description)
+    }    
+}
+
+isEventConnected = false
+
+SelfScript.self['macrosЗахватить объект в хранилище'] = function() {
+
+    try{ //иногда вылетают странные исключения :( при работе с элементами форм
+        view = windows.getActiveView();
+        if (!view || !view.mdObj || view.mdObj.container != metadata.current) return false;
+        CaptureIntoCfgStore(view.mdObj);
         if(view)
             view.activate();
     }catch(e)

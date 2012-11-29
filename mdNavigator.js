@@ -9,6 +9,7 @@ stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
+
 global.connectGlobals(SelfScript)
 
 
@@ -421,8 +422,8 @@ function updateCommands()
     // Сначала удалим непостоянные команды
     var cmdBar = form.ЭлементыФормы.Команды
     var buttons = cmdBar.Кнопки
-    for(var k = buttons.Count() - 5; k > 0; k--)
-        buttons.Delete(5)
+    for(var k = buttons.Count() - 6; k > 0; k--)
+        buttons.Delete(6)
     // Получим текущую выбранную строку
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var enabled = false
@@ -458,6 +459,7 @@ function updateCommands()
     }
     buttons.Get(2).Enabled = enabled
     buttons.Get(3).Enabled = enabled
+    buttons.Get(5).Enabled = enabled
     if (vtModules.Count()>0){
         vtModules.Clear();
     }
@@ -571,6 +573,17 @@ function КомандыАктивировать(Кнопка)
 function КомандыРедактировать(Кнопка)
 {
     doAction(function(mdObj){mdObj.openEditor()})
+}
+
+function КомандыCaptureIntoCfgStore(Кнопка){
+    doAction(function(mdObj){
+        try {
+            var cfgStore = stdlib.require(stdlib.getSnegopatMainFolder()+"scripts\\CfgStore.js");    
+            cfgStore.CaptureIntoCfgStore(mdObj);
+        } catch (e){
+            Message(""+e.description())
+        }
+    });
 }
 
 // Команда открытия свойств
