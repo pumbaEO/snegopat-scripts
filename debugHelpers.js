@@ -90,7 +90,7 @@ function onDoModal(dlgInfo) {
                 var wsh = new ActiveXObject("WScript.Shell");
                 
                 // Посылаем нажатие Enter, чтобы отработало событие "ПриИзменении" поля ввода выражения.
-                setTimeout(function () { 
+                stdlib.setTimeout(function () { 
                     wsh.SendKeys("{END} {ENTER}");
                     if (!params.doModal)
                         wsh.SendKeys("%{F4}{F5}");
@@ -101,22 +101,6 @@ function onDoModal(dlgInfo) {
                                 
         }        
     }
-}
-
-function setTimeout(func, delay) {
-
-    function DelayedFunc(func) {
-        this.timerId = 0;
-        this.func = func;
-        this.callDelayed = function () {
-            killTimer(this.timerId);
-            this.func.call(null);
-        }
-    }
-
-    var df = new DelayedFunc(func);
-    df.timerId = createTimer(delay, df, 'callDelayed');
-    
 }
 
 function fileExists(path) {
