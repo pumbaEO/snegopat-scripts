@@ -233,6 +233,7 @@ ExtSearch = ScriptForm.extend({
         this.results.Columns.Add('_method');
         this.results.Columns.Add('groupsCache');
         this.results.Columns.Add('_object');
+        this.results.Columns.Add('_match');
         
         this.watcher = new TextWindowsWatcher();
         this.watcher.startWatch();
@@ -355,6 +356,7 @@ ExtSearch = ScriptForm.extend({
     buildSearchRegExpObject : function () {
     
         var pattern = this.form.Query;
+        var reFlags = '';
         
         if (!this.form.IsRegExp) 
         {
@@ -363,14 +365,19 @@ ExtSearch = ScriptForm.extend({
             if (this.form.WholeWords)
                 pattern = "([^\\w\\dА-я]|^)" + pattern + "([^\\w\\dА-я]|$)";
         }
-        
-        var iFlag = !this.form.CaseSensetive;
+        else
+        {
+            if(pattern.replace("\\\\", "").search(/\\r|\\n/) != -1)
+                reFlags = 'gm';
+        }
+        if(!this.form.CaseSensetive)
+            reFlags += 'i';
         
         var re = null;
         
         try 
         {
-            re = new RegExp(pattern, iFlag ? 'i' : '');
+            re = new RegExp(pattern, reFlags);
         }
         catch (e)
         {
@@ -388,44 +395,82 @@ ExtSearch = ScriptForm.extend({
         docRow._object = obj;
         docRow.RowType = RowTypes.SearchDoc;
         docRow.groupsCache = v8New('Map');
-          
-        var curMethod = { 
-            'Name'      : 'Раздел описания переменных',
-            'IsProc'    : undefined,
-            'StartLine' : 0
-        }
-                                
-        var lines = StringUtils.toLines(obj.getText());
-        for(var lineIx=0; lineIx < lines.length; lineIx++)
+        if(!re.multiline)
         {
-            var line = lines[lineIx];
-            
-            // Проверим, не встретилось ли начало метода.
-            var matches = line.match(RE.METHOD_START);
-            if (matches && matches.length)
+            var curMethod = { 
+                'Name'      : 'Раздел описания переменных',
+                'IsProc'    : undefined,
+                'StartLine' : 0
+            }
+                                    
+            var lines = StringUtils.toLines(obj.getText());
+            for(var lineIx=0; lineIx < lines.length; lineIx++)
             {
-                curMethod = {
-                    'Name'      : matches[2],
-                    'IsProc'    : matches[1].toLowerCase() == 'процедура' || matches[1].toLowerCase() == 'procedure',
-                    'StartLine' : lineIx
+                var line = lines[lineIx];
+                
+                // Проверим, не встретилось ли начало метода.
+                var matches = line.match(RE.METHOD_START);
+                if (matches && matches.length)
+                {
+                    curMethod = {
+                        'Name'      : matches[2],
+                        'IsProc'    : matches[1].toLowerCase() == 'процедура' || matches[1].toLowerCase() == 'procedure',
+                        'StartLine' : lineIx
+                    }
+                }
+                
+                matches = line.match(re);
+                if (matches && matches.length)
+                    this.addSearchResult(docRow, line, lineIx + 1, matches, curMethod);
+                   
+                // Проверим, не встретился ли конец метода.
+                matches = line.match(RE.METHOD_END);
+                if (matches && matches.length)
+                {
+                    curMethod = {
+                        'Name'      : '<Текст вне процедур и функций>',
+                        'IsProc'    : undefined,
+                        'StartLine' : lineIx
+                    }
+                }
+            }    
+        }
+        else
+        {
+            //debugger
+            // Это многострочный поиск
+            // Для начала надо вообще проверить, находится ли что-нибудь
+            var text = obj.getText()
+            var results = [], r
+            while(r = re.exec(text))
+                results.push(r)
+            if(results.length)  // Что-то нашли. Теперь надо получить номера строк для каждого вхождения
+            {
+                var idx = 0, lineNum = 0, currentRes = results[idx], beginIdx = currentRes.index
+                // Для исключение ситуации, когда текст найден в последней строке, не заканчивающейся переводом строки,
+                // добавим к тексту перевод строки
+                text += '\n';
+                re = /.*\n/g
+                while(r = re.exec(text))
+                {
+                    lineNum++
+                    if(r.index <= beginIdx && r.lastIndex > beginIdx)
+                    {
+                        currentRes.index -= r.index
+                        currentRes.lastIndex -= r.index
+                        // Для отображения результата многострочного поиска преобразуем строку
+                        currentRes.realResult = currentRes[0]
+                        currentRes[0] = currentRes[0].replace(/^\s+/, '').replace(/\n\s*/g, ' \u00BB ').substr(0, 50) + '\n'
+                        this.addSearchResult(docRow, r[0], lineNum, results[idx]);
+                        idx++;
+                        if(idx == results.length)
+                            break;
+                        currentRes = results[idx]
+                        beginIdx = currentRes.index
+                    }
                 }
             }
-            
-            matches = line.match(re);
-            if (matches && matches.length)
-                this.addSearchResult(docRow, line, lineIx + 1, matches, curMethod);
-               
-            // Проверим, не встретился ли конец метода.
-            matches = line.match(RE.METHOD_END);
-            if (matches && matches.length)
-            {
-                curMethod = {
-                    'Name'      : '<Текст вне процедур и функций>',
-                    'IsProc'    : undefined,
-                    'StartLine' : lineIx
-                }
-            }
-        }    
+        }
         
         if (this.form.TreeView && docRow.Rows.Count() > 0)
         {
@@ -527,6 +572,7 @@ ExtSearch = ScriptForm.extend({
             resRow.Method = methodData.Name;
 
         resRow._method = methodData;
+        resRow._match = matches
             
         if (this.form.WholeWords)
             resRow.ExactMatch = matches[0].replace(/^[^\w\dА-я]/, '').replace(/[^\w\dА-я]$/, '');
@@ -550,23 +596,45 @@ ExtSearch = ScriptForm.extend({
         }
      
         // Найдем позицию найденного слова в строке.
-        var searchPattern = this.form.WholeWords ? "(?:[^\\w\\dА-я]|^)" + row.ExactMatch + "([^\\w\\dА-я]|$)" : StringUtils.addSlashes(row.ExactMatch); 
-        var re = new RegExp(searchPattern, 'g');
-        var matches = re.exec(row.FoundLine);
+        //debugger
+        var lineStart = row.LineNo, colStart, lineEnd = lineStart, colEnd
+        if(row.ExactMatch.substr(row.ExactMatch.length - 1) == '\n')
+        {
+            // результат многострочного поиска
+            var text = row._match.realResult
+            colStart = row._match.index + 1
+            colEnd = colStart
+            for(var k = 0; k < text.length; k++)
+            {
+                if(text.charAt(k) == '\n')
+                {
+                    lineEnd++
+                    colEnd = 1;
+                }
+                else
+                    colEnd++
+            }
+        }
+        else
+        {
+            var searchPattern = this.form.WholeWords ? "(?:[^\\w\\dА-я]|^)" + row.ExactMatch + "([^\\w\\dА-я]|$)" : StringUtils.addSlashes(row.ExactMatch); 
+            var re = new RegExp(searchPattern, 'g');
+            var matches = re.exec(row.FoundLine);
 
-        var colNo = 1;    
-        if (matches) 
-        {        
-            colNo = re.lastIndex - row.ExactMatch.length + 1;
-            
-            if (this.form.WholeWords && matches.length > 1)        
-                colNo -= matches[1].length; 
-               
+            colStart = 1;
+            if (matches) 
+            {        
+                colStart = re.lastIndex - row.ExactMatch.length + 1;
+                
+                if (this.form.WholeWords && matches.length > 1)        
+                    colStart -= matches[1].length; 
+            }
+            colEnd = colStart + row.ExactMatch.length
         }
         
         // Установим выделение на найденное совпадение со строкой поиска.
-        targetWindow.SetCaretPos(row.LineNo, colNo);
-        targetWindow.SetSelection(row.LineNo, colNo, row.LineNo, colNo + row.ExactMatch.length);
+        targetWindow.SetCaretPos(lineStart, lineEnd);
+        targetWindow.SetSelection(lineStart, colStart, lineEnd, colEnd);
     },
 
     moveRowCursor : function (forward) {
