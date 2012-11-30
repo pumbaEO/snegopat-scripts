@@ -68,7 +68,7 @@ EpfLoader = new (stdlib.Class.extend({
 		SelfScript.self[name] = function() {
 			var _epf = epf; // Catch it into closure!
 			eval('_epf.' + macroName + '();');
-		} 
+		};
 		this.macroses.push(name);
 	},
 	
@@ -76,6 +76,10 @@ EpfLoader = new (stdlib.Class.extend({
 		for (var i=0; i<this.macroses.length; i++) {
 			delete SelfScript.self[this.macroses[i]]; 
 		}
+	},
+	
+	getEpf: function (epfName) {
+		return this.v8.GetEpf(epfName);
 	}
 
 }));
