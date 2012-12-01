@@ -104,3 +104,42 @@ function hookCaptureCfgStoreWindow(dlgInfo)
         }
    }
 }
+
+function hookCfgStorWindow(dlgInfo){
+    if(dlgInfo.stage == openModalWnd)
+        {
+            try{ //иногда вылетают странные исключения :( при работе с элементами форм
+                //FIXME: добавить английский заголовок и других языков. 
+                reCaptionCfgStore = /Захват\sобъектов\sв\sхранилище\sконфигурации/ig
+                if (reCaptionCfgStore.test(dlgInfo.Caption)){
+                    md = metadata.current;
+                    if (!md){
+                        return;
+                    }
+                    nameMd = md.rootObject.name;
+                    reRootObject = new RegExp(nameMd, 'ig');
+                    reviseObjectList = toV8Value(dlgInfo.form.getControl("ReviseObjectList").value);
+                    reviesObjectText = reviseObjectList.toStringInternal();
+                    if (reRootObject.test(reviesObjectText)){
+                        dlgInfo.form.getControl("GetRecursive").value = false;
+                    }
+                }
+            }catch(e){
+                 Message("Ошибка : " + e.description)
+            }
+       }
+}
+
+SelfScript.self['macrosПерехват рекурсивного захвата корня'] = function() {
+    result = events.connect(windows, "onDoModal", SelfScript.self, "hookCfgStorWindow")
+}
+
+SelfScript.self['macrosСтоп перехвата рекурсивного захвата корня'] = function() {
+    try{
+        result = events.disconnect(windows, "onDoModal", SelfScript.self, "hookCfgStorWindow")    
+    } catch(e){
+        Message("Ошибка :"+e.description);
+    }
+}
+
+events.connect(windows, "onDoModal", SelfScript.self, "hookCfgStorWindow") ;
