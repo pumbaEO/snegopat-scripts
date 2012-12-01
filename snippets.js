@@ -16,6 +16,7 @@ global.connectGlobals(SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('StreamLib.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
@@ -168,17 +169,27 @@ SnippetsManager.prototype.insertSnippet = function() {
 }
 
 SnippetsManager.prototype.selectValue = function(values) {
+    //FIXME: создавать объект Svcsvc один раз, при старте скрипта. 
+    var useSvcsvc = true;
     try
     {
         var sel = new ActiveXObject('Svcsvc.Service')
     }
     catch(e)
     {
-        Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll");
-        return false;
+        //Message("Не удалось создать объект 'Svcsvc.Service'. Зарегистрируйте svcsvc.dll");
+        useSvcsvc = false;
     }
     //debugger;
-   return sel.FilterValue(values.join("\r\n"), 1 | 4, '', 0, 0, 350, 250);    
+    if(useSvcsvc){
+        return sel.FilterValue(values.join("\r\n"), 1 | 4, '', 0, 0, 350, 250);         
+    } else {
+        var dlg = new SelectValueDialog("Выберите шаблон", values);
+        dlg.form.GreedySearch = true; 
+        sel = dlg.selectValue();
+        return dlg.selectedValue
+    }
+   
 }
 
 SnippetsManager.prototype.onProcessTemplate = function(params) {

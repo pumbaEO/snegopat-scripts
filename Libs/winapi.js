@@ -21,6 +21,8 @@ var api
             ["GetWindowRect", "i=hp", "r=l"],
             ["GetClientRect", "i=hp", "r=l"],
             ["SetFocus", "i=h", "r=l"],
+            ["GetFocus", "r=l"],
+            ["SendMessageW", "i=hlll", "r=l"],
             ["GetParent", "i=h", "r=l"],
             ["DrawTextW", "i=hWlpu", "r=l"],
             ["GetDC", "i=h", "r=h"],
@@ -104,7 +106,9 @@ function GetClientRect(hwnd)
 }
 
 function SetFocus(hwnd)             { return api.SetFocus(hwnd) }
+function GetFocus()                 { return api.GetFocus() }
 function GetParentWindow(hwnd)      { return api.GetParent(hwnd) }
+function SendMessage(hwnd, msg, wParam, lParam) { return api.SendMessageW(hwnd, msg, wParam, lParam) }
 
 // Метод позволяет создать WinAPI шрифт по данным 1Сного объекта Шрифт,
 // но 1Сный шрифт должен быть абсолютным. Ведется общий список созданных
@@ -162,3 +166,7 @@ function DeleteObject(obj)      { return api.DeleteObject(obj) }
 function GetDeviceCaps(hdc, idx){ return api.GetDeviceCaps(hdc, idx) }
 function GetWindow(hwnd, cmd)   { return api.GetWindow(hwnd, cmd) }
 GetWindow.cmds = {GW_HWNDFIRST: 0, GW_HWNDLAST: 1, GW_HWNDNEXT: 2, GW_HWNDPREV: 3, GW_OWNER: 4, GW_CHILD: 5}
+
+var wndMsg = {
+    WM_CHAR : 0x0102
+}

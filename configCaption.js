@@ -15,7 +15,7 @@ events.connect(windows, "onChangeTitles", SelfScript.self)
 function setCaption(mainTitle, additionalTitle)
 {
     var mainTitleShort = mainTitle.replace(/^Конфигуратор - /, "")
-    windows.caption = eval(captionExpr) 
+    windows.caption = eval(captionExpr)
 }
 
 function ibName()

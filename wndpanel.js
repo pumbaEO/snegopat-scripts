@@ -12,7 +12,10 @@ $addin stdcommands
 // их не в порядке открытия окон, а по объектам метаданных, к которым они относятся +
 // по алфавиту. Также как всегда поддерживается фильтрация списка по подстроке.
 
+// Переработка для показа в дереве: Пушин Владимир <vladnet@gmail.com>
+
 global.connectGlobals(SelfScript)
+
 
 var form
 var needActivate, needHide
@@ -112,8 +115,19 @@ WndList = stdlib.Class.extend({
             var item = this.list[i]
             if(!item.isAlive())
             {
+		        try{ // попытаемся получить Родителя если не сможем значит строки уже нет
+		            var test=item.rowInVt.Родитель
+		        }catch(e){
+		        	return true
+		        }
                 if(item.rowInVt)
-                    vt.Delete(item.rowInVt)
+                {
+                	if(item.rowInVt.Родитель == undefined)
+                		vt.Rows.Delete(item.rowInVt)
+                	else
+                		item.rowInVt.Родитель.Rows.Delete(item.rowInVt)
+                }
+                
                 delete this.find[item.view.id]
                 this.list.splice(i, 1)
                 removed = true
@@ -193,26 +207,44 @@ WndList = stdlib.Class.extend({
                 {
                     if(!item.rowInVt)
                     {
-                        item.rowInVt = vt.Insert(idxInVt)
+                    	лЗаголовок=item.makeTitle().title;
+	                   	лПозицияДвоеточия=лЗаголовок.indexOf(': ')
+	                   	
+    		            if(лПозицияДвоеточия == -1)
+            		    {
+	                        item.rowInVt = vt.Rows.Insert(idxInVt)
+                    	}
+		                else 
+		                {
+		                	лРодитель = vt.Rows.Найти(лЗаголовок.substr(0, лПозицияДвоеточия), "Заголовок", true)
+	    		            if(лРодитель == undefined)
+		                        item.rowInVt = vt.Rows.Insert(idxInVt)
+			                else
+		                		item.rowInVt = лРодитель.Rows.Insert(idxInVt)
+		                	лЗаголовок = лЗаголовок.substr(лПозицияДвоеточия+1)
+		                }
+                        
                         item.rowInVt.Окно = item
+                        item.rowInVt.Заголовок = лЗаголовок;
                     }
                     idxInVt++
                 }
                 else if(item.rowInVt)
                 {
-                    vt.Delete(item.rowInVt)
+					try{
+			            vt.Rows.Delete(item.rowInVt)
+			        }catch(e){}
                     item.rowInVt = null
                 }
             }
         }
-        if(needUpdateColors && vt.Count())
+        if(needUpdateColors && vt.Rows.Count())
         {
-            //debugger
-            var prevItem = vt.Get(0).Окно
+            var prevItem = vt.Rows.Get(0).Окно
             prevItem.color = 0
-            for(var k = 1; k < vt.Count(); k++)
+            for(var k = 1; k < vt.Rows.Count(); k++)
             {
-                var item = vt.Get(k).Окно
+                var item = vt.Rows.Get(k).Окно
                 item.color = (prevItem.color + 1) % 2
                 var mdObj = item.view.mdObj
                 var prevMdObj = prevItem.view.mdObj
@@ -277,7 +309,6 @@ function updateWndList()
 
 function onIdle()
 {
-    //debugger
     updateWndList()
     if(needHide)
     {
@@ -305,9 +336,21 @@ function withSelected(func)
 function WndListВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
     needActivate = ВыбраннаяСтрока.val.Окно.view
+    СтандартнаяОбработка.val = false
 }
 
 var boldFontV8, fontWin, boldFontWin
+
+function ВыделитьИмяФайлаИзПолногоПути(пПуть, СРасширением)
+{
+	if(СРасширением)
+		var expr=/.*\\([\W\w\-\.]+)/
+	else
+		var expr=/.*\/([\W\w\-\.]+)\.[^#?\s]+?$/;
+	if (пПуть.match(expr))
+		return RegExp.$1
+	return пПуть
+}
 
 function WndListПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
 {
@@ -316,6 +359,11 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
     try{cell.УстановитьКартинку(item.view.icon)}catch(e){}
     var title = item.makeTitle()
     var hdc = api.GetDC(0)
+    
+    var titlestr =  title.title
+    if(ДанныеСтроки.val.Родитель != undefined)
+    	titlestr = ДанныеСтроки.val.Заголовок
+    
     // Приготовим шрифты.
     if(!boldFontV8)
     {
@@ -337,13 +385,26 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
         widthOfColumn -= 20
     }
     ОформлениеСтроки.val.ЦветФона = item.color ?  Элемент.val.ЦветФонаЧередованияСтрок : Элемент.val.ЦветФонаПоля
+    
+    if(мДляВнешнихФайловОтображатьТолькоИмяФайла)
+    {
+    	titlestr2=ВыделитьИмяФайлаИзПолногоПути(titlestr, true)
+    	ОформлениеСтроки.val.Ячейки.Окно.УстановитьТекст(titlestr2)
+    	
+    	if(titlestr2 != titlestr)
+    		ОформлениеСтроки.val.Ячейки.Инфо.УстановитьТекст("[" + titlestr + "]")
+    	else
+    		ОформлениеСтроки.val.Ячейки.Инфо.УстановитьТекст(title.info)
+    	return
+    }
+    
     var oldFont = api.SelectObject(hdc, apiFont)
     // без таких ухищрений (гарантированное создание копии строки) переменные oldTitle и title.title
     // будут ссылаться на одну и ту же область памяти со строкой, а так как dynwrapx модифицирует
     // буфер строки напрямую, то oldTitle и title.title всегда будут равны, даже если DrawText
     // изменит строку
-    var oldTitle = new String("-" + title.title)
-    var res = api.DrawText(hdc, title.title,
+    var oldTitle = new String("-" + titlestr)
+    var res = api.DrawText(hdc, titlestr,
 	    new api.Rect(0, 0, widthOfColumn, 0), 0x20 | 0x4000 | 0x10000 | 0x400)// DT_CALCRECT | DT_SINGLELINE | DT_PATH_ELLIPSIS | DT_MODIFYSTRING
     cell.УстановитьТекст(res.text)  // Если текст был шире колонки, то DrawText изменит его так, чтобы он влезал
     api.SelectObject(hdc, oldFont)
@@ -383,6 +444,9 @@ function ПриОткрытии()
 {
     updateWndList()
     events.connect(Designer, "onIdle", SelfScript.self)
+    form.Controls.Cmds.Кнопки.SaveSession.Доступность = мИспользоватьСессии;
+    form.Controls.Cmds.Кнопки.RestoreSession.Доступность = мИспользоватьСессии;
+    
 }
 function ПриЗакрытии()
 {
@@ -447,6 +511,65 @@ function CmdsPrint(Кнопка)
     })
 }
 
+function CmdsSaveSession(Кнопка){
+
+    if (!sessionManager)
+        return
+    nameSession = sessionManager.choiceSessionName();
+    if (!nameSession)
+        return;
+    var views = {};
+    for(var rows = new Enumerator(form.Controls.WndList.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()) {
+        item = rows.item().Окно;
+        views[item.view.id] = item;
+    }
+    sessionManager.saveSession(nameSession, views, 'SessionSaved');
+
+}
+
+function CmdsRestoreSession(Кнопка){
+
+    if (!sessionManager)
+        return
+    nameSession = sessionManager.choiceSessionName();
+    if (!nameSession)
+        return;
+    sessionManager.restoreSession(nameSession, 'SessionSaved');
+    
+}
+
+function НастройкиПриОткрытии() {
+    мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла=мДляВнешнихФайловОтображатьТолькоИмяФайла
+    мФормаНастройки.ИспользоватьСессии = мИспользоватьСессии;
+}
+
+function CmdsConfig(Кнопка)
+{
+	var pathToForm=SelfScript.fullPath.replace(/.js$/, 'param.ssf')
+    мФормаНастройки=loadScriptForm(pathToForm, SelfScript.self) // Обработку событий формы привяжем к самому скрипту
+    мФормаНастройки.ОткрытьМодально()
+}
+
+function мЗаписатьНастройки() {
+    мДляВнешнихФайловОтображатьТолькоИмяФайла=мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла
+    мИспользоватьСессии = мФормаНастройки.ИспользоватьСессии;
+    profileRoot.setValue(pflOnlyNameForExtFiles, мДляВнешнихФайловОтображатьТолькоИмяФайла)
+    profileRoot.setValue(pflUseSessions, мИспользоватьСессии);
+    if (!sessionManager && мИспользоватьСессии){
+        Message("test load settings")
+        loadSessionManager();
+    }
+}
+
+function CmdsConfigSaveClose(Кнопка) {
+    мЗаписатьНастройки()
+    мФормаНастройки.Закрыть()
+}
+
+function CmdsConfigSave(Кнопка) {
+    мЗаписатьНастройки()
+}
+
 function InvisiblePanelSelectAndHide(Кнопка)
 {
     if(form.Controls.WndList.ТекущаяСтрока)
@@ -486,3 +609,25 @@ function WndListПередУдалением(Элемент, Отказ)
     form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
         '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
 })()
+
+function loadSessionManager(){
+    try {
+        sessionManager = stdlib.require(stdlib.getSnegopatMainFolder()+"scripts\\SessionManager.js").GetSessionManager();    
+    } catch(e){
+        Message("Невозможно загрузить Менеджер сессий "+e.description());
+    };
+}
+
+var pflOnlyNameForExtFiles = "WndPanel/OnlyNameForExtFiles"
+var pflUseSessions = "WndPanel/UseSessions";
+profileRoot.createValue(pflOnlyNameForExtFiles, false, pflSnegopat)
+profileRoot.createValue(pflUseSessions, false, pflSnegopat)
+var мДляВнешнихФайловОтображатьТолькоИмяФайла = profileRoot.getValue(pflOnlyNameForExtFiles);
+var мИспользоватьСессии = profileRoot.getValue(pflUseSessions);
+
+sessionManager = null;
+if (мИспользоватьСессии){
+    loadSessionManager();
+}
+
+мФормаНастройки=null

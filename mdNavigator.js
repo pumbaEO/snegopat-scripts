@@ -3,8 +3,15 @@ $uname mdNavigator
 $dname Навигатор по метаданным
 $addin vbs
 $addin global
+$addin stdlib
+
+stdlib.require('SyntaxAnalysis.js', SelfScript);
+stdlib.require('TextWindow.js', SelfScript);
+stdlib.require('ScriptForm.js', SelfScript);
+stdlib.require('SettingsManagement.js', SelfScript);
 
 global.connectGlobals(SelfScript)
+
 
 // (c) Евгений JohnyDeath Мартыненков
 // (c) Александр Орефков
@@ -12,8 +19,22 @@ global.connectGlobals(SelfScript)
 var form = null
 var vtMD = null
 var currentFilter = ''
-var listOfFilters = []
+var listOfFilters = v8New("ValueList")
 var listOfChoices = []
+var fuctionlistview = false
+var vtModules = v8New("ValueTable");
+vtModules.Колонки.Add("Модуль");
+vtModules.Колонки.Add("Наименование");
+vtModules.Колонки.Add("Module1C");
+var Icons = null;
+var ЦветФонаДляМодулейМенеджера = v8New("Цвет", 240, 255, 240);
+var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
+
+RowTypes = {
+    'ProcGroup'     : 1,
+    'FuncGroup'     : 2
+}
+
 
 function walkMdObjs(mdObj, parentName)
 {
@@ -99,10 +120,139 @@ TextChangesWatcher.prototype.onTimer = function()
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+////{ TextWindowsWatcher - отслеживает активизацию текстовых окон и запоминает последнее и переходим по строке.
+////
+
+TextWindowsWatcher = stdlib.Class.extend({
+
+    construct : function(LineNo) {
+        this.timerId = 0;
+        this.lastActiveTextWindow = null;
+        this.Line = LineNo;
+        this.startWatch();
+    },
+
+    getActiveTextWindow : function () {
+        if (this.lastActiveTextWindow && this.lastActiveTextWindow.IsActive())
+            return this.lastActiveTextWindow;
+        return null;
+    },
+
+    startWatch : function () {
+        if (this.timerId)
+            this.stopWatch();
+        this.timerId = createTimer(1*300, this, 'onTimer');
+    },
+
+    stopWatch : function () {
+        if (!this.timerId)
+            return;
+        killTimer(this.timerId);
+        this.timerId = 0;
+    },
+    
+    goToLine : function() {
+        if (!this.Line)
+            return
+        
+        wnd = this.getActiveTextWindow()
+        if (wnd){
+            var LineNo = this.Line;
+            var textline = wnd.GetLine(LineNo+1);
+            wnd.SetCaretPos(LineNo+2, 1);
+            wnd.SetSelection(LineNo+1, 1, LineNo+1, textline.length-1);
+        }
+    },
+
+    onTimer : function (timerId) {
+        var wnd = GetTextWindow();    
+        if (wnd){
+            this.lastActiveTextWindow = wnd;
+            this.goToLine()
+        }
+        this.stopWatch();
+    }
+    
+}); 
+//} end of TextWindowsWatcher class
+
 function readMDtoVT()
 {
     vtMD = []
     walkMdObjs(metadata.current.rootObject, "")
+}
+
+function fillTableProcedur(filter)
+{
+    //Определим надо ли нам заполнять таблицу и надо ли вообще ее показывать...
+    var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
+    var propsModules = [
+    {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
+    {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
+    {propName: "Форма",            title: "Открыть модуль",        hotkey: 13, modif: 0},
+    {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4}
+    ]
+    
+    
+    if(curRow && vtModules.Count()==0)
+    {
+        var mdObj = findMdObj(curRow.UUID)
+        if(mdObj)
+        {
+            enabled = true;
+            // Переберем свойства объекта, и добавим команды для их обработки
+            var mdc = mdObj.mdclass
+            for(var i = 0, c = mdc.propertiesCount; i < c; i++)
+            {
+                var mdPropName = mdc.propertyAt(i).name(1);
+                for(var k in propsModules)
+                {
+                    if(propsModules[k].propName == mdPropName)
+                    {
+                        var text = mdObj.getModuleText(mdPropName);
+                        parseModule = SyntaxAnalysis.AnalyseModule(text, true);
+                        for (var z=0; z<parseModule._vtAllMethods.Count(); z++){
+                            var НоваяСтрока = vtModules.Add();
+                            var RowMethod = parseModule._vtAllMethods.Get(z);
+                            НоваяСтрока.Модуль = mdPropName;
+                            НоваяСтрока.Наименование = RowMethod.Name;
+                            НоваяСтрока.Module1C = RowMethod._method;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (!form.ЭлементыФормы.ТаблицаПроцедур.Visible) {
+        form.ЭлементыФормы.ТаблицаПроцедур.Visible = true;
+    }
+    var filters = filter.split(' ');
+    form.ТаблицаПроцедур.clear();
+    for (var i=0; i<vtModules.Count(); i++){
+        var CurRow = vtModules.Get(i);
+        Method = CurRow.Наименование.toLowerCase();
+        var needAdd = true;
+        if (filter.length>0){
+            for(var s in filters)
+            {
+                if(Method.indexOf(filters[s]) < 0) {
+                    needAdd = false
+                    break;
+                }
+            }
+        }
+        if(!needAdd) continue
+        
+        var newRow = form.ТаблицаПроцедур.Add();
+        newRow.Модуль = CurRow.Модуль;
+        newRow.Наименование = CurRow.Наименование;
+        newRow.RowNumber = CurRow.Module1C.StartLine;
+        newRow.RowType = CurRow.Module1C.IsProc ? RowTypes.ProcGroup : RowTypes.FuncGroup;
+    }
+    if(form.ТаблицаПроцедур.Количество())
+        form.ЭлементыФормы.ТаблицаПроцедур.ТекущаяСтрока = form.ТаблицаПроцедур.Получить(0)
 }
 
 // Функция заполнения списка объектов метаданных
@@ -111,7 +261,13 @@ function readMDtoVT()
 function fillTable(newFilter)
 {
     currentFilter = newFilter
-    form.ТаблицаМетаданных.Clear()
+    if (currentFilter.indexOf(":")!=-1){
+        //form.ТаблицаМетаданных.Clear();
+        form.ЭлементыФормы.Панель1.ТекущаяСтраница = form.ЭлементыФормы.Панель1.Страницы.Страница2;
+    }else {
+        form.ЭлементыФормы.Панель1.ТекущаяСтраница = form.ЭлементыФормы.Панель1.Страницы.Страница1;
+        form.ТаблицаМетаданных.Clear();
+    }
     var mode = ''
     if(!currentFilter.length)
     {
@@ -125,18 +281,55 @@ function fillTable(newFilter)
     }
     else
     {
-        var filters = currentFilter.split(' ')
+        if (form.ТаблицаМетаданных.Columns.Find("Rate") == undefined){
+            var КвалификаторЧисла = v8New("КвалификаторыЧисла", 25, 10, ДопустимыйЗнак.Любой);
+            form.ТаблицаМетаданных.Columns.Add("Rate", v8New("ОписаниеТипов", "Число", КвалификаторЧисла));
+        }
+
+        if (currentFilter.indexOf(":")!=-1){
+
+            fuctionlistview = true;
+            var filters = currentFilter.substr(0, currentFilter.indexOf(":"));
+            var filtersProc = currentFilter.substr(currentFilter.indexOf(":")+1);
+            //Уже все есть, надо только вызвать нашу функцию. 
+            fillTableProcedur(filtersProc);
+            return;
+        } else {
+            var filters = currentFilter.split(' ')
+            var filtersProc = "";
+            fuctionlistview = false;
+        }
+        
+        //var filters = currentFilter.split(' ')
+        //var filters = currentFilter.substr(0, cur
         outer: for(var k in vtMD)
-        {
+        {   
+            var lNameLength = 500;
+            var maxIndex = 0;
+            var rate = 0;
+            var filtersLenth = filters.length
+            var surcharge = lNameLength/filtersLenth;
             for(var s in filters)
             {
-                if(vtMD[k].lName.indexOf(filters[s]) < 0)
+                var index = vtMD[k].lName.indexOf(filters[s])
+                if( index < 0) {
                     continue outer
+                } else {
+                    //Посчитаем рейтинг...
+                    percent = (100*index)/lNameLength;
+                    if (percent < maxIndex) 
+                        rate +=surcharge;
+                    rate = rate + percent;
+                    maxIndex = percent
+                }
             }
+
             var row = form.ТаблицаМетаданных.Add()
             row.Name = vtMD[k].Name
             row.UUID = vtMD[k].UUID
+            row.Rate = rate;
         }
+        form.ТаблицаМетаданных.Sort("Rate, Name");
         mode = "Объекты, подходящие под фильтр '" + currentFilter + "' (" + form.ТаблицаМетаданных.Количество() + " шт.):"
     }
     form.ЭлементыФормы.Режим.Заголовок = mode
@@ -167,17 +360,8 @@ function doAction(func)
     // Сохраним текущий фильтр в списке
     if(form.ТекстФильтра.length)
     {
-        for(var k in listOfFilters)
-        {
-            if(listOfFilters[k] == form.ТекстФильтра)
-            {
-                listOfFilters.splice(k, 1)
-                break
-            }
-        }
-        listOfFilters.unshift(form.ТекстФильтра)
-        if(listOfFilters.length > 15)
-            listOfFilters.pop()
+        addToHistory(form.ТекстФильтра);
+        
     }
     // Сохраним текущий объект в списке
     var row = {Name: curRow.Name, UUID: curRow.UUID}
@@ -199,6 +383,28 @@ function doAction(func)
     form.Close({mdObj:mdObj, func:func})
 }
 
+function addToHistory(query) {
+        
+        if (!query) 
+            return;
+        
+        // Добавляем в историю только если такой поисковой строки там нет.
+        if (!listOfFilters){
+            listOfFilters = v8New("ValueList");
+        }
+        var history = listOfFilters;
+        if (history.FindByValue(query))
+            return;
+            
+        if (history.Count())
+            history.Insert(0, query);
+        else
+            history.Add(query);
+           
+        // Не позволяем истории расти более заданной глубины.
+        while (history.Count() > 20)
+            history.Delete(history.Count() - 1);
+    }
 // Описание команд для обработки свойств
 var propsCommands = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
@@ -216,8 +422,8 @@ function updateCommands()
     // Сначала удалим непостоянные команды
     var cmdBar = form.ЭлементыФормы.Команды
     var buttons = cmdBar.Кнопки
-    for(var k = buttons.Count() - 5; k > 0; k--)
-        buttons.Delete(5)
+    for(var k = buttons.Count() - 6; k > 0; k--)
+        buttons.Delete(6)
     // Получим текущую выбранную строку
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var enabled = false
@@ -253,6 +459,10 @@ function updateCommands()
     }
     buttons.Get(2).Enabled = enabled
     buttons.Get(3).Enabled = enabled
+    buttons.Get(5).Enabled = enabled
+    if (vtModules.Count()>0){
+        vtModules.Clear();
+    }
 }
 
 SelfScript.self['macrosОткрыть объект метаданных'] = function()
@@ -263,6 +473,11 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
     {
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
         form.КлючСохраненияПоложенияОкна = "mdNavigator"
+        Icons = {
+        'Func': form.Controls.PicFunc.Picture,
+        'Proc': form.Controls.PicProc.Picture
+        }
+
         // Заполним таблицу изначально
         fillTable('')
     }
@@ -286,13 +501,22 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
 // Это для пермещения вверх/вниз текущего выбора
 function ТекстФильтраРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
-    if(!form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока)
+    //debugger
+    if (form.ЭлементыФормы.Панель1.ТекущаяСтраница == form.ЭлементыФормы.Панель1.Страницы.Страница1){
+        var curTableForm = form.ЭлементыФормы.ТаблицаМетаданных;
+        var curTable = form.ТаблицаМетаданных;
+    } else {
+        var curTableForm = form.ЭлементыФормы.ТаблицаПроцедур;
+        var curTable = form.ТаблицаПроцедур;
+    }
+    
+    if(!curTableForm.ТекущаяСтрока)
         return
-    var curRow = form.ТаблицаМетаданных.Индекс(form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока), newRow = curRow
+    var curRow = curTable.Индекс(curTableForm.ТекущаяСтрока), newRow = curRow
     
     if(-1 == Направление.val)
     {
-        if(curRow != form.ТаблицаМетаданных.Количество() - 1)
+        if(curRow != curTable.Количество() - 1)
             newRow++
     }
     else
@@ -301,7 +525,7 @@ function ТекстФильтраРегулирование(Элемент, На
             newRow--
     }
     if(newRow != curRow)
-        form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(newRow)
+        curTableForm.ТекущаяСтрока = curTable.Получить(newRow)
     СтандартнаяОбработка.val = false
 }
 
@@ -309,14 +533,19 @@ function ТекстФильтраРегулирование(Элемент, На
 function ТекстФильтраНачалоВыбора(Элемент, СтандартнаяОбработка)
 {
     СтандартнаяОбработка.val = false
-    if(listOfFilters.length)
+    if(listOfFilters.Count())
     {
-        var vl = v8New("СписокЗначений")
-        for(var k in listOfFilters)
-            vl.Add(listOfFilters[k])
-        var res = form.ВыбратьИзСписка(vl, Элемент.val)
-        if(res)
+        //var vl = v8New("СписокЗначений")
+        //for(var k in listOfFilters)
+        //    vl.Add(listOfFilters[k])
+        var res = form.ВыбратьИзСписка(listOfFilters, Элемент.val)
+        if(res){
             form.ТекстФильтра = res.Значение;
+
+            if (form.ТекстФильтра.length){
+                new ActiveXObject("WScript.Shell").SendKeys("{END}");
+            }
+        }
     }
 }
 
@@ -346,11 +575,35 @@ function КомандыРедактировать(Кнопка)
     doAction(function(mdObj){mdObj.openEditor()})
 }
 
+function КомандыCaptureIntoCfgStore(Кнопка){
+    doAction(function(mdObj){
+        try {
+            var cfgStore = stdlib.require(stdlib.getSnegopatMainFolder()+"scripts\\CfgStore.js");    
+            cfgStore.CaptureIntoCfgStore(mdObj);
+        } catch (e){
+            Message(""+e.description())
+        }
+    });
+}
+
 // Команда открытия свойств
 function openProperty(Кнопка)
 {
     var n = Кнопка.val.Name
-    doAction(function(mdObj){mdObj.editProperty(n)})
+    if (form.ЭлементыФормы.Панель1.ТекущаяСтраница == form.ЭлементыФормы.Панель1.Страницы.Страница1){
+        doAction(function(mdObj){mdObj.editProperty(n)})
+    } else {
+        var CurRow = form.ЭлементыФормы.ТаблицаПроцедур.ТекущаяСтрока;
+        if (CurRow) {
+            startTextWindowWather(CurRow.RowNumber);
+            var n = CurRow.Модуль;
+            if (n=="Форма"){
+                doAction(function(mdObj){mdObj.openModule(n.toString())})
+            } else {
+                doAction(function(mdObj){mdObj.editProperty(n.toString())})
+            }
+        }
+    }
     /*
     doAction(function(mdObj)
     {
@@ -369,8 +622,55 @@ function ТаблицаМетаданныхВыбор(Элемент, Выбра
 function ТаблицаМетаданныхПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
 {
     var mdObj = findMdObj(ДанныеСтроки.val.UUID);
-    ОформлениеСтроки.val.Ячейки.Name.УстановитьКартинку(mdObj.picture)
+    try{ОформлениеСтроки.val.Ячейки.Name.УстановитьКартинку(mdObj.picture)}catch(e){}
 }
+
+
+function ТаблицаПроцедурПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
+{
+    //var mdObj = findMdObj(ДанныеСтроки.val.UUID);
+    
+    var cell = ОформлениеСтроки.val.Cells.Наименование;
+    if (Icons!=null) {
+        switch (ДанныеСтроки.val.RowType)
+        {
+        case RowTypes.FuncGroup:
+            cell.SetPicture(Icons.Func);
+            break;
+        
+        case RowTypes.ProcGroup:
+            cell.SetPicture(Icons.Proc);
+            break;
+            
+        default:
+            break;
+        }
+    }
+    if (ДанныеСтроки.val.Модуль == "МодульМенеджера"){
+        ОформлениеСтроки.val.BackColor = ЦветФонаДляМодулейМенеджера;
+    }
+    //ОформлениеСтроки.val.Ячейки.Name.УстановитьКартинку(mdObj.picture)
+}
+
+function startTextWindowWather(line){
+    (new TextWindowsWatcher(line)).startWatch();
+}
+
+function ТаблицаПроцедурВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+    
+    startTextWindowWather(ВыбраннаяСтрока.val.RowNumber);
+    var n = ВыбраннаяСтрока.val.Модуль;
+    if (n=="Форма"){
+        doAction(function(mdObj){mdObj.openModule(n.toString())})
+    } else {
+        doAction(function(mdObj){mdObj.editProperty(n.toString())})
+    }
+    
+}
+
+
+
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
@@ -395,3 +695,12 @@ function getDefaultMacros()
     }
 })()
 
+settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList')}, pflBase);
+settings.LoadSettings();
+listOfFilters = settings.current.listOfFilters;
+function beforeExitApp(){
+    settings.current.listOfFilters = listOfFilters;
+    settings.SaveSettings();
+}
+
+events.connect(Designer, "beforeExitApp", SelfScript.self);

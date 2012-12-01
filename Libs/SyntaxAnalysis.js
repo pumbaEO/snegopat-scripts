@@ -53,12 +53,24 @@ SyntaxAnalysis.RE_SPACE         = new RegExp('\\s+', "g");
 SyntaxAnalysis.RE_PROC_TORMOZIT = new RegExp('((Процедура|Функция)(?://[^\\n]*\\n|\\s|^|$)*([А-Яа-я_A-Za-z][А-Яа-я_A-Za-z\\d]*)(?://[^\\n]*\\n|\\s|^|$)*\\(([^\\)]*)\\)((?://[^\\n]*\\n|\\s|^|$)*Экспорт)?)((?:(?:"(?:(?:"")|[^"\\n$])*(?:(?://[^\\n]*\\n|\\s|^|$)*\\|(?:(?:"")|[^"\\n$])*)*(?:"|$)|\\.Конец(?:Процедуры|Функции)|\\r|\\n|.)*?))[^А-Яа-я_A-Za-z0-9\\."]Конец(?:Процедуры|Функции)[^А-Яа-я_A-Za-z0-9]|#[^\\n]*\\n|(?://[^\\n]*\\n|\\s|^|$)', 'igm')
 SyntaxAnalysis.RE_PARAM_TORMOZIT = new RegExp('(?://[^\\n]*\\n|\\s|^|$)*(Знач\\s)?(?://[^\\n]*\\n|\\s|^|$)*([А-Яа-я_A-Za-z][А-Яа-я_A-Za-z0-9]+)(?://[^\\n]*\\n|\\s|^|$)*=?((?:(?://[^\\n]*\\n|\\s|^|$)*|("(?:(?:"")|[^"\\n$])*(?:(?://[^\\n]*\\n|\\s|^|$)*\\|(?:(?:"")|[^"\\n$])*)*(?:"|$))|(?:[^,\\n$]*))+)(?:,|$)','img');
 SyntaxAnalysis.RE_CONTEXT      = new RegExp('^\\s*&\\s*(AtClientAtServerNoContext|AtServerNoContext|AtClientAtServer|AtServer|AtClient|НаСервереБезКонтекста|НаКлиентеНаСервереБезКонтекста|НаКлиентеНаСервере|НаКлиенте|НаСервере)\\s*', 'i')
+SyntaxAnalysis.CONTEXT = { "atclientatservernocontext"   :"AtClientAtServerNoContext",
+                        "atservernocontext"             :"AtServerNoContext",
+                        "atclientatserver"              :"AtClientAtServer",
+                        "atserver"                      :"AtServer",
+                        "atclient"                      :"AtClient",
+                        "насерверебезконтекста"         :"НаСервереБезКонтекста",
+                        "наклиентенасерверебезконтекста":"НаКлиентеНаСервереБезКонтекста",
+                        "наклиентенасервере"            :"НаКлиентеНаСервере",
+                        "наклиенте"                     :"НаКлиенте",
+                        "насервере"                     :"НаСервере"
+                        }
 //SyntaxAnalysis
 //SyntaxAnalysis.RE_CRLF          = new RegExp('[\\n]+', "");
 ////} Регулярные выражения для поиска конструкций встроенного языка 1С.
     
 
 SyntaxAnalysis.AnalyseParams = function(sourceCode, Meth) {
+	var Matches;
     while( (Matches = SyntaxAnalysis.RE_PARAM_TORMOZIT.exec(sourceCode)) != null ) { 
         Meth.Params.push(Matches[2]);
     }
@@ -105,7 +117,7 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
         case stInModule:
             var Matches = SyntaxAnalysis.RE_CONTEXT.exec(str);
             if (Matches!=null) {
-                Context = Matches[1]
+                Context = SyntaxAnalysis.CONTEXT[(""+Matches[1]).toLowerCase()];
             }
             Matches = SyntaxAnalysis.RE_PROC.exec(str);
             if( Matches != null )
@@ -136,7 +148,7 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
                         }
                     }
                     this.AnalyseParams(strParams, Meth);
-                    endproc = Matches[2]
+                    var endproc = Matches[2]
                     
                     moduleContext.addMethod(Meth); 
                     proc_count++;
@@ -271,7 +283,7 @@ _1CModule.prototype.getMethodSource = function(methodName) {
 
 /* Возвращает таблицу значений с описаниями методов модуля. */
 _1CModule.prototype.getMethodsTable = function() {
-    return this.context._vtAllMethods;
+    return this.context._vtAllMethods.Copy();
 }
 
 /* Возвращает описание метода по номеру строки, находящейся внутри метода. */

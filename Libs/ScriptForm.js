@@ -22,22 +22,45 @@ $addin stdlib
 ScriptForm = stdlib.Class.extend({
 
     //{ Свойства
-    form: null,
-    handlers: {},
+    
+    // Отключить автоназначение обработчиков событий.
     disableAutoEvents: false,
+    
+    // Путь к сохраняемым настройкам в хранилище настроек.
+    settingsRootPath : '',
+    
+    /* Настройки: сохраняемые реквизиты формы.
+    Ключ - имя значение перечисления ProfileStoreType, тип хранилища, 
+    в котором хранить настройки. Значение - ассоциативный массив. 
+    Ключ - имя реквизита формы, который сохранять. 
+    Значение - значение настройки по умолчанию. */
+    settings : {
+        //pflSnegopat: {/* FormPropName : DefaultValue, ... */},
+        //pflBase: {},
+        //pflBaseUser: {},
+        //pflCompBase: {},
+        //pflCompBaseUser: {},
+        //pflComputer: {},
+        //pflSeanse: {}
+    },
+
     //} Свойства
 
     construct: function (formPath) {
-        this.loadForm(formPath);
+
+	    this.form = null;
+    	this.handlers = {};
+        
+        this.loadForm(formPath);        
     },
     
     show: function (modal) {
         return modal ? this.form.DoModal() : this.form.Open();
     },    
         
-    close: function () {
+    close: function (retVal) {
         if (this.isOpen())
-            this.form.Close();
+            this.form.Close(retVal);
     },
         
     isOpen: function () {
@@ -113,6 +136,57 @@ ScriptForm = stdlib.Class.extend({
         return this._cmdBarsCache[cmdBar.Name][btName];            
     },
    
+    //{ Чтение/сохранение сохраняемых значений (реквизитов формы).
+    hasSettings : function () {
+        return this.settingsRootPath && this.settings;
+    },
+    
+    loadSettings : function () {
+        
+        if (!this.hasSettings())
+            return false;
+            
+        if (!this._defaultSettings) {
+        	this._defaultSettings = {};
+        	for(var prop in this.settings) {
+	        	this._defaultSettings[prop] = this.settings[prop];
+        	}
+        }    
+            
+        var sm = stdlib.require('SettingsManagement.js').SettingsManagement;
+        for (var pflType in this._defaultSettings) 
+        {
+            var defaults = this._defaultSettings[pflType];
+            // Имя ключа = строка - имя значения перечисления. Выполняя строку получаем необходимое значение. 
+            var pflTypeValue = eval(pflType); 
+            var settings = sm.CreateManager(this.settingsRootPath, defaults, pflTypeValue);
+            
+            settings.LoadSettings();
+            if (this.form)
+                settings.ApplyToForm(this.form);            
+                
+            this.settings[pflType] = settings;
+        }
+        
+        return true;
+    },
+    
+    saveSettings : function () {
+        
+        if (!this.hasSettings())
+            return false;
+        
+        for (var pflType in this.settings)
+        {
+            settings = this.settings[pflType];
+            settings.ReadFromForm(this.form);
+            settings.SaveSettings();
+        }
+        
+        return true;
+    },
+    //} Чтение/сохранение сохраняемых значений (реквизитов формы).
+    
     //{ Приватные методы
     loadForm: function (path) {
         this.form = loadScriptForm(path, this);
@@ -221,7 +295,7 @@ ScriptForm = stdlib.Class.extend({
     fire: function (eventName, eventArgs) {
         // Вызываем все обработчики, подписанные на событие.
         for (var i=0; i<this.handlers[eventName].length; i++)
-            Function.call.apply(this.handlers[eventName][i], eventArgs);    
+            this.handlers[eventName][i].apply(this, eventArgs);    
     }    
     //} Приватные методы    
 });

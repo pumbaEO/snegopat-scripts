@@ -10,6 +10,8 @@ $addin vbs
 //
 
 var attrTypeCategory        = "{30E571BC-A897-4A78-B2E5-1EA6D48B5742}"
+var СтандартныеРеквизиты    = ["Номер", "Дата", "ПометкаУдаления", "Ссылка", "Проведен"]
+
 
 codegen_manager.registerCodeGen("Документы/Новый/С заполнением всех реквизитов", genarateNewDoc)
 
@@ -35,7 +37,9 @@ function genarateNewDoc(param)
         syn = docKind
     
     var text = '//{ Создание документа "' + syn + '" в ' + varName +'\n' + varName + ' = Документы.' + docKind + '.СоздатьДокумент();\n'
-    // Обработаем реквизиты документа
+    // Обработаем стандартные реквизиты документа. 
+    text += processStandartAttribs(" Заполнение стандартных реквизитов", "", "", СтандартныеРеквизиты, varName, mdObj, tf);
+     // Обработаем реквизиты документа
     text += processAttribs(" Заполнение реквизитов", "", "", varName, mdObj, tf)
     // Обработаем табличные части
     var tabPartsCount = mdObj.childObjectsCount("ТабличныеЧасти")
@@ -78,3 +82,15 @@ function processAttribs(comment, header, footer, line, obj, tf)
         return ""
 }
 
+
+function processStandartAttribs(comment, header, footer, attributes, line, obj, tf) {
+    var lines = []
+    for (var key in attributes) {
+        var l = line + "." + attributes[key] + " = ; // " //+ tf.getTypeString(attr) 
+        lines.push(l);
+    }
+    if(lines.length)
+        return "//{ " + comment + "\n" + header + codegen_manager.formatAssign(lines) + footer + "//} " + comment + "\n"
+    else
+        return ""
+}

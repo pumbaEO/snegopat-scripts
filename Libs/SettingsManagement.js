@@ -8,10 +8,10 @@ $addin stdlib
 ////{ ФабрикаОбъектов
 ////
 
-SettingsManagement = {};
+SettingsManagement = stdlib.Class.extend({});
 
-SettingsManagement.CreateManager = function (rootPath, defaults) {
-    return new _SettingsManager(rootPath, defaults);
+SettingsManagement.CreateManager = function (rootPath, defaults, pflStoreType) {
+    return new _SettingsManager(rootPath, defaults, pflStoreType);
 }
 
 ////}
@@ -20,56 +20,59 @@ SettingsManagement.CreateManager = function (rootPath, defaults) {
 ////{ SettingsManager(script, defaults)
 ////
 
-function _SettingsManager(rootPath, defaults) {
-    this.rootPath = rootPath;
-    
-    var emptySettings = {};
-    this.DefaultSettings = defaults || emptySettings;
+_SettingsManager = stdlib.Class.extend({
+
+    construct : function(rootPath, defaults, pflStoreType) {
+        this.rootPath = rootPath;
+        this.pflStoreType = pflStoreType || pflSnegopat;
         
-    for(var setting in this.DefaultSettings)
-        profileRoot.createValue(this.GetFullSettingPath(setting), this.DefaultSettings[setting], pflSnegopat);
-                
-    this.current = {};
-    
-    for(var setting in this.DefaultSettings)
-        this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
-}
-
-_SettingsManager.prototype.ReadFromForm = function(form) {
-    for(var setting in this.current)
-        this.current[setting] = form[setting];
-}
-
-_SettingsManager.prototype.ApplyToForm = function(form) {
-
-    for(var setting in this.current)
-    {
-        var value = this.current[setting];
-        
-        if (value === undefined || value === null)
-            value = this.DefaultSettings[setting];
+        var emptySettings = {};
+        this.DefaultSettings = defaults || emptySettings;
             
-        form[setting] = value;
-    }
-}
-
-_SettingsManager.prototype.GetFullSettingPath = function(settingName) {
-    return this.rootPath + "/" + settingName;
-}
-
-_SettingsManager.prototype.LoadSettings = function() {
-    this.current = {};
-    
-    for(var setting in this.DefaultSettings)
-        this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
+        for(var setting in this.DefaultSettings)
+            profileRoot.createValue(this.GetFullSettingPath(setting), this.DefaultSettings[setting], this.pflStoreType);
+                    
+        this.current = {};
         
-    return this.current;
-}
+        for(var setting in this.DefaultSettings)
+            this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
+    },
 
-_SettingsManager.prototype.SaveSettings = function() {
-    for(var setting in this.current)
-        profileRoot.setValue(this.GetFullSettingPath(setting), this.current[setting]);
-}
+    ReadFromForm : function(form) {
+        for(var setting in this.current)
+            this.current[setting] = form[setting];
+    },
 
+    ApplyToForm : function(form) {
+
+        for(var setting in this.current)
+        {
+            var value = this.current[setting];
+            
+            if (value === undefined || value === null)
+                value = this.DefaultSettings[setting];
+                
+            form[setting] = value;
+        }
+    },
+
+    GetFullSettingPath : function(settingName) {
+        return this.rootPath + "/" + settingName;
+    },
+
+    LoadSettings : function() {
+        this.current = {};
+        
+        for(var setting in this.DefaultSettings)
+            this.current[setting] = profileRoot.getValue(this.GetFullSettingPath(setting));
+            
+        return this.current;
+    },
+
+    SaveSettings : function() {
+        for(var setting in this.current)
+            profileRoot.setValue(this.GetFullSettingPath(setting), this.current[setting]);
+    }
+});
 ////} SettingsManager
 

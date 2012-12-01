@@ -274,18 +274,50 @@ function fossil_getFileAtRevision(pathToFile, rev){
         return nell
     }
     var rootCatalog = fossil_getRootCatalog(pathToFile)
-    if (rev.length !=0) {
+    //Message(""+pathToFile)
     
-        var filerev = FSO.BuildPath(TempDir, rev+f.Имя);
-        
-        
+    if (rev.length !=0) {
+        //debugger
         TextDoc.AddLine('cd /d "' +rootCatalog +'"')
-        TextDoc.AddLine(PathToFossil+' revert -r '+rev +' "'+pathToFile +'" ')
-        TextDoc.AddLine('copy /Y "'+pathToFile +'" "'+filerev+'"')
-        TextDoc.AddLine(PathToFossil+' undo "'+pathToFile +'" ')
+        TextDoc.AddLine(PathToFossil+' artifact '+rev +' "'+PathToFossilOutput +'" ')
         TextDoc.Write(PathToBatFossil, 'cp866');
         TextDoc.Clear();
-        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1);
+        TextDoc.Read(PathToFossilOutput, "UTF-8");
+        if (TextDoc.LineCount() == 0) {
+            Message ("комманда отработала, но вывод не записался, надо отладить!")
+            return false //что то пошло не так. 
+        }
+        reStr = "^F\\s"+pathToFile.replace(rootCatalog+'\\', '')+"\\s([0-9,a-z]{40})\\s*$"
+        var re = new RegExp(reStr,'gm')
+        var r = TextDoc.ПолучитьТекст();
+        
+        var matches;
+        var artifactId = "";
+        var index=0;
+        while ((matches = re.exec(r)) != null)
+        {
+            var artifactId = matches[1];
+            break;
+        }
+        var filerev = FSO.BuildPath(TempDir, rev+f.Имя);
+        TextDoc.Clear();
+        if (artifactId.length==0){
+            
+            TextDoc.AddLine('cd /d "' +rootCatalog +'"');
+            TextDoc.AddLine(PathToFossil+' revert -r '+rev +' "'+pathToFile +'" ')
+            TextDoc.AddLine('copy /Y "'+pathToFile +'" "'+filerev+'"')
+            TextDoc.AddLine(PathToFossil+' undo "'+pathToFile +'" ')
+            TextDoc.Write(PathToBatFossil, 'cp866');
+            TextDoc.Clear();
+            ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        } else {
+            TextDoc.AddLine('cd /d "' +rootCatalog +'"');
+            TextDoc.AddLine(PathToFossil+' artifact '+artifactId +' "'+filerev +'" ')
+            TextDoc.Write(PathToBatFossil, 'cp866');
+            TextDoc.Clear();
+            ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
+        }
         return filerev;
     }
     return null
@@ -504,6 +536,12 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
     //Возвращаем массив со стурктурой:
     // arrary[0]['version':122333, 'comment':"Че то написали", 'author':"sosna", 'date':"2012-04-01"]
     var result = []
+    //{ FIXME: умножаем кво коммитов на 2, считаем приблизительно 2 строки на 1 коммит.
+    // в fossil есть ошибка вывода в коммандную строку кво. строк а не кво коммитов.
+    // есть, даже патч
+    // http://www.fossil-scm.org/index.html/info/3e58b8ceaf  
+    //}
+    limit = limit*2;
     
     f = v8New("File", pathToFile);
     if (!f.Exist()) return result
@@ -538,26 +576,35 @@ function fossil_getLog(pathToFile, limit) { //если каталог, тогд�
             index++;
         }
     } else { 
-        TextDoc.AddLine(PathToFossil+' json timeline checkin --limit '+limit+'  >'+' "'+PathToFossilOutput+'"')
+        TextDoc.AddLine(PathToFossil+' timeline -t ci -n '+limit+'  >'+' "'+PathToFossilOutput+'"')
         TextDoc.Write(PathToBatFossil, 'cp866');
         
         ErrCode = WshShell.Run('"'+PathToBatFossil+'"', 0, 1)
         TextDoc.Clear();
         TextDoc.Read(PathToFossilOutput, "UTF-8");
-        jsonoutput = TextDoc.GetText();
-        jsonobject = eval('('+jsonoutput+')');
-        if (!(jsonobject.resultCode == undefined))
-            return result
         if (TextDoc.LineCount() == 0) {
             return result 
         }
-        if (jsonobject.payload.timeline == undefined) 
-            return result
         
-        for (var i=0; i<jsonobject.payload.timeline.length; i++) {
-            var timeline = jsonobject.payload.timeline[i];
-            var date = new Date(timeline.timestamp);
-            result[i] = {"version":timeline.uuid, "comment":'('+timeline.tags[0]+')'+' '+timeline.comment, "date":'' +date.toString(), "author":timeline.user}
+        var re = new RegExp(/===\s((20\d\d)-(0[1-9]|2[012])-(0[1-9]|[12][0-9]|3[01]))\s===((\n(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\))+)/g)
+        var re_comment = new RegExp(/(([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]))\s\[([0-9a-f]{10})\]\s((.|\s)*?)\(user:\s+(.+)\s+tags:\s+(\w+)\)/g);
+        var r = TextDoc.ПолучитьТекст();
+        var matches;
+        var index=0;
+        //debugger;
+        while ((matches = re.exec(r)) != null)
+        {
+            var matches_comment;
+            var text = matches[5]
+            while ((matches_comment = re_comment.exec(text)) != null)
+            {
+                /* var cmd = "";
+                for (var i=1; i < matches_comment.length; i++)
+                    var cmd = cmd + " "+i+" - "+matches_comment[i] */
+                
+                result[index] = {"version":matches_comment[5], "comment":'('+matches_comment[9]+')'+' '+matches_comment[6], "date":'' +matches[1]+' '+matches_comment[1], "author":matches_comment[8]}
+                index++;
+            }
         }
     }
     

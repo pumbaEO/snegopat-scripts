@@ -15,7 +15,7 @@ var mainFolder = profileRoot.getValue("Snegopat/MainFolder")
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
 SelfScript.Self['macrosНастройка'] = function () {
-    var dsForm = new NotifySendSettingsForm(settings);
+    var dsForm = GetNotifySend(settings);
     dsForm.ShowDialog();
 }
 
@@ -27,41 +27,77 @@ function getDefaultMacros() {
 ////{ NotifySend
 ////
 function GetNotifySend() {
-    return new _NotifySend(settings);
+
+    if (!_NotifySend._instance)
+        new _NotifySend(settings);
+    
+    return _NotifySend._instance;
 }
 
 function _NotifySend(settings) {
-    this.settings = { 
-                    'TimeEvent': 0,  //Время сообщения по умолчанию.
-                    "TypeEvent":"", // Тип сообщения по умолчанию 
-                    "TypeCMDMessage" : "" //оставлю на будущее, для вызова сообщений в linux
-                    }
-       settings.ApplyToForm(this.settings);
+    // this.settings = { 
+                    // 'TimeEvent': 0,  //Время сообщения по умолчанию.
+                    // "TypeEvent":"", // Тип сообщения по умолчанию 
+                    // "TypeCMDMessage" : "", //оставлю на будущее, для вызова сообщений в linux
+                    // "MessagePovider":"TrayTip"
+                    // }
+    this.settings = settings;
+    var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
+    this.form = loadScriptForm(pathToForm, this) // Обработку событий формы привяжем к самому скрипту
+    this.provider = this.initprovider();
+    //Message("this.settings.MessagePovider" + this.settings.current.MessagePovider)
+
+    _NotifySend._instance = this
+    
+}
+
+_NotifySend.prototype.initprovider = function(provider) { 
+    if (provider == undefined) provider = this.settings.MessagePovider;
+    var result = null;
+    switch (provider) 
+    {
+    case "TrayTip":
+        result = new _TrayTipProvider()
+        break;
+    case "Встроенный1С":
+        var Icons = {
+            'Warning': this.form.Controls.Предупреждение.Picture,
+            'Error': this.form.Controls.Ошибка.Picture,
+            'Info': this.form.Controls.Информация.Picture
+        }
+        result  = new _InternalProvider(Icons);
+        break;
+    default:
+        result  = new _TrayTipProvider()
+        break;
+    }
+    
+    return result;
 }
 
 _NotifySend.prototype.Warning = function(Title, Text, Timeout, Type) {
     this.Check(Title, Text, Timeout, "Warning");
-    this.SendMessage(this.title, this.text, this.time, this.type);
+    this.provider.SendMessage(this.title, this.text, this.time, this.type);
 }
 
 _NotifySend.prototype.Info = function(Title, Text, Timeout, Type) {
     this.Check(Title, Text, Timeout, "Info");
-    this.SendMessage(this.title, this.text, this.time, this.type);
+    this.provider.SendMessage(this.title, this.text, this.time, this.type);
 }
 
 _NotifySend.prototype.Error = function(Title, Text, Timeout, Type) {
     this.Check(Title, Text, Timeout, "Error");
-    this.SendMessage(this.title, this.text, this.time, this.type);
+    this.provider.SendMessage(this.title, this.text, this.time, this.type);
 }
 
 _NotifySend.prototype.Message = function(Title, Text, Timeout, Type) {
     this.Check(Title, Text, Timeout, Type);
-    this.SendMessage(this.title, this.text, this.time, this.type);
+    this.provider.SendMessage(this.title, this.text, this.time, this.type);
 }
 
 _NotifySend.prototype.Check = function(Title, Text, Timeout, Type) {
     this.title = Title; this.text = Text, this.time = Timeout, this.type = Type;
-    if (this.time==undefined) this.time = this.settings["TimeEvent"]
+    if (this.time==undefined) this.time = this.settings.current["TimeEvent"]
     if (this.text == undefined) this.text = "";
     if (this.title == undefined) this.title = "";
     
@@ -69,56 +105,50 @@ _NotifySend.prototype.Check = function(Title, Text, Timeout, Type) {
         this.text = this.text.substr(62);
         this.title = this.title.substr(0, 62);
     }
-    if (this.type == undefined) this.type = this.settings["TypeEvent"];
+    if (this.type == undefined) this.type = this.settings.current["TypeEvent"];
     
 }
 
 _NotifySend.prototype.SendMessage = function(title, text, timeout, type) {
+    
     title = title.replace(/\\/g, "\\\\").substr(0, 62);
     text = text.replace(/\n/g, "~n").replace(/\t/g, "~t").replace(/"/g, "~q");
     var cmd = mainFolder+'scripts\\bin\\TrayTip.exe "'+title+'" "'+ text +'" ' +timeout+' '+type;
     ЗапуститьПриложение(cmd, "", false);
 }
 
-////
-////} NotifySend
-////////////////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////////////
-////{ Форма настройки скрипта - NotifySend
-////
-
-function NotifySendSettingsForm(settings) {
-    this.settings = settings;
-    var pathToForm = SelfScript.fullPath.replace(/js$/, 'ssf')
-    // Обработку событий формы привяжем к самому скрипту
-    this.form = loadScriptForm(pathToForm, this)
-}
-
-NotifySendSettingsForm.prototype.ShowDialog = function () {
+_NotifySend.prototype.ShowDialog = function () {
     return this.form.DoModal();
 }
 
-NotifySendSettingsForm.prototype.saveSettings = function () {
-
+_NotifySend.prototype.saveSettings = function () {
+    this.form.MessagePovider = this.form.Controls.МетодОповещения.Значение;
     this.settings.ReadFromForm(this.form);
     this.settings.SaveSettings();
+    this.provider = this.initprovider(this.form.MessagePovider);
 }
 
-NotifySendSettingsForm.prototype.CmdBarOK = function (Кнопка) {
+_NotifySend.prototype.CmdBarOK = function (Кнопка) {
     this.saveSettings()
     this.form.Close(true);
 }
 
-NotifySendSettingsForm.prototype.CmdBarSave = function (Кнопка) {
+_NotifySend.prototype.CmdBarSave = function (Кнопка) {
 	this.saveSettings();
 }
 
-NotifySendSettingsForm.prototype.OnOpen = function () {
-	this.settings.ApplyToForm(this.form);
+_NotifySend.prototype.OnOpen = function () {
+    this.settings.ApplyToForm(this.form);
+    var СписокВыбора = v8New("ValueList");
+    СписокВыбора.Добавить("TrayTip");
+    СписокВыбора.Добавить("Встроенный1С");
+    this.form.Controls.МетодОповещения.СписокВыбора = СписокВыбора;
+    if (this.form.Controls.МетодОповещения.СписокВыбора.findByValue(this.form.MessagePovider)!=undefined)
+        this.form.Controls.МетодОповещения.Значение = this.form.MessagePovider;
+
 }
 
-NotifySendSettingsForm.prototype.BeforeClose = function (Cancel, DefaultHandler) {
+_NotifySend.prototype.BeforeClose = function (Cancel, DefaultHandler) {
     
     if (this.form.Modified)
     {
@@ -143,10 +173,51 @@ NotifySendSettingsForm.prototype.BeforeClose = function (Cancel, DefaultHandler)
     }
 }
 
+_NotifySend.prototype.МетодОповещенияПриИзменении = function(Элемент) {
+    this.form.MessagePovider = Элемент.Значение;
+}
+
+
 ////
-////} Форма настройки скрипта - NotifySend
+////} NotifySend
 ////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////////////
+////{ TrayTipProvider 
+////
+
+function _TrayTipProvider() {
+    this.test = "";
+}
+
+_TrayTipProvider.prototype.SendMessage = function(title, text, timeout, type) {
+    title = title.replace(/\\/g, "\\\\").substr(0, 62);
+    text = text.replace(/\n/g, "~n").replace(/\t/g, "~t").replace(/"/g, "~q");
+    var cmd = mainFolder+'scripts\\bin\\TrayTip.exe "'+title+'" "'+ text +'" ' +timeout+' '+type;
+    ЗапуститьПриложение(cmd, "", false);
+}
+
+////
+////} TrayTipProvider
+////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////
+////{ InternalProvider 
+////
+
+function _InternalProvider(picture) {
+    this.picture = picture;
+}
+
+_InternalProvider.prototype.SendMessage = function(title, text, timeout, type) {
+    var pic = this.picture[type];
+    pic = pic ? pic : '';
+    ПоказатьОповещениеПользователя(title, "e1cib/app/Обработка", text, pic)
+}
+
+////
+////} InternalProvider
+////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Start up
@@ -154,7 +225,8 @@ NotifySendSettingsForm.prototype.BeforeClose = function (Cancel, DefaultHandler)
 
 settings = SettingsManagement.CreateManager('NotifySend', { 
                     'TimeEvent': 10,  //Время сообщения по умолчанию.
-                    "TypeEvent":"Info" // Тип сообщения по умолчанию 
+                    "TypeEvent":"Info", // Тип сообщения по умолчанию 
+                    "MessagePovider":"TrayTip" // провайдер сообщений, может быть как traytip, так и встроенный
                     })
 settings.LoadSettings();
 
