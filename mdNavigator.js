@@ -344,10 +344,20 @@ function findMdObj(uuid)
     return metadata.current.findByUUID(uuid);
 }
 
+function withSelected(func)
+{
+    var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
+    if(!curRow)
+        return
+    for(var rows = new Enumerator(form.Controls.ТаблицаМетаданных.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext())
+        func(rows.item().Окно)
+}
+
 // Единый метод обработки выбора пользователя.
 // Параметром передается функтор, который непосредственно выполняет действие.
 function doAction(func)
 {
+    var isMultiSelect = (form.Controls.ТаблицаМетаданных.ВыделенныеСтроки.Count() > 1)?true:false;
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     if(!curRow)
         return
@@ -355,7 +365,8 @@ function doAction(func)
     if(!mdObj)
     {
         MessageBox("Объект '" + curRow.Name + "' не найден.");
-        return
+        if (!isMultiSelect)
+            return
     }
     // Сохраним текущий фильтр в списке
     if(form.ТекстФильтра.length)
@@ -363,24 +374,46 @@ function doAction(func)
         addToHistory(form.ТекстФильтра);
         
     }
-    // Сохраним текущий объект в списке
-    var row = {Name: curRow.Name, UUID: curRow.UUID}
-    for(var k in listOfChoices)
-    {
-        if(listOfChoices[k].UUID == row.UUID)
+    if (!isMultiSelect){
+        // Сохраним текущий объект в списке
+        var row = {Name: curRow.Name, UUID: curRow.UUID}
+        for(var k in listOfChoices)
         {
-            listOfChoices.splice(k, 1)
-            break
+            if(listOfChoices[k].UUID == row.UUID)
+            {
+                listOfChoices.splice(k, 1)
+                break
+            }
         }
+        listOfChoices.unshift(row)
+        if(listOfChoices.length > 15)
+            listOfChoices.pop()
+            
     }
-    listOfChoices.unshift(row)
-    if(listOfChoices.length > 15)
-        listOfChoices.pop()
     // Очистим фильтр и закроем форму, указав как результат объект и функтор
     form.ТекстФильтра = ''
     form.ТекущийЭлемент = form.ЭлементыФормы.ТекстФильтра
-    fillTable('')
-    form.Close({mdObj:mdObj, func:func})
+    var res = {mdObj:mdObj, func:func};
+    if (isMultiSelect){
+        var res = [];
+        for(var rows = new Enumerator(form.Controls.ТаблицаМетаданных.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()){
+
+            var mdObj = findMdObj(rows.item().UUID);
+            
+            if(!mdObj)
+            {
+                MessageBox("Объект '" + curRow.Name + "' не найден.");
+                continue;
+            }
+            res.push({mdObj:mdObj, func:func});
+        }
+
+    }
+
+    fillTable('');
+    form.Close(res);
+    
+    
 }
 
 function addToHistory(query) {
@@ -491,7 +524,14 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
     var res = form.ОткрытьМодально()
     tc.stop()
     if(res) // Если что-то выбрали, вызовем обработчик
-        res.func(res.mdObj)
+        var typeName = Object.prototype.toString.call(res);
+        if (typeName === '[object Array]') {
+            for (var i=0; i<res.length; i++) {
+                res[i].func(res[i].mdObj);
+            }
+        } else if (typeName === '[object Object]') {            
+            res.func(res.mdObj)
+        }
 }
 
 /*
