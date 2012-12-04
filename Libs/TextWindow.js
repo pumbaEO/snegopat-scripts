@@ -217,7 +217,7 @@ _TextWindow = stdlib.Class.extend({
             в позиции endCol попал в выделение, мы каретку должны поставить
             в позицию (endCol + 1). */
             
-            var _line = tw.line(endRow); if ((_line == '') || (_line == '\r')) endCol--; //ITextWindow->line() получает всё что до символа '\n', т.е если конец строки равен '\r\n' то метод вернет строку с '\r' в конце
+            var _line = tw.line(endRow); if ((_line == '') || (_line.charAt(_line.length-1) == '\r')) endCol--; //ITextWindow->line() получает всё что до символа '\n', т.е если конец строки равен '\r\n' то метод вернет строку с '\r' в конце
             tw.setSelection(beginRow, beginCol, endRow, endCol+1);
             
             ////3. установить выделенный текст
