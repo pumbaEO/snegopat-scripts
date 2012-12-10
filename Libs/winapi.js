@@ -28,6 +28,7 @@ var api
             ["GetDC", "i=h", "r=h"],
             ["ReleaseDC", "i=hh", "r=l"],
             ["GetDesktopWindow", "r=l"],
+            ["IsChild", "i=hh", "r=l"],
             ["GetWindow", "i=hl", "r=h"]
         ]
     },
@@ -108,6 +109,7 @@ function GetClientRect(hwnd)
 function SetFocus(hwnd)             { return api.SetFocus(hwnd) }
 function GetFocus()                 { return api.GetFocus() }
 function GetParentWindow(hwnd)      { return api.GetParent(hwnd) }
+function IsChild(hParent, hWnd)     { return api.IsChild(hParent, hWnd) }
 function SendMessage(hwnd, msg, wParam, lParam) { return api.SendMessageW(hwnd, msg, wParam, lParam) }
 
 // Метод позволяет создать WinAPI шрифт по данным 1Сного объекта Шрифт,

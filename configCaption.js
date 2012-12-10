@@ -20,7 +20,17 @@ function setCaption(mainTitle, additionalTitle)
 
 function ibName()
 {
-    return profileRoot.getValue("CmdLine/IBName").replace(/^\s*|\s*$/g, '');
+    	//return profileRoot.getValue("CmdLine/IBName").replace(/^\s*|\s*$/g, '');
+    var baseName = profileRoot.getValue("CmdLine/IBName").replace(/^\s*|\s*$/g, '');
+    
+    if(! baseName) {
+    
+      строкаСоединения = СтрокаСоединенияИнформационнойБазы();
+      baseName = ПолучитьНаименованиеБазы1CИзФайлаЗапуска(строкаСоединения);
+    
+    }
+
+   return baseName;
 }
 
 function metaDataVersion()
