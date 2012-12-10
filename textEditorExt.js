@@ -30,7 +30,7 @@ global.connectGlobals(SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 
 function getPredefinedHotkeys(predef){
-    predef.setVersion(7);
+    predef.setVersion(8);
     predef.add("НайтиВыделенныйТекстВниз", "Ctrl + Down");
     predef.add("НайтиВыделенныйТекстВверх", "Ctrl + Up");
     predef.add("КлонироватьТекст", "Ctrl + D");
@@ -41,6 +41,10 @@ function getPredefinedHotkeys(predef){
     predef.add("OnPressDelInBracket", "Del");
     predef.add("Преобразовать регистр: ПРОПИСНЫЕ", "Ctrl + Shift + U");
     predef.add("Преобразовать регистр: строчные", "Ctrl + U");
+    predef.add("Установить кавычки", 'Shift + 2');
+    predef.add("Установить скобки", 'Shift + 9');
+
+
 }
 
 function macrosНайтиВыделенныйТекстВниз(){
@@ -85,6 +89,14 @@ function macrosПоменятьОперандыПрисваиванияМест�
 
 SelfScript.Self['macrosПреобразовать регистр: ПРОПИСНЫЕ'] = function() {
     return processSelectedText(function(selText){ return selText.toUpperCase(); });
+}
+
+SelfScript.Self['macrosУстановить кавычки'] = function() {
+    return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
+}
+
+SelfScript.Self['macrosУстановить скобки'] = function() {
+    return processSelectedText(function(selText){ return '('+selText+')'; }, true);
 }
 
 SelfScript.Self['macrosПреобразовать регистр: строчные'] = function() {
@@ -387,6 +399,9 @@ function processSelectedText(selTextHandler, doNotRestoreSelection) {
     
     var sel = w.GetSelection();            
     var selText = w.GetSelectedText();
+    if (selText.length==0){
+        return false;
+    }
     
     try 
     {
