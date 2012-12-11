@@ -30,19 +30,22 @@ global.connectGlobals(SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 
 function getPredefinedHotkeys(predef){
-    predef.setVersion(8);
+    predef.setVersion(9);
     predef.add("НайтиВыделенныйТекстВниз", "Ctrl + Down");
     predef.add("НайтиВыделенныйТекстВверх", "Ctrl + Up");
     predef.add("КлонироватьТекст", "Ctrl + D");
-    predef.add("OnPressEnterInComment", "Enter");
+    //FIXME: пока удалю, не работает нормально при нахождении крусора в комментарии и выбора из списка процедур. 
+    //predef.add("OnPressEnterInComment", "Enter"); 
     predef.add("OnPressDeleteInComment", "Del");
     predef.add("OnPressBackspaceInComment", "BkSpace");
     predef.add("OnPressBackspaceInBracket", "BkSpace");
     predef.add("OnPressDelInBracket", "Del");
     predef.add("Преобразовать регистр: ПРОПИСНЫЕ", "Ctrl + Shift + U");
     predef.add("Преобразовать регистр: строчные", "Ctrl + U");
-    predef.add("Установить кавычки", 'Shift + 2');
-    predef.add("Установить скобки", 'Shift + 9');
+    predef.add("Установить кавычки", "Shift + 2");
+    predef.add("Установить кавычки 2", "Shift + '");
+    predef.add("Установить скобки", "Shift + 9");
+    predef.add("Установить скобки 2", "Shift + 0");
 
 
 }
@@ -94,8 +97,14 @@ SelfScript.Self['macrosПреобразовать регистр: ПРОПИСН
 SelfScript.Self['macrosУстановить кавычки'] = function() {
     return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
 }
+SelfScript.Self['macrosУстановить кавычки 2'] = function() {
+    return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
+}
 
 SelfScript.Self['macrosУстановить скобки'] = function() {
+    return processSelectedText(function(selText){ return '('+selText+')'; }, true);
+}
+SelfScript.Self['macrosУстановить скобки 2'] = function() {
     return processSelectedText(function(selText){ return '('+selText+')'; }, true);
 }
 
