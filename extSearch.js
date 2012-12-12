@@ -307,8 +307,8 @@ ExtSearch = ScriptForm.extend({
 
         this.clearSearchResults();
                      
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
+        this.re = this.buildSearchRegExpObject();
+        if (!this.re) return;
         
         var activeWndResRow = null;
         
@@ -327,7 +327,7 @@ ExtSearch = ScriptForm.extend({
                 var obj = es.getWindowObject(v);
                 if (!obj) continue;
                 
-                var docRow = es.search(obj, re);
+                var docRow = es.search(obj, es.re);
                 if (v == activeView)
                     activeWndResRow = docRow;
             }
@@ -343,13 +343,13 @@ ExtSearch = ScriptForm.extend({
         var activeWindow = this.watcher.getActiveTextWindow();
         if (!activeWindow) return;
              
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
+        this.re = this.buildSearchRegExpObject();
+        if (!this.re) return;
 
         var obj = this.getWindowObject(activeWindow.GetView());
         if (!obj) return;
         
-        var docRow = this.search(obj, re);
+        var docRow = this.search(obj, this.re);
         
         this.showSearchResult(docRow, fromHotKey);
     },
@@ -395,9 +395,9 @@ ExtSearch = ScriptForm.extend({
         docRow.FoundLine = obj.getTitle();
         docRow._object = obj;
         docRow.RowType = RowTypes.SearchDoc;
-        
-        var strSort = "00000"+this.results.Rows.Count();
-        strSort = strSort.substr(strSort.length-5);
+        if (!obj.sort) obj.sort = 999;
+        var strSort = "0000000000"+(obj.sort + this.results.Rows.Count());
+        strSort = strSort.substr(strSort.length-10);
         docRow.SortMetadata = strSort;
 
         docRow.groupsCache = v8New('Map');
@@ -544,7 +544,7 @@ ExtSearch = ScriptForm.extend({
 
     getGroupRow: function (docRow, methodData) {
 
-        if (!this.form.TreeView)
+        if (!this.form.TreeView || this.re.multiline)
             return docRow;
 
         var groupRow = docRow.groupsCache.Get(methodData);
@@ -575,9 +575,6 @@ ExtSearch = ScriptForm.extend({
         resRow.FoundLine = line;
         resRow.lineNo = lineNo;
         resRow._object = docRow._object;
-        var strSort = "00000"+groupRow.Rows.Count();
-        strSort = strSort.substr(strSort.length-5);
-        resRow.SortMetadata = strSort;
         if(undefined != methodData)
             resRow.Method = methodData.Name;
 
@@ -991,13 +988,11 @@ ExtSearchGlobal = ExtSearch.extend({
         if (sort == undefined) sort = 999;
         var docRow = null;
         if (mdObj){
-            //strSort = "000000"+sort;
-            strSort = "";
-            strSort = strSort.substr(strSort.length-5);
             var obj = this.getWindowObject({
                                 mdObj:mdObj,
                                 mdProp:row.mdProp,
-                                title:strSort+" "+row.title});
+                                title:row.title});
+            obj.sort = sort+1;
             docRow = this.search(obj, this.re);
         }
         return docRow;
