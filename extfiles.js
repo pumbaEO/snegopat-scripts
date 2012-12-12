@@ -1001,7 +1001,6 @@ var pflVersionControl       = "ExtFiles/VersionControl"
 var pfColorModiefed         = "ExtFiles/ColorModiefed"
 var pfColorDeleted          = "ExtFiles/ColorDeleted"
 var pfColorNotVersioned     = "ExtFiles/ColorNotVersioned"
-var pftimeOutOnStart        = "ExtFiles/TimeOutOnStart";
 
 
 // Восстановим настройки
@@ -1016,7 +1015,6 @@ profileRoot.createValue(pflVersionControl, false, pflSnegopat)
 profileRoot.createValue(pfColorModiefed, false, pflSnegopat)
 profileRoot.createValue(pfColorDeleted, false, pflSnegopat)
 profileRoot.createValue(pfColorNotVersioned, false, pflSnegopat)
-profileRoot.createValue(pftimeOutOnStart, 0, pflSnegopat);
 
 
 
@@ -1031,7 +1029,6 @@ var мИспользоватьВерсионирование = profileRoot.getVa
 var мЦветФонаИзмененные = profileRoot.getValue(pfColorModiefed)
 var мЦветФонаНеВерсионный = profileRoot.getValue(pfColorNotVersioned)
 var мЦветФонаУдаленный = profileRoot.getValue(pfColorDeleted)
-var мТаймАутПриСтарте = profileRoot.getValue(pftimeOutOnStart);
 
 var RE_EXTENSIONS = null;
 
@@ -1062,15 +1059,8 @@ var СоответсвиеЦветовИСтатусов = {"DELETED":мЦвет
 мФормаСкрипта=null
 мФормаНастройки=null
 
-мТаймАутПриСтарте = 5;
-if(мОткрыватьПриСтарте==true){
-    if (мТаймАутПриСтарте>0){
-        stdlib.setTimeout(function() { macrosОткрытьОкноВнешнихФайлов(); }, мТаймАутПриСтарте*1000);
-    } else {
-        macrosОткрытьОкноВнешнихФайлов()
-    }
-}
-    
+if(мОткрыватьПриСтарте==true)
+    macrosОткрытьОкноВнешнихФайлов()
 
 ////} Инициализация скрипта
 
