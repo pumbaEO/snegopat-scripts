@@ -234,6 +234,7 @@ ExtSearch = ScriptForm.extend({
         this.results.Columns.Add('groupsCache');
         this.results.Columns.Add('_object');
         this.results.Columns.Add('_match');
+        this.results.Columns.Add('SortMetadata');
         
         this.watcher = new TextWindowsWatcher();
         this.watcher.startWatch();
@@ -394,6 +395,11 @@ ExtSearch = ScriptForm.extend({
         docRow.FoundLine = obj.getTitle();
         docRow._object = obj;
         docRow.RowType = RowTypes.SearchDoc;
+        
+        var strSort = "00000"+this.results.Rows.Count();
+        strSort = strSort.substr(strSort.length-5);
+        docRow.SortMetadata = strSort;
+
         docRow.groupsCache = v8New('Map');
         if(!re.multiline)
         {
@@ -446,6 +452,7 @@ ExtSearch = ScriptForm.extend({
                 results.push(r)
             if(results.length)  // Что-то нашли. Теперь надо получить номера строк для каждого вхождения
             {
+                this.form.TreeView = false;
                 var idx = 0, lineNum = 0, currentRes = results[idx], beginIdx = currentRes.index
                 // Для исключение ситуации, когда текст найден в последней строке, не заканчивающейся переводом строки,
                 // добавим к тексту перевод строки
@@ -489,7 +496,7 @@ ExtSearch = ScriptForm.extend({
     },
 
     showResult: function(docRow, fromHotKey){
-        this.results.Rows.Sort('FoundLine', false);
+        this.results.Rows.Sort('SortMetadata, FoundLine', false);
         // Запомним строку поиска в истории.
         this.addToHistory(this.form.Query);
 
@@ -544,8 +551,8 @@ ExtSearch = ScriptForm.extend({
         if (!groupRow) 
         {
             groupRow = docRow.Rows.Add();
-            groupRow.FoundLine = methodData.Name;
-            groupRow.Method = methodData.Name;
+            groupRow.FoundLine = (!methodData.Name)?"":methodData.Name;
+            groupRow.Method = (!methodData.Name)?"":methodData.Name;
             groupRow._object = docRow._object;
             
             if (methodData.IsProc !== undefined)
@@ -553,6 +560,7 @@ ExtSearch = ScriptForm.extend({
                 
             groupRow.lineNo = methodData.StartLine + 1;
             groupRow._method = methodData;
+            groupRow.SortMetadata = methodData.SortMetadata;
             
             docRow.groupsCache.Insert(methodData, groupRow); 
         }
@@ -567,7 +575,9 @@ ExtSearch = ScriptForm.extend({
         resRow.FoundLine = line;
         resRow.lineNo = lineNo;
         resRow._object = docRow._object;
-        
+        var strSort = "00000"+groupRow.Rows.Count();
+        strSort = strSort.substr(strSort.length-5);
+        resRow.SortMetadata = strSort;
         if(undefined != methodData)
             resRow.Method = methodData.Name;
 
@@ -981,7 +991,8 @@ ExtSearchGlobal = ExtSearch.extend({
         if (sort == undefined) sort = 999;
         var docRow = null;
         if (mdObj){
-            strSort = "000000"+sort;
+            //strSort = "000000"+sort;
+            strSort = "";
             strSort = strSort.substr(strSort.length-5);
             var obj = this.getWindowObject({
                                 mdObj:mdObj,
