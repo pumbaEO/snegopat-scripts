@@ -119,7 +119,6 @@ function hookCfgStorWindow(dlgInfo){
                     nameMd = md.rootObject.name;
                     reRootObject = new RegExp(nameMd, 'ig');
                     reviseObjectList = toV8Value(dlgInfo.form.getControl("ReviseObjectList").value);
-                    Message(""+reviseObjectList.toStringInternal());
                     reviesObjectText = reviseObjectList.toStringInternal();
                     if (reRootObject.test(reviesObjectText)){
                         dlgInfo.form.getControl("GetRecursive").value = false;
