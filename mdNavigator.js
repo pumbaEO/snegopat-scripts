@@ -28,6 +28,10 @@ vtModules.Колонки.Add("Наименование");
 vtModules.Колонки.Add("Module1C");
 var Icons = null;
 var ЦветФонаДляМодулейМенеджера = v8New("Цвет", 240, 255, 240);
+var treeSubSystems = null;
+var subSystemMap = v8New("Map")
+var isFilterOnSubSystem = false;
+var subSystemFilter = {};
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
 RowTypes = {
@@ -269,7 +273,7 @@ function fillTable(newFilter)
         form.ТаблицаМетаданных.Clear();
     }
     var mode = ''
-    if(!currentFilter.length)
+    if(!currentFilter.length & !isFilterOnSubSystem)
     {
         mode = "Недавно используемые объекты:"
         for(var k in listOfChoices)
@@ -278,7 +282,7 @@ function fillTable(newFilter)
             row.Name = listOfChoices[k].Name
             row.UUID = listOfChoices[k].UUID
         }
-    }
+    } 
     else
     {
         if (form.ТаблицаМетаданных.Columns.Find("Rate") == undefined){
@@ -307,7 +311,12 @@ function fillTable(newFilter)
             var lNameLength = 500;
             var maxIndex = 0;
             var rate = 0;
-            var filtersLenth = filters.length
+            if (isFilterOnSubSystem){
+                if (!subSystemFilter.hasOwnProperty(vtMD[k].UUID)){
+                    continue;
+                }
+            }
+            var filtersLenth = (!filters.length)?1:filters.length
             var surcharge = lNameLength/filtersLenth;
             for(var s in filters)
             {
@@ -455,8 +464,8 @@ function updateCommands()
     // Сначала удалим непостоянные команды
     var cmdBar = form.ЭлементыФормы.Команды
     var buttons = cmdBar.Кнопки
-    for(var k = buttons.Count() - 6; k > 0; k--)
-        buttons.Delete(6)
+    for(var k = buttons.Count() - 7; k > 0; k--)
+        buttons.Delete(7)
     // Получим текущую выбранную строку
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var enabled = false
@@ -493,6 +502,8 @@ function updateCommands()
     buttons.Get(2).Enabled = enabled
     buttons.Get(3).Enabled = enabled
     buttons.Get(5).Enabled = enabled
+    buttons.Get(6).Enabled = true;
+    buttons.Get(6).Пометка = isFilterOnSubSystem;
     if (vtModules.Count()>0){
         vtModules.Clear();
     }
@@ -626,6 +637,35 @@ function КомандыCaptureIntoCfgStore(Кнопка){
     });
 }
 
+function КомандыFilterOnSubSystem(Кнопка){
+    //debugger;
+    if (!treeSubSystems)
+        walkSubSystems();
+    var selectedRow = treeSubSystems.ChooseRow("Какую подсистему желаете отобрать?");
+    if (!selectedRow){
+        isFilterOnSubSystem = false;
+    } else{
+        subSystemFilter = {};
+        isFilterOnSubSystem = true;
+        var arrayСостав = subSystemMap.Get(selectedRow.Имя);
+        if (!arrayСостав){
+           isFilterOnSubSystem = false;
+        } else {
+
+            for (var i=0; i<arrayСостав.Count(); i++){
+                var uuid = arrayСостав.Get(i);
+                subSystemFilter[uuid]=true;
+            }    
+        }
+        
+    }
+
+    if(currentFilter.length)
+        fillTable(currentFilter);
+    else
+        fillTable('');
+}
+
 // Команда открытия свойств
 function openProperty(Кнопка)
 {
@@ -708,6 +748,65 @@ function ТаблицаПроцедурВыбор(Элемент, Выбранн
     }
     
 }
+
+function parseSubSystems (mdObj, row){
+        // Получим и покажем класс объекта
+        var mdc = mdObj.mdclass;
+        //var mdPropName = mdc.propertyAt(0);
+        var Имя = toV8Value(mdObj.property(0)).presentation();
+        var Состав = toV8Value(mdObj.property("Content")).toStringInternal();
+        var newRow = row.Rows.Add();
+        newRow.Имя = ""+Имя;
+        var arrayСостав = v8New("Array");
+        //newRowContent = newRow.Rows.Add();
+        arrayСостав.Add(mdObj.id);
+        //newRowContent.Состав = mdObj.id; //Добавим самих себя в состав.
+        var listUUID = v8New("ValueList");
+        var re = new RegExp(/\{"#",157fa490-4ce9-11d4-9415-008048da11f9,\n\{1,(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\}/igm);
+        while ((matches = re.exec(Состав)) != null){
+            arrayСостав.Add( "{"+matches[1].toUpperCase()+"}");
+            //newRowContent = newRow.Rows.Add();
+            //newRowContent.Состав = "{"+matches[1].toUpperCase()+"}";
+        }
+        subSystemMap.Insert(newRow.Имя, arrayСостав);
+        
+        // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
+        for(var i = 0; i < mdc.childsClassesCount; i++)
+        {
+            var childMdClass = mdc.childClassAt(i)
+            
+            for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++)
+                parseSubSystems(mdObj.childObject(i, chldidx), newRow)
+        }
+}
+
+function walkSubSystems(){
+        
+    var md = metadata.current;
+    //var tree = 
+    treeSubSystems = v8New("ValueTree");
+    treeSubSystems.Columns.Add("Имя");
+    //treeSubSystems.Columns.Add("Состав");
+    if (!md){
+        return;
+    }
+
+        //try{
+            if(md.rootObject.childObjectsCount("Подсистемы") > 0)
+                var newRow = treeSubSystems.Rows.Add();
+                newRow.Имя = "Подсистемы";
+                var mdObj = md.rootObject;
+                for(var i = 0, c = mdObj.childObjectsCount("Подсистемы"); i < c; i++){
+                    mdSubs = mdObj.childObject("Подсистемы", i);
+                    parseSubSystems(mdSubs, newRow);
+                }
+                
+        //}catch(e){
+        //   Message("Не удалось распарсить подсистемы"+e.description);
+        //}
+        //return tree;
+}
+
 
 
 
