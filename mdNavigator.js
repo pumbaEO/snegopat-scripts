@@ -9,6 +9,7 @@ stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
 
 global.connectGlobals(SelfScript)
 
@@ -32,6 +33,7 @@ var treeSubSystems = null;
 var subSystemMap = v8New("Map")
 var isFilterOnSubSystem = false;
 var subSystemFilter = {};
+var recursiveSubsystems = false;
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
 RowTypes = {
@@ -553,7 +555,7 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
 // Это для пермещения вверх/вниз текущего выбора
 function ТекстФильтраРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
-    //debugger
+    
     if (form.ЭлементыФормы.Панель1.ТекущаяСтраница == form.ЭлементыФормы.Панель1.Страницы.Страница1){
         var curTableForm = form.ЭлементыФормы.ТаблицаМетаданных;
         var curTable = form.ТаблицаМетаданных;
@@ -638,8 +640,22 @@ function КомандыCaptureIntoCfgStore(Кнопка){
     });
 }
 
+function fillSubSystemUUIDRecursive(row){
+    if (recursiveSubsystems){
+        for (var i=0; i<row.Rows.Count(); i++){
+            var curRow = row.Rows.Get(i);
+            fillSubSystemUUIDRecursive(curRow);
+        }
+    }
+    var arrayСостав = subSystemMap.Get(row.Имя);
+    for (var i=0; i<arrayСостав.Count(); i++){
+        var uuid = arrayСостав.Get(i);
+        subSystemFilter[uuid]=true;
+    }    
+}
+
 function КомандыFilterOnSubSystem(Кнопка){
-    //debugger;
+    
     if (!treeSubSystems)
         walkSubSystems();
     var selectedRow = treeSubSystems.ChooseRow("Какую подсистему желаете отобрать?");
@@ -648,17 +664,7 @@ function КомандыFilterOnSubSystem(Кнопка){
     } else{
         subSystemFilter = {};
         isFilterOnSubSystem = true;
-        var arrayСостав = subSystemMap.Get(selectedRow.Имя);
-        if (!arrayСостав){
-           isFilterOnSubSystem = false;
-        } else {
-
-            for (var i=0; i<arrayСостав.Count(); i++){
-                var uuid = arrayСостав.Get(i);
-                subSystemFilter[uuid]=true;
-            }    
-        }
-        
+        fillSubSystemUUIDRecursive(selectedRow);
     }
 
     if(currentFilter.length)
@@ -784,15 +790,13 @@ function parseSubSystems (mdObj, row){
 function walkSubSystems(){
         
     var md = metadata.current;
-    //var tree = 
     treeSubSystems = v8New("ValueTree");
     treeSubSystems.Columns.Add("Имя");
-    //treeSubSystems.Columns.Add("Состав");
     if (!md){
         return;
     }
 
-        //try{
+        try{
             if(md.rootObject.childObjectsCount("Подсистемы") > 0)
                 var newRow = treeSubSystems.Rows.Add();
                 newRow.Имя = "Подсистемы";
@@ -802,14 +806,24 @@ function walkSubSystems(){
                     parseSubSystems(mdSubs, newRow);
                 }
                 
-        //}catch(e){
-        //   Message("Не удалось распарсить подсистемы"+e.description);
-        //}
+        }catch(e){
+           Message("Не удалось распарсить подсистемы"+e.description);
+        }
         //return tree;
 }
 
 
-
+SelfScript.self['macrosНастройка фильтра для подсистем'] = function(){
+    var values = v8New('СписокЗначений');
+    values.Add(1, 'Отбирать состав только текущей подсистемы');
+    values.Add(2, 'Рекурсивно обходить дерево подсистем');
+    var dlg = new SelectValueDialog("Выберете вариант фильтра по подсистеме!", values);
+    if (dlg.selectValue()) {
+        settings.current.recursiveSubsystems = (dlg.selectedValue==2)?true:false;
+        recursiveSubsystems = settings.current.recursiveSubsystems;
+        settings.SaveSettings();                        
+    }    
+}
 
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
@@ -835,11 +849,15 @@ function getDefaultMacros()
     }
 })()
 
-settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList')}, pflBase);
+settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList'), 
+                                        'recursiveSubsystems':false}, pflBase);
 settings.LoadSettings();
 listOfFilters = settings.current.listOfFilters;
+recursiveSubsystems = settings.current.recursiveSubsystems;
 function beforeExitApp(){
     settings.current.listOfFilters = listOfFilters;
+    settings.current.recursiveSubsystems = recursiveSubsystems;
+
     settings.SaveSettings();
 }
 
