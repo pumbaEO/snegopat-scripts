@@ -16,6 +16,7 @@ global.connectGlobals(SelfScript)
 
 // (c) Евгений JohnyDeath Мартыненков
 // (c) Александр Орефков
+// (c) Сосна Евгений <shenaj@sosna.zp.ua>
 
 var form = null
 var vtMD = null
