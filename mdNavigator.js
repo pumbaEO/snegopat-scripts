@@ -655,10 +655,33 @@ function fillSubSystemUUIDRecursive(row){
 }
 
 function КомандыFilterOnSubSystem(Кнопка){
-    
+    var selectedRow = null;
     if (!treeSubSystems)
         walkSubSystems();
-    var selectedRow = treeSubSystems.ChooseRow("Какую подсистему желаете отобрать?");
+    if (treeSubSystems.Rows.Count()>0){
+        var curRow = treeSubSystems.Rows.Get(0);
+        var indent = "";
+        var valuelist = v8New("ValueList");
+        (function (row,valuelist,indent) {
+            for (var i = 0; i<row.Rows.Count(); i++){
+                var curRow = row.Rows.Get(i);
+                valuelist.Add(curRow, ""+indent+curRow.Имя);
+                if (curRow.Rows.Count()>0){
+                    arguments.callee(curRow, valuelist, indent+"   ");
+                }
+            }
+        
+        })(curRow, valuelist, indent);    
+
+        var dlg = new SelectValueDialogMdNavigator("Какую подсистему желаете отобрать?", valuelist, form.Controls.PicRecursive.Picture);
+        dlg.form.sortByName = recursiveSubsystems; //Тут переорпределяем кнопку сортировки по алфавиту на кнопку рекурсивного обхода. 
+        
+        result = dlg.selectValue();
+        selectedRow = dlg.selectedValue;     
+        
+        recursiveSubsystems = dlg.form.sortByName;
+    }
+    
     if (!selectedRow){
         isFilterOnSubSystem = false;
     } else{
@@ -811,6 +834,37 @@ function walkSubSystems(){
         }
         //return tree;
 }
+
+SelectValueDialogMdNavigator = SelectValueDialog.extend({
+    //Меняем картинку у кнопки SortByName и в дальнейшем в логике учитываем ее как recursiveSubsystems
+    construct : function (caption, values, pic) {
+        this._super(caption, values);
+        if (pic == undefined) pic = null
+        this.pic = pic; //Сюда передаем картинку. 
+    },
+    selectValue: function (values) {
+        if (!this.pic){
+
+        } else {
+            try{
+                this.form.Controls.CmdBar.Buttons.SortByName.Picture = this.pic;    
+            } catch (e) {}
+        }
+        this.form.Controls.CmdBar.Buttons.SortByName.ToolTip = "Рекурсивно обходить все вложенные подсистемы";
+        this._super(values);
+    },
+
+    sortValuesList: function (sortByName, vt) {
+        if (!vt) {
+            vt = this.form.ValuesList;
+        }
+        vt.Sort('Order');
+    }
+
+
+})
+
+
 
 
 SelfScript.self['macrosНастройка фильтра для подсистем'] = function(){
