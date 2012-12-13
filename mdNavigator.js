@@ -49,7 +49,8 @@ function walkMdObjs(mdObj, parentName)
         row.Name = "Конфигурация";
     else
         row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1) + "." + mdObj.name
-    row.lName = row.Name.toLowerCase()
+    row.lName = row.Name.toLowerCase();
+    row.parentUUID = (!mdObj.parent) ? "" : mdObj.parent.id;
     vtMD.push(row)
 
     // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
@@ -312,7 +313,7 @@ function fillTable(newFilter)
             var maxIndex = 0;
             var rate = 0;
             if (isFilterOnSubSystem){
-                if (!subSystemFilter.hasOwnProperty(vtMD[k].UUID)){
+                if (!subSystemFilter.hasOwnProperty(vtMD[k].UUID) && !subSystemFilter.hasOwnProperty(vtMD[k].parentUUID)){
                     continue;
                 }
             }
@@ -411,7 +412,7 @@ function doAction(func)
             
             if(!mdObj)
             {
-                MessageBox("Объект '" + curRow.Name + "' не найден.");
+                Message("Объект '" + curRow.Name + "' не найден.");
                 continue;
             }
             res.push({mdObj:mdObj, func:func});
