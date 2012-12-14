@@ -34,6 +34,7 @@ var treeSubSystems = null;
 var subSystemMap = v8New("Map")
 var isFilterOnSubSystem = false;
 var subSystemFilter = {};
+var currentSubSystemFilter = "";
 var recursiveSubsystems = false;
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
@@ -277,6 +278,7 @@ function fillTable(newFilter)
         form.ТаблицаМетаданных.Clear();
     }
     var mode = ''
+    var formTitle = 'Навигатор метаданных';
     if(!currentFilter.length & !isFilterOnSubSystem)
     {
         mode = "Недавно используемые объекты:"
@@ -286,6 +288,7 @@ function fillTable(newFilter)
             row.Name = listOfChoices[k].Name
             row.UUID = listOfChoices[k].UUID
         }
+        form.ЭлементыФормы.Подсистема.Видимость = false;
     } 
     else
     {
@@ -343,9 +346,17 @@ function fillTable(newFilter)
             row.Rate = rate;
         }
         form.ТаблицаМетаданных.Sort("Rate, Name");
-        mode = "Объекты, подходящие под фильтр '" + currentFilter + "' (" + form.ТаблицаМетаданных.Количество() + " шт.):"
+        mode+= (!currentFilter.length)?"":"фильтр '" + currentFilter + "' (" + form.ТаблицаМетаданных.Количество() + " шт.):"
+        if (isFilterOnSubSystem){
+            form.ЭлементыФормы.Подсистема.Видимость = true;
+            form.ЭлементыФормы.Подсистема.Заголовок  = "    "+currentSubSystemFilter+((recursiveSubsystems)?" (рекурсивно)":"");
+            formTitle+=" подсистема "+currentSubSystemFilter+((recursiveSubsystems)?" (рекурсивно)":"");
+        }
+        
+
     }
     form.ЭлементыФормы.Режим.Заголовок = mode
+    form.Заголовок = formTitle;
     if(form.ТаблицаМетаданных.Количество())
         form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(0)
 }
@@ -667,8 +678,9 @@ function КомандыFilterOnSubSystem(Кнопка){
             for (var i = 0; i<row.Rows.Count(); i++){
                 var curRow = row.Rows.Get(i);
                 valuelist.Add(curRow, ""+indent+curRow.Имя);
+
                 if (curRow.Rows.Count()>0){
-                    arguments.callee(curRow, valuelist, indent+"   ");
+                    arguments.callee(curRow, valuelist, indent+"    ");
                 }
             }
         
@@ -677,16 +689,18 @@ function КомандыFilterOnSubSystem(Кнопка){
         var dlg = new SelectValueDialogMdNavigator("Какую подсистему желаете отобрать?", valuelist, form.Controls.PicRecursive.Picture);
         dlg.form.sortByName = recursiveSubsystems; //Тут переорпределяем кнопку сортировки по алфавиту на кнопку рекурсивного обхода. 
         
-        result = dlg.selectValue();
-        selectedRow = dlg.selectedValue;     
+        result = dlg.selectValue(null, currentSubSystemFilter);
+        selectedRow = dlg.selectedValue;
         
         recursiveSubsystems = dlg.form.sortByName;
     }
     
     if (!selectedRow){
         isFilterOnSubSystem = false;
+        currentSubSystemFilter = "";
     } else{
         subSystemFilter = {};
+        currentSubSystemFilter = selectedRow.Имя;
         isFilterOnSubSystem = true;
         fillSubSystemUUIDRecursive(selectedRow);
     }
@@ -695,6 +709,8 @@ function КомандыFilterOnSubSystem(Кнопка){
         fillTable(currentFilter);
     else
         fillTable('');
+
+    updateCommands();
 }
 
 // Команда открытия свойств
@@ -843,7 +859,8 @@ SelectValueDialogMdNavigator = SelectValueDialog.extend({
         if (pic == undefined) pic = null
         this.pic = pic; //Сюда передаем картинку. 
     },
-    selectValue: function (values) {
+
+    selectValue: function (values, currentFilter) {
         if (!this.pic){
 
         } else {
@@ -851,6 +868,10 @@ SelectValueDialogMdNavigator = SelectValueDialog.extend({
                 this.form.Controls.CmdBar.Buttons.SortByName.Picture = this.pic;    
             } catch (e) {}
         }
+        var currSearch = this.form.DoNotFilter;
+        this.form.DoNotFilter = true;
+        this.updateList(currentFilter);
+        this.form.DoNotFilter = currSearch;
         this.form.Controls.CmdBar.Buttons.SortByName.ToolTip = "Рекурсивно обходить все вложенные подсистемы";
         this._super(values);
     },
@@ -861,7 +882,6 @@ SelectValueDialogMdNavigator = SelectValueDialog.extend({
         }
         vt.Sort('Order');
     }
-
 
 })
 
