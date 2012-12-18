@@ -97,9 +97,48 @@ SelfScript.Self['macrosПреобразовать регистр: ПРОПИСН
 SelfScript.Self['macrosУстановить кавычки'] = function() {
     return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
 }
+var fix;
 SelfScript.Self['macrosУстановить кавычки 2'] = function() {
-    return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
+    var w = GetTextWindow(); 
+    fix = null;
+    if (!w || windows.modalMode != msNone) return false;    
+    
+    var sel = w.GetSelection();            
+    var selText = w.GetSelectedText();
+    if (selText.length>0){
+        fix = selText;
+        events.connect(Designer, "onIdle", SelfScript.self);
+    }
+    return false;
+    
+    //return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
 }
+
+function onIdle()
+{
+    var w = GetTextWindow(); 
+    if (!w || windows.modalMode != msNone || !fix){
+        events.disconnect(Designer, "onIdle", SelfScript.self);
+        return;    
+    } 
+    var pos = w.GetCaretPos();
+
+    var beginRow = pos.beginRow;
+    var wordBegPos = pos.beginCol - 2;
+
+    var line = w.GetLine(pos.beginRow);
+    if (wordBegPos > line.length){
+    } else {
+        str = line.charAt(wordBegPos);
+        if (str=='"'){
+            w.setSelection(pos.beginRow, pos.beginCol-1, pos.endRow, pos.endCol);
+            w.SetSelectedText('"'+fix+'"');
+        }   
+    }
+    // Отписываемся от события
+    events.disconnect(Designer, "onIdle", SelfScript.self)
+}
+
 
 SelfScript.Self['macrosУстановить скобки'] = function() {
     return processSelectedText(function(selText){ return '('+selText+')'; }, true);
