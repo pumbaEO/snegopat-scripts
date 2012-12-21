@@ -1,0 +1,282 @@
+﻿$engine JScript
+$uname watch_ext
+$dname Отладчик:Расширенное табло
+$addin stdcommands
+$addin stdlib
+$addin global
+
+stdlib.require('SyntaxAnalysis.js', SelfScript);
+stdlib.require('TextWindow.js', SelfScript);
+stdlib.require('SettingsManagement.js', SelfScript);
+global.connectGlobals(SelfScript);
+
+events.connect(v8debug, "onDebugEvent", SelfScript.Self)
+stdcommands.CDebug.Break.addHandler(SelfScript.self, "onStopDebug")
+
+var form = loadScriptForm(SelfScript.fullPath.replace(/js$/i, "ssf"), SelfScript.self)
+form.КлючСохраненияПоложенияОкна = "watch_ext"
+form.ПеременныеОтладки.Колонки.Добавить("Modified")
+var rModule = form.ПеременныеОтладки.Строки.Добавить();
+rModule.Название = "Переменные модуля";
+var rParams = form.ПеременныеОтладки.Строки.Добавить();
+rParams.Название = "Параметры метода";
+var rLocal = form.ПеременныеОтладки.Строки.Добавить();
+rLocal.Название = "Локальные переменные";
+
+var needTestModified = false
+
+function onDebugEvent(eventID, eventParam)
+{
+    if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD3XEDF2EF1}")
+    {
+        //Message("Отладка начата")
+        form.Open() // Покажем окно
+    }
+    else if(eventID == "{71501A9D-CD34-427D-81B6-562491BEF945}")
+    {
+        //Message("Отладка прекращена")
+        clearExpressions()
+    }
+    if(eventID == "{5B5F928D-DF2D-4804-B2D0-B453163A2C4C}")
+    {
+        if(eventParam == 37)    // Остановились в точке останова
+        {
+            needTestModified = true
+            fillLocalVariables()    // Заполним локальные переменные
+            events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
+            form.Открыть()
+        }
+    }
+}
+
+SelfScript.self["macrosОткрыть окно отладки"] = function()
+{
+    form.Open() // Покажем окно
+}
+
+function isDebugEvalEnabled()
+{
+    // Команда "Шагнуть в" неактивна - значит, мы не в останове. Считать переменные нельзя, возможен вылет
+    var state = stdcommands.CDebug.StepIn.getState()
+    return state && state.enabled
+}
+
+function onStopDebug()
+{
+    clearExpressions()
+}
+
+function onIdle()
+{
+    if(!isDebugEvalEnabled())
+    {
+        events.disconnect(Designer, "onIdle", SelfScript.self)
+        return
+    }
+    try{
+    updateDebugExpressions()
+    }catch(e)
+    {
+        // Все ошибки будем гасить
+    }
+}
+
+function clearExpressions()
+{
+    rModule.Строки.Очистить()
+    rParams.Строки.Очистить()
+    rLocal.Строки.Очистить()
+    if(form.Открыта())
+        form.Закрыть()
+}
+
+function getRow(parent, name)
+{
+    var r = parent.Строки.Найти(name, "Название")
+    if(!r)
+    {
+        r = parent.Строки.Добавить()
+        r.Название = name
+        r.Modified = 0
+    }
+    return r
+}
+
+function removeRows(parent, all)
+{
+    var del = []
+    for(var k = new Enumerator(parent.Строки); !k.atEnd(); k.moveNext())
+    {
+        var r = k.item()
+        if(!all[r.Название])
+            del.push(r)
+    }
+    for(var k in del)
+        parent.Строки.Удалить(del[k])
+}
+
+function fillLocalVariables()
+{
+    var wnd = GetTextWindow();
+    if(!wnd)
+        return
+    var mod = SyntaxAnalysis.AnalyseTextDocument(wnd)
+    var meth = mod.getActiveLineMethod()
+    //debugger
+    // Заполним переменные модуля
+    var all = {}
+    for(var k in mod.context.ModuleVars)
+    {
+        getRow(rModule, mod.context.ModuleVars[k])
+        all[mod.context.ModuleVars[k]] = true
+    }
+    removeRows(rModule, all)
+    // Заполним параметры
+    if(meth.Params)
+    {
+        var all = {}
+        for(var k in meth.Params)
+        {
+            getRow(rParams, meth.Params[k])
+            all[meth.Params[k]] = true
+        }
+        removeRows(rParams, all)
+    }
+    // Заполним локальные переменные
+    var all = {}
+    for(var k in meth.DeclaredVars)
+    {
+        getRow(rLocal, meth.DeclaredVars[k])
+        all[meth.DeclaredVars[k]] = true
+    }
+    for(var k in meth.AutomaticVars)
+    {
+        getRow(rLocal, meth.AutomaticVars[k])
+        all[meth.AutomaticVars[k]] = true
+    }
+    removeRows(rLocal, all)
+    form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rModule, false)
+    form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rParams, false)
+    form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rLocal, false)
+}
+
+function setRowValue(row, value, type)
+{
+    if(needTestModified)
+    {
+        if(row.Modified == 0)   // Строка только что добавилась
+            row.Modified = 1    // В следующий раз проверять строку на изменение
+        else
+            row.Modified = row.Значение !== value ? 2 : 1
+    }
+    row.Значение = value
+    row.Тип = type
+}
+
+function updateOneExpression(row, parentName)
+{
+    // Рассчитаем отладочное значение в строке
+    var expr = v8debug.eval(parentName + row.Название)
+    // Установим значение и модифицированность
+    setRowValue(row, expr.value, expr.type)
+    // Переберем свойства вычисленного выражения
+    var all = {}
+    for(var k = 0; k < expr.propCount; k++)
+    {
+        var prop = expr.prop(k)
+        var r = getRow(row, prop.name)
+        all[prop.name] = true
+        setRowValue(r, prop.value, prop.type)
+        
+        if(prop.expandable)
+        {
+            // Свойство имеет подсвойства, надо показывать плюсик
+            if(!r.Строки.Количество()) // Для этого при необходимости добавим пустую строку
+                r.Строки.Добавить().Название = "-"
+                
+            // Если свойство само развернуто, его надо тоже обновить
+            if(form.ЭлементыФормы.ПеременныеОтладки.Развернут(r))
+                updateOneExpression(r, parentName + row.Название + ".")
+        }
+        else
+        {
+            // Не разворачиваемое свойство, на всякий случай удалим подчиненные строки
+            r.Строки.Очистить()
+        }
+    }
+    removeRows(row, all)
+}
+
+function updateRows(parent)
+{
+    for(var rows = new Enumerator(parent.Строки); !rows.atEnd(); rows.moveNext())
+        updateOneExpression(rows.item(), "")
+}
+
+function updateDebugExpressions()
+{
+    if(!form.Открыта())
+        return
+    //debugger
+    updateRows(rModule)
+    updateRows(rParams)
+    updateRows(rLocal)
+    needTestModified = false
+}
+
+function fullName(row)
+{
+    var t = row.Название
+    for(var k = row.Уровень(); k > 1; k--)
+    {
+        row = row.Родитель
+        t = row.Название + "." + t
+    }
+    return t
+}
+
+function ПеременныеОтладкиВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+    var value = ВыбраннаяСтрока.val.Значение
+    if(value.indexOf('\n') >= 0)
+    {
+        Message("Значение '" + fullName(ВыбраннаяСтрока.val) + "':", mInfo)
+        Message(value)
+    }
+}
+
+var colorRed = v8new("Цвет", 255, 0, 0), colorGray = v8new("Цвет", 200, 200, 200)
+
+function ПеременныеОтладкиПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
+{
+    if(ДанныеСтроки.val.Уровень() == 0)
+        ОформлениеСтроки.val.ЦветФона = colorGray
+    else
+    {
+        if(ДанныеСтроки.val.Modified == 2)
+            ОформлениеСтроки.val.ЦветТекста = colorRed
+        // Для строк с переносом строки покажем картинку, что на нее можно щелкнуть
+        if(ДанныеСтроки.val.Значение.indexOf('\n') >= 0)
+        {
+            var cell = ОформлениеСтроки.val.Ячейки.Значение
+            cell.ОтображатьКартинку = true
+            cell.ИндексКартинки = 0
+        }
+    }
+}
+
+function ПеременныеОтладкиПередРазворачиванием(Элемент, Строка, Отказ)
+{
+    if(isDebugEvalEnabled())    // Если возможно вычисление отладочных выражений
+    {
+        var row = Строка.val
+        if(row.Уровень() > 0)   // Это не строка с именем раздела
+        {
+            if(row.Строки.Количество() == 1 && row.Строки.Получить(0).Название == "-")
+            {
+                // Разворачиваем первый раз
+                updateOneExpression(row, fullName(row.Родитель) + ".")
+            }
+        }
+    }
+}
