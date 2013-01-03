@@ -142,4 +142,4 @@ SelfScript.self['macrosСтоп перехвата рекурсивного за
     }
 }
 
-events.connect(windows, "onDoModal", SelfScript.self, "hookCfgStorWindow") ;
+stdlib.setTimeout(function() { events.connect(windows, "onDoModal", SelfScript.self, "hookCfgStorWindow"); }, 3000);
