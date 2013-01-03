@@ -22,24 +22,23 @@ var rParams = form.ПеременныеОтладки.Строки.Добави�
 rParams.Название = "Параметры метода";
 var rLocal = form.ПеременныеОтладки.Строки.Добавить();
 rLocal.Название = "Локальные переменные";
-
-var needTestModified = false
+var curMdObject = "";
+var curSyntaxAnalysis = null;
+var needTestModified = false;
 
 function onDebugEvent(eventID, eventParam)
 {
     if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD3XEDF2EF1}")
     {
-        //Message("Отладка начата")
         form.Open() // Покажем окно
     }
     else if(eventID == "{71501A9D-CD34-427D-81B6-562491BEF945}")
     {
-        //Message("Отладка прекращена")
         clearExpressions()
     }
     if(eventID == "{5B5F928D-DF2D-4804-B2D0-B453163A2C4C}")
     {
-        if(eventParam == 37)    // Остановились в точке останова
+        if(eventParam == 37 || eventParam == 24 )    // Остановились в точке останова
         {
             needTestModified = true
             fillLocalVariables()    // Заполним локальные переменные
@@ -120,7 +119,31 @@ function fillLocalVariables()
     var wnd = GetTextWindow();
     if(!wnd)
         return
-    var mod = SyntaxAnalysis.AnalyseTextDocument(wnd)
+    view = wnd.GetView();
+    if (!view){
+    } else {
+        if (view.mdObj && view.mdProp) {
+            
+            function getMdName(mdObj) {                             
+                if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
+                    return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + ' ' + mdObj.name;
+                var cname = mdObj.mdClass.name(1);
+                return  (cname ? cname + ' ' : '') + mdObj.name;
+            }
+            title = getMdName(view.mdObj) + ': ' + view.mdProp.name(1);
+            if (title != curMdObject)
+                curSyntaxAnalysis = null;
+                curMdObject = title;
+        }
+    }
+    
+    if (!curSyntaxAnalysis || !view){
+        var mod = SyntaxAnalysis.AnalyseTextDocument(wnd);
+        curSyntaxAnalysis = mod;
+    } else {
+        var mod = curSyntaxAnalysis;
+    }
+    
     var meth = mod.getActiveLineMethod()
     //debugger
     // Заполним переменные модуля
