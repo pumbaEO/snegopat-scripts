@@ -16,7 +16,7 @@ global.connectGlobals(SelfScript)
 
 // (c) Евгений JohnyDeath Мартыненков
 // (c) Александр Орефков
-// (c) Сосна Евгений <shenaj@sosna.zp.ua>
+// (c) Сосна Евгений <shenja@sosna.zp.ua>
 
 var form = null
 var vtMD = null
@@ -530,6 +530,7 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         readMDtoVT();
     if(!form)
     {
+
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
         form.КлючСохраненияПоложенияОкна = "mdNavigator"
         Icons = {
@@ -538,15 +539,28 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         }
 
         // Заполним таблицу изначально
-        fillTable('')
+        fillTable('');
+
     }
     else
         currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
     
     updateCommands()
+
     // Будем отлавливать изменение текста с задержкой 300 мсек
     var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable)
     tc.start()
+    var wnd = GetTextWindow();    
+    if (wnd){
+        var selText = wnd.GetSelectedText();
+        selText = selText.replace(/^\s*|\s*$/g, '');
+        if (selText.length>0){
+            if (currentFilter.length==0){
+                form.ЭлементыФормы.ТекстФильтра.Значение = selText;
+            }
+        }
+    }
+
     var res = form.ОткрытьМодально()
     tc.stop()
     if(res) // Если что-то выбрали, вызовем обработчик
