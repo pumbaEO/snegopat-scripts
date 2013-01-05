@@ -283,6 +283,9 @@ function macrosПоказать()
     form.Filter = ""
     form.Открыть()
     form.CurrentControl = form.Controls.WndList
+    if (activateSearchElement){
+        form.CurrentControl = form.Controls.Filter;
+    }
 }
 
 function macrosПереключитьВидимостьОкнаСвойств()
@@ -416,18 +419,19 @@ function WndListПриВыводеСтроки(Элемент, Оформлен�
 
 function FilterРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
-    var curRow = form.Controls.WndList.ТекущаяСтрока
+    var curRow = form.Controls.WndList.ТекущаяСтрока;
+    var wndList = form.Controls.WndList.Value;
     if(!curRow)
     {
-        if(form.WndList.Количество())
-            form.Controls.WndList.ТекущаяСтрока = form.WndList.Получить(-1 == Направление.val ? 0 : form.WndList.Количество() - 1)
+        if(form.WndList.Rows.Количество())
+            form.Controls.WndList.ТекущаяСтрока = form.WndList.Rows.Получить(-1 == Направление.val ? 0 : form.WndList.Rows.Количество() - 1)
         return
     }
-    var curRowIdx = form.WndList.Индекс(curRow), newRowIdx = curRowIdx
+    var curRowIdx = form.WndList.Rows.Индекс(curRow), newRowIdx = curRowIdx
     
     if(-1 == Направление.val)
     {
-        if(curRowIdx != form.WndList.Количество() - 1)
+        if(curRowIdx != form.WndList.Rows.Количество() - 1)
             newRowIdx++
     }
     else
@@ -436,7 +440,7 @@ function FilterРегулирование(Элемент, Направление
             newRowIdx--
     }
     if(newRowIdx != curRowIdx)
-        form.Controls.WndList.ТекущаяСтрока = form.WndList.Получить(newRowIdx)
+        form.Controls.WndList.ТекущаяСтрока = form.WndList.Rows.Получить(newRowIdx)
     СтандартнаяОбработка.val = false
 }
 
@@ -541,6 +545,7 @@ function CmdsRestoreSession(Кнопка){
 function НастройкиПриОткрытии() {
     мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла=мДляВнешнихФайловОтображатьТолькоИмяФайла
     мФормаНастройки.ИспользоватьСессии = мИспользоватьСессии;
+    мФормаНастройки.ПриОткрытииФормыАктивизироватьСтрокуПоиска = activateSearchElement;
 }
 
 function CmdsConfig(Кнопка)
@@ -553,10 +558,12 @@ function CmdsConfig(Кнопка)
 function мЗаписатьНастройки() {
     мДляВнешнихФайловОтображатьТолькоИмяФайла=мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла
     мИспользоватьСессии = мФормаНастройки.ИспользоватьСессии;
+    activateSearchElement = мФормаНастройки.ПриОткрытииФормыАктивизироватьСтрокуПоиска;
     profileRoot.setValue(pflOnlyNameForExtFiles, мДляВнешнихФайловОтображатьТолькоИмяФайла)
     profileRoot.setValue(pflUseSessions, мИспользоватьСессии);
+    profileRoot.setValue(pflActivateSearch, activateSearchElement);
     if (!sessionManager && мИспользоватьСессии){
-        Message("test load settings")
+        //Message("test load settings")
         loadSessionManager();
     }
 }
@@ -620,10 +627,13 @@ function loadSessionManager(){
 
 var pflOnlyNameForExtFiles = "WndPanel/OnlyNameForExtFiles"
 var pflUseSessions = "WndPanel/UseSessions";
+var pflActivateSearch = "WndPanel/ActivateSearch";
 profileRoot.createValue(pflOnlyNameForExtFiles, false, pflSnegopat)
 profileRoot.createValue(pflUseSessions, false, pflSnegopat)
+profileRoot.createValue(pflActivateSearch, false, pflSnegopat)
 var мДляВнешнихФайловОтображатьТолькоИмяФайла = profileRoot.getValue(pflOnlyNameForExtFiles);
 var мИспользоватьСессии = profileRoot.getValue(pflUseSessions);
+var activateSearchElement = profileRoot.getValue(pflActivateSearch);
 
 sessionManager = null;
 if (мИспользоватьСессии){
