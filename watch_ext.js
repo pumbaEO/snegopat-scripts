@@ -8,6 +8,7 @@ $addin global
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
+
 global.connectGlobals(SelfScript);
 
 events.connect(v8debug, "onDebugEvent", SelfScript.Self)
@@ -25,6 +26,7 @@ rLocal.Название = "Локальные переменные";
 var curMdObject = "";
 var curSyntaxAnalysis = null;
 var needTestModified = false;
+var timerExpressionUpdater = null;
 
 function onDebugEvent(eventID, eventParam)
 {
@@ -34,7 +36,8 @@ function onDebugEvent(eventID, eventParam)
     }
     else if(eventID == "{71501A9D-CD34-427D-81B6-562491BEF945}")
     {
-        clearExpressions()
+        clearExpressions();
+        timerExpressionUpdater.stopWatch();
     }
     if(eventID == "{5B5F928D-DF2D-4804-B2D0-B453163A2C4C}")
     {
@@ -43,9 +46,11 @@ function onDebugEvent(eventID, eventParam)
             needTestModified = true
             fillLocalVariables()    // Заполним локальные переменные
             events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
-            form.Открыть()
+            form.Открыть();
+            timerExpressionUpdater.updateTimer();
         }
     }
+    //Message("eventID:"+eventID+" eventParam:"+eventParam);
 }
 
 SelfScript.self["macrosОткрыть окно отладки"] = function()
@@ -73,11 +78,12 @@ function onIdle()
         return
     }
     try{
-    updateDebugExpressions()
+        updateDebugExpressions()
     }catch(e)
     {
         // Все ошибки будем гасить
     }
+    events.disconnect(Designer, "onIdle", SelfScript.self)
 }
 
 function clearExpressions()
@@ -155,8 +161,9 @@ function fillLocalVariables()
     }
     removeRows(rModule, all)
     // Заполним параметры
-    if(meth.Params)
-    {
+    if(!meth.Params){
+
+    }else{
         var all = {}
         for(var k in meth.Params)
         {
@@ -303,3 +310,54 @@ function ПеременныеОтладкиПередРазворачивани�
         }
     }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ TimerExpressionUpdater - переодически обновляем значения переменных
+////
+
+TimerExpressionUpdater = stdlib.Class.extend({
+
+    construct : function() {
+        this.timerId = 0;
+        //this.startWatch();
+    },
+
+    updateTimer: function(){
+        this.stopWatch();
+        this.startWatch()
+    },
+
+    startWatch : function () {
+        if (this.timerId)
+            this.stopWatch();
+        this.timerId = createTimer(3000, this, 'onTimer');
+    },
+
+    stopWatch : function () {
+        if (!this.timerId)
+            return;
+        killTimer(this.timerId);
+        this.timerId = 0;
+    },
+
+    onTimer : function (timerId) {
+        if(!isDebugEvalEnabled()){
+            this.stopWatch();
+            return;
+        }
+
+        if(!form.Открыта()){
+            this.stopWatch();
+            return
+        }
+        updateRows(rModule)
+        updateRows(rParams)
+        updateRows(rLocal)
+    }
+    
+}); // end of TimerExpressionUpdater class
+
+//} TimerExpressionUpdater 
+
+timerExpressionUpdater = new TimerExpressionUpdater();
