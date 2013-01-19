@@ -65,6 +65,9 @@ SubSystemFilter = stdlib.Class.extend({
         this.settings = SettingsManagement.CreateManager(this.settingsRootPath, this.defaultSettings);
         this.loadSettings();
 
+        this.md = metadata.current;
+        this.mdId = this.md.identifier;
+
         SubSystemFilter._instance = this;
     },
 
@@ -121,7 +124,8 @@ SubSystemFilter = stdlib.Class.extend({
     },
     
     walkSubSystems:function(){
-        var md = metadata.current;
+        
+        var md = this.md;
         this.treeSubSystems = v8New("ValueTree");
         this.treeSubSystems.Columns.Add("Имя");
         if (!md){
@@ -163,6 +167,10 @@ SubSystemFilter = stdlib.Class.extend({
     filterDialog:function(){
         
         var selectedRow = null;
+        if (this.mdId!=this.md.identifier){
+            this.walkSubSystems();
+            this.mdId = this.md.identifier;
+        }
         if (!this.treeSubSystems)
             this.walkSubSystems();
         if (this.treeSubSystems.Rows.Count()>0){
@@ -210,7 +218,37 @@ SubSystemFilter = stdlib.Class.extend({
     },
     
     filterOnSubSystem: function(){
-    
+        
+        choice = v8New("СписокЗначений");
+        for(var i = 0, c = metadata.openedCount; i < c; i++)
+        {
+            var container = metadata.getContainer(i)
+            try{
+                if(container.rootObject.childObjectsCount("Подсистемы") > 0){
+                    if (container == metadata.ib){
+                        continue;                        
+                    }
+                    choice.Add(container, container.identifier)
+                }
+                 
+            }catch(e){}
+        }
+
+        if(choice.Count() == 0)
+        {
+            Message("Нет конфигураций с подсистемами...")
+            return null
+        }
+        else if(choice.Count() == 1)
+            choice = choice.Get(0)
+        else
+            choice = choice.ChooseItem("Выберите конфигурацию для отбора подсистем");
+        if(!choice)
+            return null
+
+        var container = choice.Value
+        this.md = container;
+        //var mdObj = container.rootObject
         selectedRow = this.filterDialog();
         if (selectedRow!=undefined){
             var sk = ""
