@@ -14,19 +14,21 @@ $addin stdcommands
 
 stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
+stdlib.require('log4js.js', SelfScript);
 
 //stdlib.require(stdlib.getSnegopatMainFolder() + 'scripts\\epf\\epfloader.js', SelfScript);
 global.connectGlobals(SelfScript);
 
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
 ////
-
-SelfScript.self['macrosНастройка'] = function() {
-    var sm = GetDebugInstruments();
-    sm.changeSettings();
-    return true;
-}
 
 SelfScript.self['macrosОтладить запрос модально'] = function() {
     var sm = GetDebugInstruments();
@@ -42,7 +44,6 @@ SelfScript.self['macrosОтладить запрос модально'] = functi
     return true;
 }
 
-
 SelfScript.self['macrosОтладить запрос не модально'] = function() {
     var w = GetTextWindow();
     if (!w) return false;
@@ -56,6 +57,7 @@ SelfScript.self['macrosОтладить запрос не модально'] = f
 }
 
 SelfScript.self['macrosИсследовать'] = function() {
+    
     var sm = GetDebugInstruments();
     
     var w = GetTextWindow();
@@ -64,11 +66,54 @@ SelfScript.self['macrosИсследовать'] = function() {
     var selText = w.GetSelectedText();
     if (selText == '')
         selText = w.GetWordUnderCursor();
-    
+    logger.debug("macrosИсследовать");
     sm.research(selText);
     
     return true;
 }
+
+
+SelfScript.self['macrosПр(Присвоить)'] = function() {
+    
+    var sm = GetDebugInstruments();
+    logger.debug('macrosПр(Присвоить)');
+    var w = GetTextWindow();
+    if (!w) return false;
+    
+    var selText = w.GetSelectedText();
+    if (selText == '')
+        selText = w.GetWordUnderCursor();
+    sm.show();
+    sm.form.Controls.Панель1.CurrentPage = sm.form.Controls.Панель1.Pages.СтраницаПр;
+    if (selText.length>0){
+        sm.form.Controls.TextDocumentFieldP1.SetText(selText);
+    }
+    //pop = sm.pop(selText, false);
+    
+    return true
+}
+
+SelfScript.self['macrosДу'] = function() {
+    
+    var sm = GetDebugInstruments();
+    logger.debug('macrosДу');
+    var w = GetTextWindow();
+    if (!w) return false;
+    
+    var selText = w.GetSelectedText();
+    if (selText == '')
+        selText = w.GetWordUnderCursor();
+    sm.show();
+    sm.form.Controls.Панель1.CurrentPage = sm.form.Controls.Панель1.Pages.СтраницаДу;
+    if (selText.length>0){
+        sm.form.Controls.TextDocumentFieldProgText.SetText(selText);
+    }
+    //pop = sm.pop(selText, false);
+    
+    return true
+}
+
+
 
 SelfScript.self['macrosНачать трассу в технологическом журнале'] = function() {
     var sm = GetDebugInstruments();
@@ -119,6 +164,13 @@ SelfScript.self['macrosПоп не модально'] = function() {
     
     return true
 }
+
+SelfScript.self['macrosНастройка'] = function() {
+    var sm = GetDebugInstruments();
+    sm.changeSettings();
+    return true;
+}
+
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
@@ -179,6 +231,20 @@ DebugInstruments = ScriptForm.extend({
         }
     },
     
+    v8debugEval:function(command){
+        var result = null;
+        if (!this.isDebugEvalEnabled()){
+            return result;
+        }
+        try {
+            result = v8debug.eval(command);
+        } catch(e) {
+            logger.error(e.description)
+        }
+        return result;
+        
+    },
+    
     isDebugEvalEnabled: function(){
         // Команда "Шагнуть в" неактивна - значит, мы не в останове. Считать переменные нельзя, возможен вылет
         var state = stdcommands.CDebug.StepIn.getState()
@@ -205,11 +271,14 @@ DebugInstruments = ScriptForm.extend({
         exprCtrl = ''+ this.form.queryCommand + '(' + text + ', ' + (doModal ? 'Истина' :  'Ложь') + ')';
         
         exprCtrl = this.exprText(exprCtrl);
-        
+        var result = '';
         // Рассчитаем отладочное значение в строке
-        var expr = v8debug.eval(exprCtrl)
-        if (!expr.value.match(/^\s*$/))
-            Message(""+expr.value);
+        var expr = this.v8debugEval(exprCtrl);
+        if (!expr){
+            if (expr.value.length>0){
+                logger.error(expr.value);
+            }
+        }
     },
     
     startTechLog : function (){
@@ -220,10 +289,14 @@ DebugInstruments = ScriptForm.extend({
         
         exprCtrl = this.exprText(exprCtrl);
         
+        var result = '';
         // Рассчитаем отладочное значение в строке
-        var expr = v8debug.eval(exprCtrl)
-        if (!expr.value.match(/^\s*$/))
-            Message(""+expr.value);
+        var expr = this.v8debugEval(exprCtrl);
+        if (!expr){
+            if (expr.value.length>0){
+                logger.error(expr.value);
+            }
+        }
     },
     
     stopTechLog : function (){
@@ -234,26 +307,41 @@ DebugInstruments = ScriptForm.extend({
         
         exprCtrl = this.exprText(exprCtrl);
         
+        var result = '';
         // Рассчитаем отладочное значение в строке
-        var expr = v8debug.eval(exprCtrl)
-        if (!expr.value.match(/^\s*$/))
-            Message(""+expr.value);
+        var expr = this.v8debugEval(exprCtrl);
+        if (!expr){
+            if (expr.value.length>0){
+                logger.error(expr.value);
+            }
+        }
     },
     
     research : function(text, doModal){
         
         if (!this.isDebugEvalEnabled())
             return
-        
-        debugger;
+        if (!doModal) doModal = true;
+        //debugger;
         exprCtrl = ''+ this.form.researchCommand + '(' + text + ', ' + (doModal ? 'Истина' :  'Ложь') + ')';
         
         exprCtrl = this.exprText(exprCtrl);
         
+        logger.debug('research');
+        logger.debug(exprCtrl);
+        var result = '';
+        
         // Рассчитаем отладочное значение в строке
-        var expr = v8debug.eval(exprCtrl)
+        var expr = this.v8debugEval(exprCtrl);
+        
+        if (!expr)
+            return result;
+        
         if (!expr.value.match(/^\s*$/))
-            Message(""+expr.value);
+            result = ''+expr.value;
+        
+        logger.debug(result);
+        return result;
     },
     
     pop : function(text, doModal){
@@ -261,22 +349,164 @@ DebugInstruments = ScriptForm.extend({
         if (!this.isDebugEvalEnabled())
             return
         
-        exprCtrl = ''+ this.form.poopCommand + '(' + text + ', ' + (doModal ? 'Истина' :  'Ложь') + ')';
+        exprCtrl = ''+ this.form.poopCommand + '("' + text.replace(/"/g, '""') + '" , ' + (doModal ? 'Истина' :  'Ложь') + ')';
         
         exprCtrl = this.exprText(exprCtrl);
         
+        logger.debug('pop');
+        logger.debug(exprCtrl);
+        
+        var result = '';
         // Рассчитаем отладочное значение в строке
-        var expr = v8debug.eval(exprCtrl)
+        var expr = this.v8debugEval(exprCtrl)
+        
+        if (!expr)
+            return result;
+        
         if (!expr.value.match(/^\s*$/))
-            Message(""+expr.value);
+            result = ''+expr.value;
+        logger.debug('result:'+result);
+        return result;
     },
+    
+    pr : function(p1, p2){
+        if (!this.isDebugEvalEnabled()){
+            logger.error('Мы не в режиме отладки, выходим из процедуры')
+            return
+        }
+        
+        
+        exprCtrl = ''+ this.form.prCommand + '(' + p1 + ', ' + p2.replace(/"/g, '""') + ')';
+        
+        exprCtrl = this.exprText(exprCtrl);
+        
+        logger.debug('pr');
+        logger.debug(exprCtrl);
+        
+        result = '';
+        
+        // Рассчитаем отладочное значение в строке
+        var expr = this.v8debugEval(exprCtrl);
+        if (!expr)
+            return result;
+        
+        //var expr = this.v8debugEval(exprCtrl)
+        
+        if (!expr.value.match(/^\s*$/))
+            result = ''+expr.value;
+
+        return result;
+    },
+    
+    operate:function(text){
+        
+        exprCtrl = ''+ text;
+        
+        exprCtrl = this.exprText(exprCtrl);
+        
+        logger.debug('operate');
+        logger.debug(exprCtrl);
+        
+        result = '';
+        
+        // Рассчитаем отладочное значение в строке
+        var expr = this.v8debugEval(exprCtrl);
+        if (!expr)
+            return result;
+        
+        //var expr = this.v8debugEval(exprCtrl)
+        if (!expr.sucessed){
+            logger.error('Ошибка выполнения комманды '+expr +' \n Ошибка:'+expr.value);
+        }
+        if (!expr.value.match(/^\s*$/))
+            result = ''+expr.value;
+
+        return result;
+    },
+    
+    du : function(progText, p1, p2, p3, p4){
+        //Ду(Знач ТекстПрограммы, п1 = 0, п2 = 0, п3 = 0, п4 = 0)
+        
+        if (!p1) p1='0';
+        if (!p2) p2='0';
+        if (!p3) p3='0';
+        if (!p4) p4='0';
+        
+                
+        
+        
+        exprCtrl = ''+ this.form.duCommand + '("' + progText.replace(/"/g, '""') + '" , '+p1 + ','+p2+ ',' + p3 + ','+ p4+')';
+        
+        exprCtrl = this.exprText(exprCtrl);
+        
+        logger.debug('du');
+        logger.debug(exprCtrl);
+        
+        result = '';
+        
+        // Рассчитаем отладочное значение в строке
+        var expr = this.v8debugEval(exprCtrl);
+        if (!expr){
+            logger.debug('Результат вычисления неудачный');
+            return result;
+        }
+
+        
+        //var expr = this.v8debugEval(exprCtrl)
+        
+        if (!expr.value.match(/^\s*$/))
+            result = ''+expr.value;
+
+        return result;
+        
+    },
+    
     
     beforeExitApp : function () {
         //this.watcher.stopWatch();
     }, 
     
+    ButtonPR_Click : function (Button){
+        var p1 = this.form.Controls.TextDocumentFieldP1.GetText();
+        var p2 = this.form.Controls.TextDocumentFieldP2.GetText();
+        logger.debug('ButtonPR_Click');
+        logger.debug('p1:'+p1 + '\n p2:'+p2);
+        result = this.pr(p1, p2);
+        Message(''+result);
+    },
+    
+    ButtonDuCalculate_Click : function(Button){
+        var text = this.form.Controls.TextDocumentFieldProgText.GetText();
+        
+        var p1 = this.form.Controls.TextDocumentFieldDuP1.GetText();
+        var p2 = this.form.Controls.TextDocumentFieldDuP2.GetText();
+        var p3 = this.form.Controls.TextDocumentFieldDuP3.GetText();
+        var p4 = this.form.Controls.TextDocumentFieldDuP4.GetText();
+        
+        logger.debug('ButtonDuCalculate_Click');
+        logger.debug('text:'+text);
+        logger.debug('p1:'+p1 +' p2:'+p2+' p3:'+p3+' p4:'+p4);
+        
+        result = this.du(text, p1, p2, p3, p4);
+        if (result.length>0){
+            Message(''+result);
+        }
+
+    },
+    
+    ButtonPop_Click:function(Button){
+        var text = this.form.Controls.TextDocumentFieldOpText.GetText();
+        this.form.Controls.TextDocumentFieldOpTextCalculate.SetText(this.pop(text, true));
+        
+    },
+    
+    ButtonOpCalculate_Click:function(Button){
+        var text = this.form.Controls.TextDocumentFieldOpTextCalculate.GetText();
+        result = this.operate(text);
+    },
+    
     changeSettings : function(){
-        this.show(true);
+        this.show(false);
     },
     
     saveSettings_Click : function(Button){
@@ -286,6 +516,17 @@ DebugInstruments = ScriptForm.extend({
     
     Cancel_Click : function(Button){
         this.close();
+    },
+    
+    pathToEpf_StartChoice:function(Control, DefaultHandler){
+        ДиалогОткрытияФайла=v8New("ДиалогВыбораФайла", РежимДиалогаВыбораФайла.Открытие)
+        ДиалогОткрытияФайла.ПолноеИмяФайла = ""+Control.val.Значение;
+        ДиалогОткрытияФайла.Заголовок = "Выберите внешнюю обработку"
+        if(ДиалогОткрытияФайла.Выбрать()==false) {
+            
+        } else {
+            Control.val.Значение = ДиалогОткрытияФайла.ПолноеИмяФайла;
+        }
     }
     
 

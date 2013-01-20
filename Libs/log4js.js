@@ -483,14 +483,11 @@ Log4js.Logger = function(name) {
         var lev = Log4js.Level[k];
         var typeName = Object.prototype.toString.call(lev);
         if (typeName == "[object Object]"){
-            var macros = SelfScript.self["macrosÓðîâåíü ëîããà äëÿ "+name+" íà " + k];
+            var macros = SelfScript.self["macrosУстановить логг "+name+" на " + k];
             if (!macros){
-                SelfScript.self["macrosÓðîâåíü ëîããà äëÿ "+name+" íà " + k] = new Function('var logger = Log4js.getLogger("' + name + '"); logger.setLevel(Log4js.Level.'+lev.toString()+'); logger.log("óñòàíîâëåí óðîâåíü íà '+lev.toString()+' ");');
-
+                SelfScript.self["macrosУстановить логг "+name+" на " + k] = new Function('var logger = Log4js.getLogger("' + name + '"); logger.setLevel(Log4js.Level.'+lev.toString()+'); logger.log("Уровень лога изменен на '+lev.toString()+' ");');
             }
-
         }
-
     }
     
 };
