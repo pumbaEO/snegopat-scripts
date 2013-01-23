@@ -10,8 +10,16 @@ stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
 stdlib.require("SelectValueDialog.js", SelfScript);
+stdlib.require('log4js.js', SelfScript);
 
 global.connectGlobals(SelfScript)
+
+
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
 
 
 // (c) Евгений JohnyDeath Мартыненков
@@ -19,7 +27,8 @@ global.connectGlobals(SelfScript)
 // (c) Сосна Евгений <shenja@sosna.zp.ua>
 
 var form = null
-var vtMD = null
+var vtMD = null;
+var curMD = null;
 var currentFilter = ''
 var listOfFilters = v8New("ValueList")
 var listOfChoices = []
@@ -49,7 +58,7 @@ function walkMdObjs(mdObj, parentName)
     // Получим и покажем класс объекта
     var mdc = mdObj.mdclass;
     var row = {UUID : mdObj.id}
-    if (mdObj == metadata.current.rootObject)
+    if (mdObj == curMD.rootObject)
         row.Name = "Конфигурация";
     else
         row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1) + "." + mdObj.name
@@ -188,8 +197,12 @@ TextWindowsWatcher = stdlib.Class.extend({
 
 function readMDtoVT()
 {
+    logger.info("Старт обхода метаданных")
+    if (!curMD)
+        curMD = metadata.current;
     vtMD = []
-    walkMdObjs(metadata.current.rootObject, "")
+    walkMdObjs(curMD.rootObject, "");
+    logger.info("Прочитали метаданные, количество "+vtMD.length);
 }
 
 function fillTableProcedur(filter)
@@ -363,9 +376,9 @@ function fillTable(newFilter)
 
 function findMdObj(uuid)
 {
-    if(uuid == metadata.current.rootObject.id)
-        return metadata.current.rootObject
-    return metadata.current.findByUUID(uuid);
+    if(uuid == curMD.rootObject.id)
+        return curMD.rootObject
+    return curMD.findByUUID(uuid);
 }
 
 function withSelected(func)
@@ -388,7 +401,8 @@ function doAction(func)
     var mdObj = findMdObj(curRow.UUID);
     if(!mdObj)
     {
-        MessageBox("Объект '" + curRow.Name + "' не найден.");
+        //MessageBox("Объект '" + curRow.Name + "' не найден.");
+        logger.error("Объект '" + curRow.Name + "' не найден.");
         if (!isMultiSelect)
             return
     }
@@ -426,7 +440,8 @@ function doAction(func)
             
             if(!mdObj)
             {
-                Message("Объект '" + curRow.Name + "' не найден.");
+                //Message("Объект '" + curRow.Name + "' не найден.");
+                logger.error("Объект '" + curRow.Name + "' не найден.");
                 continue;
             }
             res.push({mdObj:mdObj, func:func});
@@ -564,15 +579,45 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
     var res = form.ОткрытьМодально()
     tc.stop()
     if(res) // Если что-то выбрали, вызовем обработчик
+        logger.info(res);
         var typeName = Object.prototype.toString.call(res);
         if (typeName === '[object Array]') {
             for (var i=0; i<res.length; i++) {
                 res[i].func(res[i].mdObj);
             }
-        } else if (typeName === '[object Object]') {            
+        } else if (typeName === '[object Object]') {    
+
             res.func(res.mdObj)
         }
 }
+
+SelfScript.self['macrosВыбрать контейнер метаданных для поиска'] = function(){
+
+    choice = v8New("СписокЗначений");
+        for(var i = 0, c = metadata.openedCount; i < c; i++)
+        {
+            var container = metadata.getContainer(i)
+            choice.Add(container, container.identifier)
+        }
+
+        if(choice.Count() == 0)
+        {
+            return 
+        } else if(choice.Count() == 1){
+            choice = choice.Get(0)
+        } else {
+            choice = choice.ChooseItem("Выберите конфигурацию для поиска");
+        }
+            
+        if(!choice)
+            return false; 
+
+        var container = choice.Value
+        curMD = container;
+        vtMD = null;
+        readMDtoVT();
+}
+
 
 /*
  * Обработчики событий формы
@@ -843,7 +888,7 @@ function parseSubSystems (mdObj, row){
 
 function walkSubSystems(){
         
-    var md = metadata.current;
+    var md = curMD;
     treeSubSystems = v8New("ValueTree");
     treeSubSystems.Columns.Add("Имя");
     if (!md){
@@ -899,9 +944,6 @@ SelectValueDialogMdNavigator = SelectValueDialog.extend({
 
 })
 
-
-
-
 SelfScript.self['macrosНастройка фильтра для подсистем'] = function(){
     var values = v8New('СписокЗначений');
     values.Add(1, 'Отбирать состав только текущей подсистемы');
@@ -937,10 +979,12 @@ function getDefaultMacros()
         }
     }
 })()
-
-settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList'), 
-                                        'recursiveSubsystems':false}, pflBase);
+logger.info('Чтение настроек. ');
+settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList'), 'recursiveSubsystems': false}, pflBase);
 settings.LoadSettings();
+
+logger.info(settings.current);
+
 listOfFilters = settings.current.listOfFilters;
 recursiveSubsystems = settings.current.recursiveSubsystems;
 function beforeExitApp(){
