@@ -23,6 +23,9 @@ var rParams = form.ПеременныеОтладки.Строки.Добави�
 rParams.Название = "Параметры метода";
 var rLocal = form.ПеременныеОтладки.Строки.Добавить();
 rLocal.Название = "Локальные переменные";
+var rHands = form.ПеременныеОтладки.Строки.Добавить();
+rHands.Название = "Табло";
+getRow(rHands, '');
 var curMdObject = "";
 var curSyntaxAnalysis = null;
 var needTestModified = false;
@@ -45,7 +48,7 @@ function onDebugEvent(eventID, eventParam)
         {
             needTestModified = true
             fillLocalVariables()    // Заполним локальные переменные
-            events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
+            //events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
             form.Открыть();
             timerExpressionUpdater.updateTimer();
         }
@@ -151,6 +154,7 @@ function fillLocalVariables()
     }
     
     var meth = mod.getActiveLineMethod()
+    rModule.Значение = title;
     //debugger
     // Заполним переменные модуля
     var all = {}
@@ -160,34 +164,41 @@ function fillLocalVariables()
         all[mod.context.ModuleVars[k]] = true
     }
     removeRows(rModule, all)
-    // Заполним параметры
-    if(!meth.Params){
+    if (!meth){
+        rParams.Значение = "<Вне процедуры/функции>"
+    } else {
+        // Заполним параметры
+        rParams.Значение = meth.Name;
+        if(!meth.Params){
 
-    }else{
-        var all = {}
-        for(var k in meth.Params)
-        {
-            getRow(rParams, meth.Params[k])
-            all[meth.Params[k]] = true
+        }else{
+            var all = {}
+            for(var k in meth.Params)
+            {
+                getRow(rParams, meth.Params[k])
+                all[meth.Params[k]] = true
+            }
+            removeRows(rParams, all)
         }
-        removeRows(rParams, all)
+        // Заполним локальные переменные
+        var all = {}
+        for(var k in meth.DeclaredVars)
+        {
+            getRow(rLocal, meth.DeclaredVars[k])
+            all[meth.DeclaredVars[k]] = true
+        }
+        for(var k in meth.AutomaticVars)
+        {
+            getRow(rLocal, meth.AutomaticVars[k])
+            all[meth.AutomaticVars[k]] = true
+        }
     }
-    // Заполним локальные переменные
-    var all = {}
-    for(var k in meth.DeclaredVars)
-    {
-        getRow(rLocal, meth.DeclaredVars[k])
-        all[meth.DeclaredVars[k]] = true
-    }
-    for(var k in meth.AutomaticVars)
-    {
-        getRow(rLocal, meth.AutomaticVars[k])
-        all[meth.AutomaticVars[k]] = true
-    }
+    
     removeRows(rLocal, all)
     form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rModule, false)
     form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rParams, false)
     form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rLocal, false)
+    form.ЭлементыФормы.ПеременныеОтладки.Развернуть(rHands, false);
 }
 
 function setRowValue(row, value, type)
@@ -206,6 +217,10 @@ function setRowValue(row, value, type)
 function updateOneExpression(row, parentName)
 {
     // Рассчитаем отладочное значение в строке
+    if (row.Название.length<1){
+        setRowValue(row, '', '');
+        return;
+    }
     var expr = v8debug.eval(parentName + row.Название)
     // Установим значение и модифицированность
     setRowValue(row, expr.value, expr.type)
@@ -251,6 +266,7 @@ function updateDebugExpressions()
     updateRows(rModule)
     updateRows(rParams)
     updateRows(rLocal)
+    updateRows(rHands);
     needTestModified = false
 }
 
@@ -267,6 +283,7 @@ function fullName(row)
 
 function ПеременныеОтладкиВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
+    //Message('ПеременныеОтладкиВыбор');
     var value = ВыбраннаяСтрока.val.Значение
     if(value.indexOf('\n') >= 0)
     {
@@ -311,6 +328,31 @@ function ПеременныеОтладкиПередРазворачивани�
     }
 }
 
+function ПеременныеОтладкиПередНачаломДобавления(Элемент, Отказ, Копирование, Родитель){
+
+    Message(Родитель.Наименование);
+    if (!Родитель){
+        Отказ = true;
+        return;
+    }
+    
+    //if (Родитель.Уровень() > 0){
+    //    Отказ = true;
+    //    return;
+    //}
+    
+    if (Родитель.Наименование != rHands.Наименование){
+        Отказ = true;
+        return;
+    }
+    
+}
+
+function ПеременныеОтладкиНазваниеПриИзменении(Элемент) {
+
+    updateOneExpression(form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока, "");
+    
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ TimerExpressionUpdater - переодически обновляем значения переменных
@@ -331,7 +373,7 @@ TimerExpressionUpdater = stdlib.Class.extend({
     startWatch : function () {
         if (this.timerId)
             this.stopWatch();
-        this.timerId = createTimer(3000, this, 'onTimer');
+        this.timerId = createTimer(100, this, 'onTimer');
     },
 
     stopWatch : function () {
@@ -342,8 +384,9 @@ TimerExpressionUpdater = stdlib.Class.extend({
     },
 
     onTimer : function (timerId) {
+        
+        this.stopWatch();
         if(!isDebugEvalEnabled()){
-            this.stopWatch();
             return;
         }
 
@@ -351,9 +394,15 @@ TimerExpressionUpdater = stdlib.Class.extend({
             this.stopWatch();
             return
         }
+        try {
         updateRows(rModule)
         updateRows(rParams)
         updateRows(rLocal)
+        updateRows(rHands);
+        
+        } catch (e) {
+             // Все ошибки будем гасить
+        }
     }
     
 }); // end of TimerExpressionUpdater class
