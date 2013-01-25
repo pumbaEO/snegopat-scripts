@@ -578,7 +578,8 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
 
     var res = form.ОткрытьМодально()
     tc.stop()
-    if(res) // Если что-то выбрали, вызовем обработчик
+    if(res){
+        // Если что-то выбрали, вызовем обработчик
         logger.info(res);
         var typeName = Object.prototype.toString.call(res);
         if (typeName === '[object Array]') {
@@ -588,7 +589,8 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         } else if (typeName === '[object Object]') {    
 
             res.func(res.mdObj)
-        }
+        }  
+    } 
 }
 
 SelfScript.self['macrosВыбрать контейнер метаданных для поиска'] = function(){
