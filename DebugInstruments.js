@@ -349,7 +349,7 @@ DebugInstruments = ScriptForm.extend({
         if (!this.isDebugEvalEnabled())
             return
         
-        exprCtrl = ''+ this.form.poopCommand + '("' + text.replace(/"/g, '""') + '" , ' + (doModal ? 'Истина' :  'Ложь') + ')';
+        exprCtrl = ''+ this.form.poopCommand + '("' + text.replace(/"/g, '""') + '" , ' + (doModal ? '1' :  '0') + ')';
         
         exprCtrl = this.exprText(exprCtrl);
         
@@ -453,7 +453,7 @@ DebugInstruments = ScriptForm.extend({
 
         
         //var expr = this.v8debugEval(exprCtrl)
-        
+        logger.trace(expr);
         if (!expr.value.match(/^\s*$/))
             result = ''+expr.value;
 
