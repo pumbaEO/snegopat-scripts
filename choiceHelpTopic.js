@@ -124,17 +124,18 @@ function getDefaultMacros() {
             choices.Add(i, this.setFilter(rows.item().Get(0)));
             i++;
         }
+        i = 0;
 
         var dlg = new SelectValueDialog("Выберите главу", choices);
         dlg.form.GreedySearch = true;
         sel = dlg.selectValue();
         if (sel) {
             var sk = ""
-            for (var i = 0; i<=dlg.selectedValue; i++) {
+            for (var i = 0; i<dlg.selectedValue; i++) {
                 sk += "{DOWN}"
             };
             sk +="~"; //enter
-            sk +="{TAB}"; // tab, переместимся сразу в нижние окно справки, что бы работали стрелки вверх и вниз, если српавка не вмещается и появляется скролл. 
+            //sk +="{TAB}"; // tab, переместимся сразу в нижние окно справки, что бы работали стрелки вверх и вниз, если српавка не вмещается и появляется скролл. 
             new ActiveXObject("WScript.Shell").SendKeys(sk);
 
 
