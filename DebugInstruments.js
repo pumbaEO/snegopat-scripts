@@ -214,20 +214,24 @@ DebugInstruments = ScriptForm.extend({
     loadSettings : function(){
         this._super();
         if (this.form.useEpf){
-            
-            if (!fileExists(getAbsolutePath(this.form.pathToEpf))){
-                var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
-                var СистемнаяИнформация = v8New("СистемнаяИнформация");
-                var версия = СистемнаяИнформация.ВерсияПриложения;
-                if (версия.indexOf("8.2.13")==-1){
-                  notifysend.provider = notifysend.initprovider("Встроенный1С");
+            try {
+                if (!fileExists(getAbsolutePath(this.form.pathToEpf))){
+                    var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
+                    var СистемнаяИнформация = v8New("СистемнаяИнформация");
+                    var версия = СистемнаяИнформация.ВерсияПриложения;
+                    if (версия.indexOf("8.2.13")==-1){
+                      notifysend.provider = notifysend.initprovider("Встроенный1С");
+                    }
+                    notifysend.Error("Не нашли ", "Не смогли найти файл внешней обработки \n путь "+getAbsolutePath(this.form.pathToEpf), 3);
+                    notify = false;
+                    stdlib.setTimeout(function () {
+                      notify = true;
+                    }, 3000);
                 }
-                notifysend.Error("Не нашли ", "Не смогли найти файл внешней обработки \n путь "+getAbsolutePath(this.form.pathToEpf), 3);
-                notify = false;
-                stdlib.setTimeout(function () {
-                  notify = true;
-                }, 3000);
-            }
+           } catch (e) {
+                logger.error("Не смогли найти файл внешней обработки \n путь "+getAbsolutePath(this.form.pathToEpf));
+                logger.error(" "+e.description);
+           }
         }
     },
     
