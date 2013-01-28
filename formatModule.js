@@ -23,7 +23,7 @@ var logger = Log4js.getLogger(SelfScript.uniqueName);
 var appender = new Log4js.BrowserConsoleAppender();
 appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
 logger.addAppender(appender);
-logger.setLevel(Log4js.Level.WARN);
+logger.setLevel(Log4js.Level.ERROR);
 
 
 ////////////////////////////////////////////////////////////////////////////////////////

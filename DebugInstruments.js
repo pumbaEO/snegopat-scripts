@@ -185,9 +185,9 @@ DebugInstruments = ScriptForm.extend({
     settingsRootPath : SelfScript.uniqueName,
     
     settings : {
-        pflSnegopat : {
-            'pathToEpf': "", // Путь к каталогу с файлами настроек. 
-            'useEpf'   : false, //Автозаменна текста после форматирования. 
+        pflBase : {
+            'pathToEpf': ".\\ИрМобильные\\ирМобильные.epf", // Путь к файлу внешней обработки, по умолчанию в корне снегопата. 
+            'useEpf'   : false, //По умолчанию используем встроенные.  
             'queryCommand' : "Отладить", 
             'startTechLog' : "ТехН",
             'stopTechLog': "ТехК",
