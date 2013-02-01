@@ -139,6 +139,21 @@ SelfScript.self['macrosГлобальный поиск по текущему к�
     return true;
 }
 
+SelfScript.self['macrosГл поиск фильтр по метаданным'] = function() {
+    
+    var es = GetExtSearchGlobal();
+    if (es.isGlobalFind){
+        md = stdlib.require(stdlib.getSnegopatMainFolder() + 'scripts\\mdNavigator.js');
+        if (es.filterByUUID){
+            es.vtMD = {};
+        }
+        es.filterByUUID = md.SelectMdUUID();
+    } 
+    es.show();
+
+    return true;
+}
+
 
 
 SelfScript.self['macrosОтменить глобальный поиск'] = function() {
@@ -979,6 +994,8 @@ ExtSearchGlobal = ExtSearch.extend({
         //FIXME: вынести в настройку. 
         this.countRowsInIdleSearch = 25; //Количество объектов поиска в фоне(для слабеньких машин ставим меньше, для формула1 - как удобней)
         this.re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|\:)/i);
+            
+        this.filterByUUID = null;
 
         ExtSearchGlobal._instance = this;
     },
@@ -1267,12 +1284,28 @@ ExtSearchGlobal = ExtSearch.extend({
                             }
                         }
                     }                    
-
                 }
+                
+                
             }
             
         }
 
+            if (this.filterByUUID && this.filterByUUID.length>0){
+                    var arrayToFiler = v8New('Array');
+                    for (var k in this.filterByUUID){
+                        var filter = v8New("Structure");
+                        filter.Insert("UUID", k);
+                        var findRows = this.vtMD[currentId].FindRows(filter);
+                        if (findRows.Count()>0){
+                            for (var i=0; i<findRows.Count(); i++){
+                                arrayToFiler.Add(findRows.Get(i));
+                            }
+                        }
+                    }
+                    this.vtMD[currentId] = this.vtMD[currentId].Copy(arrayToFiler);
+
+            }
         this.vtMD[currentId].Sort("sort, LineNumber, title");
 
     },
