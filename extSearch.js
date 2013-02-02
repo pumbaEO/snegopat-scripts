@@ -146,6 +146,7 @@ SelfScript.self['macrosГл поиск фильтр по метаданным'] 
         md = stdlib.require(stdlib.getSnegopatMainFolder() + 'scripts\\mdNavigator.js');
         if (es.filterByUUID){
             es.vtMD = {};
+            es.filterByUUID = null;
         }
         es.filterByUUID = md.SelectMdUUID();
     } 
@@ -1291,21 +1292,24 @@ ExtSearchGlobal = ExtSearch.extend({
             
         }
 
-            if (this.filterByUUID && this.filterByUUID.length>0){
-                    var arrayToFiler = v8New('Array');
-                    for (var k in this.filterByUUID){
-                        var filter = v8New("Structure");
-                        filter.Insert("UUID", k);
-                        var findRows = this.vtMD[currentId].FindRows(filter);
-                        if (findRows.Count()>0){
-                            for (var i=0; i<findRows.Count(); i++){
-                                arrayToFiler.Add(findRows.Get(i));
-                            }
-                        }
+        if (this.filterByUUID){
+            var arrayToFilter = v8New('Array');
+            var firstElement = false;
+            for (var k in this.filterByUUID){
+                firstElement = true;
+                var filter = v8New("Structure");
+                filter.Insert("UUID", k);
+                var findRows = this.vtMD[currentId].FindRows(filter);
+                if (findRows.Count()>0){
+                    for (var i=0; i<findRows.Count(); i++){
+                        arrayToFilter.Add(findRows.Get(i));
                     }
-                    this.vtMD[currentId] = this.vtMD[currentId].Copy(arrayToFiler);
-
+                }
             }
+            if (firstElement)
+                this.vtMD[currentId] = this.vtMD[currentId].Copy(arrayToFilter);
+
+        }
         this.vtMD[currentId].Sort("sort, LineNumber, title");
 
     },
