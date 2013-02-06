@@ -2,8 +2,9 @@
 $uname queryParamsExtractor
 $dname Query Parameters Extractor
 
-// $addin global
-// global.connectGlobals(SelfScript)
+//$addin global
+
+//global.connectGlobals(SelfScript)
 
 /* ======================================================================
 
@@ -31,13 +32,45 @@ function getPredefinedHotkeys(predef){
 	predef.add("ExtractParameters", "Ctrl + Shift + Q");
 }
 
+function autoExtract(wnd, sel)
+{
+    var text = '', vName = '', indent = ''
+    for(var idx = sel.beginRow - 1; idx > 0; idx--)
+    {
+        var line = wnd.line(idx)
+        if(line.match(/^\s*[\|"]/))      // Строка начинается с | или "
+            text = line + '\n' + text;
+        else if(!line.match(/^\s*$/))     // Не пустая строка
+        {
+            var m = line.match(/([^\s]+)\.(?:Текст|Text)\s*=/i)
+            if(m)
+                vName = m[1]
+            indent = line.match(/^\s*/)[0]
+            break
+        }
+    }
+    var params = {}
+    var re = /&([^*\s+-/\(\)\{\}\"]+)/ig
+    while(re.exec(text))
+        params[RegExp.$1.toLowerCase()] = RegExp.$1
+    text = ''
+    for(var k in params)
+        text = text + indent + vName + '.УстановитьПараметр("' + params[k] + '", );\n'
+    if(!text.length)
+        return false
+    wnd.setSelection(sel.beginRow, 1, sel.beginRow, 1)
+    wnd.selectedText = text
+    wnd.setCaretPos(sel.beginRow, text.match(/\);\n/).index + 1)
+    return true
+}
+
 function macrosExtractParameters(){
 	var w = snegopat.activeTextWindow();
 	if (!w) return false;
 	
 	var sel = w.getSelection();
 	var selText = w.selectedText;
-	if (selText == '') return false;
+	if (selText == '') return autoExtract(w, sel);
 
 	var qParams = getQueryParams(selText);
 	if (!qParams) return false;
@@ -58,6 +91,7 @@ function macrosExtractParameters(){
 
 	return true;
 }
+
 
 function getQueryParams(str){
 	var matches = str.match(/&([^*\s+-/\(\)\{\}\"]+)/ig);
