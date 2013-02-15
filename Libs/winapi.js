@@ -29,7 +29,9 @@ var api
             ["ReleaseDC", "i=hh", "r=l"],
             ["GetDesktopWindow", "r=l"],
             ["IsChild", "i=hh", "r=l"],
-            ["GetWindow", "i=hl", "r=h"]
+            ["GetWindow", "i=hl", "r=h"],
+            ["IsWindowVisible", "i=h", "r=l"],
+            ["GetWindowLong", "i=hl", "r=l"]
         ]
     },
     {
@@ -168,6 +170,10 @@ function DeleteObject(obj)      { return api.DeleteObject(obj) }
 function GetDeviceCaps(hdc, idx){ return api.GetDeviceCaps(hdc, idx) }
 function GetWindow(hwnd, cmd)   { return api.GetWindow(hwnd, cmd) }
 GetWindow.cmds = {GW_HWNDFIRST: 0, GW_HWNDLAST: 1, GW_HWNDNEXT: 2, GW_HWNDPREV: 3, GW_OWNER: 4, GW_CHILD: 5}
+function IsWindowVisible(hwnd)  { return api.IsWindowVisible(hwnd) }
+
+function GetWindowLong(hwnd, idx)  { return api.GetWindowLong(hwnd, idx) }
+GetWindowLong.idxs = {GWL_WNDPROC:-4, GWL_HINSTANCE:-6, GWL_HWNDPARENT: -8, GWL_STYLE:-16, GWL_EXSTYLE:-20, GWL_USERDATA:-21, GWL_ID:-12}
 
 var wndMsg = {
     WM_CHAR : 0x0102
