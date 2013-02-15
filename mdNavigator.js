@@ -11,6 +11,7 @@ stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
 stdlib.require("SelectValueDialog.js", SelfScript);
 stdlib.require('log4js.js', SelfScript);
+stdlib.require('TextChangesWatcher.js', SelfScript);
 
 global.connectGlobals(SelfScript)
 
@@ -77,63 +78,6 @@ function walkMdObjs(mdObj, parentName)
         for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
             var childObject = mdObj.childObject(i, chldidx);
             walkMdObjs(childObject, row.Name);
-        }
-    }
-}
-
-// Класс для отслеживания изменения текста в поле ввода, для замены
-// события АвтоПодборТекста. Штатное событие плохо тем, что не возникает
-// - при установке пустого текста
-// - при изменении текста путем вставки/вырезания из/в буфера обмена
-// - при отмене редактирования (Ctrl+Z)
-// не позволяет регулировать задержку
-// Параметры конструктора
-// field - элемент управления поле ввода, чье изменение хотим отслеживать
-// ticks - величина задержки после ввода текста в десятых секунды (т.е. 3 - 300 мсек)
-// invoker - функция обратного вызова, вызывается после окончания изменения текста,
-//  новый текст передается параметром функции
-function TextChangesWatcher(field, ticks, invoker)
-{
-    this.ticks = ticks
-    this.invoker = invoker
-    this.field = field
-}
-
-// Начать отслеживание изменения текста
-TextChangesWatcher.prototype.start = function()
-{
-    this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
-    this.noChangesTicks = 0
-    this.timerID = createTimer(100, this, "onTimer")
-}
-// Остановить отслеживание изменения текста
-TextChangesWatcher.prototype.stop = function()
-{
-    killTimer(this.timerID)
-}
-// Обработчик события таймера
-TextChangesWatcher.prototype.onTimer = function()
-{
-    // Получим текущий текст из поля ввода
-    vbs.var0 = this.field
-    vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
-    this.field.УстановитьГраницыВыделения(1, 1, 1, 10000)
-    var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
-    this.field.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
-    // Проверим, изменился ли текст по сравению с прошлым разом
-    if(newText != this.lastText)
-    {
-        // изменился, запомним его
-        this.lastText = newText
-        this.noChangesTicks = 0
-    }
-    else
-    {
-        // Текст не изменился. Если мы еще не сигнализировали об этом, то увеличим счетчик тиков
-        if(this.noChangesTicks <= this.ticks)
-        {
-            if(++this.noChangesTicks > this.ticks)  // Достигли заданного количества тиков.
-                this.invoker(newText)               // Отрапортуем
         }
     }
 }
