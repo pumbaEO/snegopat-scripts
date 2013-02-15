@@ -516,12 +516,7 @@ function updateCommands()
                     {
                         var cmd = buttons.Add(mdPropName, ТипКнопкиКоманднойПанели.Действие,
                             propsCommands[k].title, v8New("Действие", "openProperty"))
-                        // Очень хитрый способ назначить любой хоткей, любезно взято с
-                        // http://infostart.ru/public/22214/
-                        cmd.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
-                            '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,' +
-                            propsCommands[k].hotkey + ',' +
-                            propsCommands[k].modif + '}\n}')
+                        cmd.СочетаниеКлавиш = stdlib.v8hotkey(propsCommands[k].hotkey, propsCommands[k].modif)
                         cmd.ToolTip = cmd.Description = propsCommands[k].title
                         break
                     }

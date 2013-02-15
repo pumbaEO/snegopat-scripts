@@ -611,10 +611,8 @@ function WndListПередУдалением(Элемент, Отказ)
     ["FindInTree", "T".charCodeAt(0), 8]
     ]
     for(var k in hk)
-        form.Controls.Cmds.Кнопки.Найти(hk[k][0]).СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
-            '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,' + hk[k][1] + ',' + hk[k][2] + '}\n}')
-    form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
-        '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+        form.Controls.Cmds.Кнопки.Найти(hk[k][0]).СочетаниеКлавиш = stdlib.v8hotkey(hk[k][1], hk[k][2])
+    form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = stdlib.v8hotkey(13,8)
 })()
 
 function loadSessionManager(){

@@ -98,8 +98,7 @@ function FuncProcPanel() {
     this.needHide = false;
     this.RE_CONTEXT_ATCLIENT      = new RegExp('^\\s*(AtClient|НаКлиенте)\\s*', 'i')
 
-    this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
-        '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+    this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = stdlib.v8hotkey(13,8)
     this.cache = v8New("Map");
 
 }

@@ -9,11 +9,61 @@ $addin stdcommands
 // Скрипт, облегчающий работу в диалоге выбора типа
 
 global.connectGlobals(SelfScript)
-stdlib.require("SelectValueDialog.js", SelfScript);
 wapi = stdlib.require("winapi.js");
 events.connect(windows, "onDoModal", SelfScript.self)
 
-var typeTreeCtrl, multyTypeCtrl, allTypes, hTree, quickSel
+stdlib.require("TextChangesWatcher.js", SelfScript);
+
+var form
+
+function initForm()
+{
+    // Загрузим и настроим форму
+    form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+    form.КлючСохраненияПоложенияОкна = SelfScript.uniqueName
+    form.Types.Columns.Type.ТипЗначения = v8New("ОписаниеТипов")
+    var hk = [
+    ["ShowStd", 13, 4],
+    ]
+    for(var k in hk)
+        form.Controls.Cmds.Кнопки.Найти(hk[k][0]).СочетаниеКлавиш = stdlib.v8hotkey(hk[k][1], hk[k][2])
+}
+
+function CmdsOk(Кнопка)
+{
+}
+
+function CmdsShowStd(Кнопка)
+{
+    MessageBox("hhh")
+    form.Закрыть()
+}
+
+function PatternРегулирование(Элемент, Направление, СтандартнаяОбработка)
+{
+}
+
+function PatternОкончаниеВводаТекста(Элемент, Текст, Значение, СтандартнаяОбработка)
+{
+}
+
+function TypesВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
+{
+}
+
+function TypesПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
+{
+}
+
+function PatternНачалоВыбора(Элемент, СтандартнаяОбработка)
+{
+}
+
+initForm()
+form.ОткрытьМодально()
+form = null
+
+var typeTreeCtrl, multyTypeCtrl, allTypes, quickSel
 
 // Здесь мы будем отлавливать открытие и закрытие модального диалога
 // редактирования типа.
@@ -30,7 +80,6 @@ function onDoModal(dlgInfo)
     case afterInitial:
         typeTreeCtrl = tt
         multyTypeCtrl = mt
-        hTree = tt.hwnd
         if(!multyTypeCtrl.value && MessageBox("Быстро выбрать один тип?", mbYesNo | mbIconQuestion | mbDefButton1) == mbaYes)
             quickSel = macrosНайтиТип()
         break
@@ -118,3 +167,4 @@ function macrosНайтиТип()
     }
     return false
 }
+
