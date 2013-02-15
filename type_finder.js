@@ -10,60 +10,150 @@ $addin stdcommands
 
 global.connectGlobals(SelfScript)
 wapi = stdlib.require("winapi.js");
-events.connect(windows, "onDoModal", SelfScript.self)
-
 stdlib.require("TextChangesWatcher.js", SelfScript);
 
-var form
+events.connect(windows, "onDoModal", SelfScript.self)
+
+var form, typeTreeCtrl, multyTypeCtrl, quickSel, tc, initName
 
 function initForm()
 {
     // Загрузим и настроим форму
     form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
     form.КлючСохраненияПоложенияОкна = SelfScript.uniqueName
-    form.Types.Columns.Type.ТипЗначения = v8New("ОписаниеТипов")
-    var hk = [
-    ["ShowStd", 13, 4],
-    ]
-    for(var k in hk)
-        form.Controls.Cmds.Кнопки.Найти(hk[k][0]).СочетаниеКлавиш = stdlib.v8hotkey(hk[k][1], hk[k][2])
+    form.Types.Columns.Add("data")
+    form.Types.Columns.Add("picture")
+    form.Controls.Cmds.Кнопки.ShowStd.СочетаниеКлавиш = stdlib.v8hotkey(13, 4)
+    form.Controls.Cmds.Кнопки.Ok.СочетаниеКлавиш = stdlib.v8hotkey(13, 0)
+    tc = new TextChangesWatcher(form.ЭлементыФормы.Pattern, 3, updateList)
+    initName = ''
+    var r = typeTreeCtrl.extInterface.currentRow
+    if(r)
+    {
+        for(;;)
+        {
+            initName = r.getCellAppearance(0).text + initName
+            if(r.parent)
+            {
+                initName = '.' + initName
+                r = r.parent
+            }
+            else
+                break
+        }        
+    }
+}
+
+function walkTypeTree(f)
+{
+    var grid = typeTreeCtrl.extInterface
+    function forAllTypes(parent, prefix, f)
+    {
+        var row = parent.firstChild
+        while(row)
+        {
+            var ca = row.getCellAppearance(0)
+            var fullName = prefix + ca.text
+            if(row.firstChild)
+                forAllTypes(row, fullName + ".", f)
+            else if(f(fullName))
+            {
+                var r = form.Types.Add()
+                r.Type = fullName
+                r.picture = ca.picture
+                r.data = row
+                if(fullName == initName)
+                    form.Controls.Types.CurrentRow = r
+            }
+            row = row.next
+        }
+    }
+    forAllTypes(grid.dataSource.root, '', f)
+}
+
+function updateList(pattern)
+{
+    form.Types.Clear()
+    pattern = pattern.replace(/\s{2,}/g, ' ').replace(/^\s+|\s+$/g, '')
+    if(!pattern.length)
+        walkTypeTree(function(){return true})
+    else
+    {
+        var filters = pattern.toLowerCase().split(' ')
+        walkTypeTree(function(text) {
+            text = text.toLowerCase();
+            for(var k in filters)
+            {
+                if(text.indexOf(filters[k]) == -1)
+                    return false
+            }
+            return true
+        })
+    }
+    if(!form.Controls.Types.CurrentRow && form.Types.Count())
+        form.Controls.Types.CurrentRow = form.Types.Get(0)
+}
+
+function ПриОткрытии()
+{
+    tc.start()
+    updateList('')
+}
+
+function ПриЗакрытии()
+{
+    tc.stop()
 }
 
 function CmdsOk(Кнопка)
 {
+    var cr = form.Controls.Types.ТекущаяСтрока
+    if(cr)
+        form.Закрыть({result: true, selectedRow: cr.data})
 }
 
 function CmdsShowStd(Кнопка)
 {
-    MessageBox("hhh")
-    form.Закрыть()
+    form.Закрыть({result:false})
 }
 
 function PatternРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
-}
-
-function PatternОкончаниеВводаТекста(Элемент, Текст, Значение, СтандартнаяОбработка)
-{
+    var tab = form.Types, tp = form.Controls.Types
+    if(!tp.ТекущаяСтрока)
+        return
+    var curRow = tab.Индекс(tp.ТекущаяСтрока), newRow = curRow
+    
+    if(-1 == Направление.val)
+    {
+        if(curRow != tab.Количество() - 1)
+            newRow++
+    }
+    else
+    {
+        if(curRow > 0)
+            newRow--
+    }
+    if(newRow != curRow)
+        tp.ТекущаяСтрока = tab.Получить(newRow)
+    СтандартнаяОбработка.val = false
 }
 
 function TypesВыбор(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка)
 {
+    CmdsOk()
 }
 
 function TypesПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
 {
+    if(ДанныеСтроки.val.picture)
+        ОформлениеСтроки.val.Cells.Type.SetPicture(ДанныеСтроки.val.picture)
 }
 
 function PatternНачалоВыбора(Элемент, СтандартнаяОбработка)
 {
 }
 
-initForm()
-form.ОткрытьМодально()
-form = null
-
-var typeTreeCtrl, multyTypeCtrl, allTypes, quickSel
 
 // Здесь мы будем отлавливать открытие и закрытие модального диалога
 // редактирования типа.
@@ -80,19 +170,29 @@ function onDoModal(dlgInfo)
     case afterInitial:
         typeTreeCtrl = tt
         multyTypeCtrl = mt
-        if(!multyTypeCtrl.value && MessageBox("Быстро выбрать один тип?", mbYesNo | mbIconQuestion | mbDefButton1) == mbaYes)
-            quickSel = macrosНайтиТип()
+        initForm()
+        if(!multyTypeCtrl.value)    // Если не составной тип, сразу будем выбирать
+        {
+            quickSel = selectType()
+            if(!quickSel)    // Нажали отмену
+            {
+                dlgInfo.cancel = true;
+                dlgInfo.result = 0;
+            }
+        }
         break
     case openModalWnd:
-        if(quickSel)
+        if(quickSel && quickSel.result)    // Нажали Ок
             new ActiveXObject("WScript.Shell").SendKeys('^~')
+        else
+            wapi.SetFocus(typeTreeCtrl.hwnd)
         break;
     case afterDoModal:
         // Тут диалог уже закрывается, обнулим данные
         typeTreeCtrl = null
         multyTypeCtrl = null
-        allTypes = null
-        quickSel = false
+        quickSel = null
+        form = null
         break
     }
 }
@@ -106,65 +206,40 @@ function macrosПереключитьСоставныеТипы()
 
 function macrosНайтиТип()
 {
-    if(typeTreeCtrl)
-    {
-        /*
-        Message(typeTreeCtrl.extInterface.columnCount)
-        Message(typeTreeCtrl.extInterface.currentCol)
-        var r = typeTreeCtrl.extInterface.currentRow
-        Message(r.getCellAppearance(0).text);
-        Message(typeTreeCtrl.extInterface.isExpanded(r))
-        typeTreeCtrl.extInterface.expand(r, true, true);
-        return
-        */
-        var grid = typeTreeCtrl.extInterface
+    if(!typeTreeCtrl)
+        return false
+    var res = selectType()
+    if(res.result)
+        wapi.SetFocus(typeTreeCtrl.hwnd)
+}
 
-        if(!allTypes)
+function selectType()
+{
+    var res = form.ОткрытьМодально();
+    if(res && res.result)
+    {
+        var grid = typeTreeCtrl.extInterface, row = res.selectedRow
+        if(!multyTypeCtrl.value)    // Не составной тип данных. Надо сбросить пометку у другого элемента
         {
-            allTypes = v8New("СписокЗначений");
-            (function walkLines(parent, prefix)
+            (function findAndRemoveCheck(parent)
             {
                 var row = parent.firstChild
                 while(row)
                 {
-                    var ca = row.getCellAppearance(0)
-                    if(row.firstChild)
-                        walkLines(row, ca.text + ".")
-                    else
-                        allTypes.Add(row, prefix + ca.text, false, ca.picture)
+                    if(grid.isCellChecked(row, 0))
+                    {
+                        grid.checkCell(row, 0, 0)
+                        return true
+                    }
+                    if(findAndRemoveCheck(row))
+                        return true
                     row = row.next
                 }
-            })(grid.dataSource.root, '')
+                return false
+            })(grid.dataSource.root)
         }
-        var dlg = new SelectValueDialog("Выберите тип!", allTypes);
-        if(dlg.selectValue())
-        {
-            var row = dlg.selectedValue
-            if(!multyTypeCtrl.value)    // Не составной тип данных. Надо сбросить пометку у другого элемента
-            {
-                (function findAndRemoveCheck(parent)
-                {
-                    var row = parent.firstChild
-                    while(row)
-                    {
-                        if(grid.isCellChecked(row, 0))
-                        {
-                            grid.checkCell(row, 0, 0)
-                            return true
-                        }
-                        if(findAndRemoveCheck(row))
-                            return true
-                        row = row.next
-                    }
-                    return false
-                })(grid.dataSource.root)
-            }
-            grid.currentRow = row
-            grid.checkCell(row, 0, 1)
-            wapi.SetFocus(typeTreeCtrl.hwnd)
-            return true
-        }
+        grid.currentRow = row
+        grid.checkCell(row, 0, 1)
     }
-    return false
+    return res
 }
-
