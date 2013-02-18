@@ -179,6 +179,11 @@ function onDoModal(dlgInfo)
                 dlgInfo.cancel = true;
                 dlgInfo.result = 0;
             }
+            else
+            {
+                // Нажали "Перейти в стандартный". Надо назначить хоткеи
+                savedHotKeys 
+            }
         }
         break
     case openModalWnd:
