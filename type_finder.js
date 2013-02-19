@@ -4,6 +4,7 @@ $dname Быстрый поиск типа
 $addin global
 $addin stdlib
 $addin stdcommands
+$addin hotkeys hk
 
 // (c) Александр Орефков
 // Скрипт, облегчающий работу в диалоге выбора типа
@@ -14,7 +15,7 @@ stdlib.require("TextChangesWatcher.js", SelfScript);
 
 events.connect(windows, "onDoModal", SelfScript.self)
 
-var form, typeTreeCtrl, multyTypeCtrl, quickSel, tc, initName
+var form, typeTreeCtrl, multyTypeCtrl, quickSel, tc, initName, hkID, v8Form
 
 function initForm()
 {
@@ -160,12 +161,14 @@ function PatternНачалоВыбора(Элемент, Стандартная�
 function onDoModal(dlgInfo)
 {
     /*
-    if(dlgInfo.stage == beforeDoModal)
+    if(dlgInfo.stage == openModalWnd && dlgInfo.form)
     {
+        dlgInfo.form.trapDialogEvents = true
         for(var k = 0; k < dlgInfo.form.controlsCount; k++)
             Message(dlgInfo.form.getControl(k).name)
     }
     */
+    
     // Привязываться к заголовку диалога не очень хорошо, он может быть другим
     // в другой локализации. А такой состав контролов говорит о том, что открылся
     // диалог выбора типа.
@@ -178,6 +181,7 @@ function onDoModal(dlgInfo)
         typeTreeCtrl = tt
         multyTypeCtrl = mt
         initForm()
+        v8Form = dlgInfo.form;
         if(!multyTypeCtrl.value)    // Если не составной тип, сразу будем выбирать
         {
             quickSel = selectType()
@@ -186,12 +190,24 @@ function onDoModal(dlgInfo)
                 dlgInfo.cancel = true;
                 dlgInfo.result = 0;
             }
+            else
+            {
+                if(quickSel.result) // Нажали Ok, закрываем штатный диалог
+                {
+                    // Посылаем форме нажатие кнопки OK
+                    v8Form.sendEvent(v8Form.getControl('OK').id, 0)
+                }
+                else
+                {
+                    // Нажали "Показать стандартный" - добавим горячих клавиш
+                    hkID = [hotkeys.addTemp(hk.stringTovkcode('Ctrl+F'), SelfScript.uniqueName, "НайтиТип"),
+                            hotkeys.addTemp(hk.stringTovkcode('Ctrl+K'), SelfScript.uniqueName, "ПереключитьСоставныеТипы")]
+                }
+            }
         }
         break
     case openModalWnd:
-        if(quickSel && quickSel.result)    // Нажали Ок
-            new ActiveXObject("WScript.Shell").SendKeys('^~')
-        else
+        if(quickSel && !quickSel.result)    // Нажали "Показать стандартный"
             wapi.SetFocus(typeTreeCtrl.hwnd)
         break;
     case afterDoModal:
@@ -200,23 +216,37 @@ function onDoModal(dlgInfo)
         multyTypeCtrl = null
         quickSel = null
         form = null
+        v8Form.detach()
+        v8Form = null
+        if(hkID)
+        {
+            hotkeys.removeTemp(hkID[0])
+            hotkeys.removeTemp(hkID[1])
+            hkID = 0
+        }
         break
     }
 }
 
+// Макрос можно вызывать, если нажали "Показать стандартный", вешается на Ctrl+K
 function macrosПереключитьСоставныеТипы()
 {
     if(!multyTypeCtrl)
         return false
+    // Сменим значение
     multyTypeCtrl.value = !multyTypeCtrl.value
+    // Уведомим форму
+    v8Form.sendEvent(multyTypeCtrl.id, 0)
+    v8Form.sendEvent(multyTypeCtrl.id, 1)
 }
 
+// Макрос можно вызывать, если нажали "Показать стандартный", вешается на Ctrl+F
 function macrosНайтиТип()
 {
     if(!typeTreeCtrl)
         return false
     var res = selectType()
-    if(res.result)
+    if(res && res.result)
         wapi.SetFocus(typeTreeCtrl.hwnd)
 }
 
@@ -226,27 +256,12 @@ function selectType()
     if(res && res.result)
     {
         var grid = typeTreeCtrl.extInterface, row = res.selectedRow
-        if(!multyTypeCtrl.value)    // Не составной тип данных. Надо сбросить пометку у другого элемента
-        {
-            (function findAndRemoveCheck(parent)
-            {
-                var row = parent.firstChild
-                while(row)
-                {
-                    if(grid.isCellChecked(row, 0))
-                    {
-                        grid.checkCell(row, 0, 0)
-                        return true
-                    }
-                    if(findAndRemoveCheck(row))
-                        return true
-                    row = row.next
-                }
-                return false
-            })(grid.dataSource.root)
-        }
+        // Активируем строку
         grid.currentRow = row
+        // Ставим пометку
         grid.checkCell(row, 0, 1)
+        // Сообщим форме о смене метки
+        v8Form.sendEvent(typeTreeCtrl.id, 17, 1)
     }
     return res
 }
