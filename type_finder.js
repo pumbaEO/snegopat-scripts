@@ -17,16 +17,8 @@ events.connect(windows, "onDoModal", SelfScript.self)
 
 var form, typeTreeCtrl, multyTypeCtrl, quickSel, tc, initName, hkID, v8Form
 
-function initForm()
+function calcInitName()
 {
-    // Загрузим и настроим форму
-    form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
-    form.КлючСохраненияПоложенияОкна = SelfScript.uniqueName
-    form.Types.Columns.Add("data")
-    form.Types.Columns.Add("picture")
-    form.Controls.Cmds.Кнопки.ShowStd.СочетаниеКлавиш = stdlib.v8hotkey(13, 4)
-    form.Controls.Cmds.Кнопки.Ok.СочетаниеКлавиш = stdlib.v8hotkey(13, 0)
-    tc = new TextChangesWatcher(form.ЭлементыФормы.Pattern, 3, updateList)
     initName = ''
     var r = typeTreeCtrl.extInterface.currentRow
     if(r)
@@ -45,9 +37,21 @@ function initForm()
     }
 }
 
+function initForm()
+{
+    // Загрузим и настроим форму
+    form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+    form.КлючСохраненияПоложенияОкна = SelfScript.uniqueName
+    form.Types.Columns.Add("data")
+    form.Types.Columns.Add("picture")
+    form.Controls.Cmds.Кнопки.ShowStd.СочетаниеКлавиш = stdlib.v8hotkey(13, 4)
+    form.Controls.Cmds.Кнопки.Ok.СочетаниеКлавиш = stdlib.v8hotkey(13, 0)
+    tc = new TextChangesWatcher(form.ЭлементыФормы.Pattern, 3, updateList)
+    calcInitName()
+}
+
 function walkTypeTree(f)
 {
-    var grid = typeTreeCtrl.extInterface
     function forAllTypes(parent, prefix, f)
     {
         var row = parent.firstChild
@@ -69,13 +73,13 @@ function walkTypeTree(f)
             row = row.next
         }
     }
-    forAllTypes(grid.dataSource.root, '', f)
+    forAllTypes(typeTreeCtrl.extInterface.dataSource.root, '', f)
 }
 
 function updateList(pattern)
 {
     form.Types.Clear()
-    pattern = pattern.replace(/\s{2,}/g, ' ').replace(/^\s+|\s+$/g, '')
+    pattern = pattern.replace(/\s+/g, ' ').replace(/^\s|\s$/g, '')
     if(!pattern.length)
         walkTypeTree(function(){return true})
     else
@@ -245,6 +249,7 @@ function macrosНайтиТип()
 {
     if(!typeTreeCtrl)
         return false
+    calcInitName()
     var res = selectType()
     if(res && res.result)
         wapi.SetFocus(typeTreeCtrl.hwnd)
