@@ -32,8 +32,8 @@ function exploreForm(form, force)
         for(var i = -1, k = form.controlsCount; i < k; i++)
         {
             var ctr = form.getControl(i)
-            Message(ctr.name, mInfo)
-            if(showProps || force)
+            Message("Control #" + i + " name=" + ctr.name + " id=" + ctr.id, mInfo)
+            if(showProps)
             {
                 var props = ctr.props
                 for(var idx = 0, cnt = props.count; idx < cnt; idx++)
@@ -44,7 +44,7 @@ function exploreForm(form, force)
             }
         }
     }
-    if(traceEvents || force)
+    if(traceEvents)
         form.trapDialogEvents = !form.trapDialogEvents
 }
 
