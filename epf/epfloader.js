@@ -52,6 +52,7 @@ EpfLoader = new (stdlib.Class.extend({
 	},
 	
 	loadEpf: function(path) {
+		Message(path);
 		this.macroses = new Array();
 		var epf = this.v8.LoadEpf(path);
 		if (epf) {
@@ -83,4 +84,9 @@ EpfLoader = new (stdlib.Class.extend({
 	}
 
 }));
+
+SelfScript.Self['macrosПерезагрузить все 1С-скрипты'] = function () {
+    EpfLoader.unloadAllEpf();
+    EpfLoader.loadAllEpf();
+}
 

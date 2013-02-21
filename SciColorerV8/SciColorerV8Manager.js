@@ -1,11 +1,33 @@
 ﻿$engine JScript
 $uname SciColorerV8Manager
 $dname SciColorerV8 Manager
+$addin stdlib
 
 ReadScintillaMessageDefs()
+stdlib.require('TextWindow.js', SelfScript);
 
 function macros_ПриКликеПоГиперссылке(){ //предопределенная, вызывается при Ctrl+Click на любом идентификаторе в тексте модуля
     addins.byUniqueName("SnegopatMainScript").invokeMacros("ПерейтиКОпределению")
+    stdlib.setTimeout(function(){
+
+        var twnd = new TextWindow();
+        if (twnd.IsActive()){
+            //Message('dddd');
+            var pos = twnd.GetSelection();
+            var view = windows.getActiveView();
+            if (!view){
+            } else {
+                    if (view.mdObj && view.mdProp) {
+                        view.mdObj.openModule(view.mdProp.id);
+                        twnd = new TextWindow();
+                        twnd.SetCaretPos(5, 5);
+                        twnd.SetSelection(pos.beginRow, pos.beginCol, pos.endRow, pos.endCol);
+                    }
+
+            }
+        }
+    }, 3000);
+    
 }
 
 function macros_ПриКонтекстномМенюНаНомерахСтрок(){ //предопределенная, вызывается при правом клике на номерах строк

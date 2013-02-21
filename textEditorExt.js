@@ -30,17 +30,24 @@ global.connectGlobals(SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 
 function getPredefinedHotkeys(predef){
-    predef.setVersion(7);
+    predef.setVersion(9);
     predef.add("НайтиВыделенныйТекстВниз", "Ctrl + Down");
     predef.add("НайтиВыделенныйТекстВверх", "Ctrl + Up");
     predef.add("КлонироватьТекст", "Ctrl + D");
-    predef.add("OnPressEnterInComment", "Enter");
+    //FIXME: пока удалю, не работает нормально при нахождении крусора в комментарии и выбора из списка процедур. 
+    //predef.add("OnPressEnterInComment", "Enter"); 
     predef.add("OnPressDeleteInComment", "Del");
     predef.add("OnPressBackspaceInComment", "BkSpace");
     predef.add("OnPressBackspaceInBracket", "BkSpace");
     predef.add("OnPressDelInBracket", "Del");
     predef.add("Преобразовать регистр: ПРОПИСНЫЕ", "Ctrl + Shift + U");
     predef.add("Преобразовать регистр: строчные", "Ctrl + U");
+    predef.add("Установить кавычки", "Shift + 2");
+    predef.add("Установить кавычки 2", "Shift + '");
+    predef.add("Установить скобки", "Shift + 9");
+    predef.add("Установить скобки 2", "Shift + 0");
+
+
 }
 
 function macrosНайтиВыделенныйТекстВниз(){
@@ -85,6 +92,59 @@ function macrosПоменятьОперандыПрисваиванияМест�
 
 SelfScript.Self['macrosПреобразовать регистр: ПРОПИСНЫЕ'] = function() {
     return processSelectedText(function(selText){ return selText.toUpperCase(); });
+}
+
+SelfScript.Self['macrosУстановить кавычки'] = function() {
+    return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
+}
+var fix;
+SelfScript.Self['macrosУстановить кавычки 2'] = function() {
+    var w = GetTextWindow(); 
+    fix = null;
+    if (!w || windows.modalMode != msNone) return false;    
+    
+    var sel = w.GetSelection();            
+    var selText = w.GetSelectedText();
+    if (selText.length>0){
+        fix = selText;
+        events.connect(Designer, "onIdle", SelfScript.self);
+    }
+    return false;
+    
+    //return processSelectedText(function(selText){ return '"'+selText+'"'; }, true);
+}
+
+function onIdle()
+{
+    var w = GetTextWindow(); 
+    if (!w || windows.modalMode != msNone || !fix){
+        events.disconnect(Designer, "onIdle", SelfScript.self);
+        return;    
+    } 
+    var pos = w.GetCaretPos();
+
+    var beginRow = pos.beginRow;
+    var wordBegPos = pos.beginCol - 2;
+
+    var line = w.GetLine(pos.beginRow);
+    if (wordBegPos > line.length){
+    } else {
+        str = line.charAt(wordBegPos);
+        if (str=='"'){
+            w.setSelection(pos.beginRow, pos.beginCol-1, pos.endRow, pos.endCol);
+            w.SetSelectedText('"'+fix+'"');
+        }   
+    }
+    // Отписываемся от события
+    events.disconnect(Designer, "onIdle", SelfScript.self)
+}
+
+
+SelfScript.Self['macrosУстановить скобки'] = function() {
+    return processSelectedText(function(selText){ return '('+selText+')'; }, true);
+}
+SelfScript.Self['macrosУстановить скобки 2'] = function() {
+    return processSelectedText(function(selText){ return '('+selText+')'; }, true);
 }
 
 SelfScript.Self['macrosПреобразовать регистр: строчные'] = function() {
@@ -387,6 +447,9 @@ function processSelectedText(selTextHandler, doNotRestoreSelection) {
     
     var sel = w.GetSelection();            
     var selText = w.GetSelectedText();
+    if (selText.length==0){
+        return false;
+    }
     
     try 
     {

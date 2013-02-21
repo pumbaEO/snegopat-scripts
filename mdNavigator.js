@@ -9,15 +9,27 @@ stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
+stdlib.require('log4js.js', SelfScript);
+stdlib.require('TextChangesWatcher.js', SelfScript);
 
 global.connectGlobals(SelfScript)
 
 
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
+
+
 // (c) Евгений JohnyDeath Мартыненков
 // (c) Александр Орефков
+// (c) Сосна Евгений <shenja@sosna.zp.ua>
 
 var form = null
-var vtMD = null
+var vtMD = null;
+var curMD = null;
 var currentFilter = ''
 var listOfFilters = v8New("ValueList")
 var listOfChoices = []
@@ -28,6 +40,12 @@ vtModules.Колонки.Add("Наименование");
 vtModules.Колонки.Add("Module1C");
 var Icons = null;
 var ЦветФонаДляМодулейМенеджера = v8New("Цвет", 240, 255, 240);
+var treeSubSystems = null;
+var subSystemMap = v8New("Map")
+var isFilterOnSubSystem = false;
+var subSystemFilter = {};
+var currentSubSystemFilter = "";
+var recursiveSubsystems = false;
 var settings; // Хранит настройки скрипта (экземпляр SettingsManager'а).
 
 RowTypes = {
@@ -41,11 +59,12 @@ function walkMdObjs(mdObj, parentName)
     // Получим и покажем класс объекта
     var mdc = mdObj.mdclass;
     var row = {UUID : mdObj.id}
-    if (mdObj == metadata.current.rootObject)
+    if (mdObj == curMD.rootObject)
         row.Name = "Конфигурация";
     else
         row.Name = (parentName == "Конфигурация" ? "" : parentName + ".") + mdc.name(1) + "." + mdObj.name
-    row.lName = row.Name.toLowerCase()
+    row.lName = row.Name.toLowerCase();
+    row.parentUUID = (!mdObj.parent) ? "" : mdObj.parent.id;
     vtMD.push(row)
 
     // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
@@ -59,63 +78,6 @@ function walkMdObjs(mdObj, parentName)
         for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++){
             var childObject = mdObj.childObject(i, chldidx);
             walkMdObjs(childObject, row.Name);
-        }
-    }
-}
-
-// Класс для отслеживания изменения текста в поле ввода, для замены
-// события АвтоПодборТекста. Штатное событие плохо тем, что не возникает
-// - при установке пустого текста
-// - при изменении текста путем вставки/вырезания из/в буфера обмена
-// - при отмене редактирования (Ctrl+Z)
-// не позволяет регулировать задержку
-// Параметры конструктора
-// field - элемент управления поле ввода, чье изменение хотим отслеживать
-// ticks - величина задержки после ввода текста в десятых секунды (т.е. 3 - 300 мсек)
-// invoker - функция обратного вызова, вызывается после окончания изменения текста,
-//  новый текст передается параметром функции
-function TextChangesWatcher(field, ticks, invoker)
-{
-    this.ticks = ticks
-    this.invoker = invoker
-    this.field = field
-}
-
-// Начать отслеживание изменения текста
-TextChangesWatcher.prototype.start = function()
-{
-    this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
-    this.noChangesTicks = 0
-    this.timerID = createTimer(100, this, "onTimer")
-}
-// Остановить отслеживание изменения текста
-TextChangesWatcher.prototype.stop = function()
-{
-    killTimer(this.timerID)
-}
-// Обработчик события таймера
-TextChangesWatcher.prototype.onTimer = function()
-{
-    // Получим текущий текст из поля ввода
-    vbs.var0 = this.field
-    vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
-    this.field.УстановитьГраницыВыделения(1, 1, 1, 10000)
-    var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
-    this.field.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
-    // Проверим, изменился ли текст по сравению с прошлым разом
-    if(newText != this.lastText)
-    {
-        // изменился, запомним его
-        this.lastText = newText
-        this.noChangesTicks = 0
-    }
-    else
-    {
-        // Текст не изменился. Если мы еще не сигнализировали об этом, то увеличим счетчик тиков
-        if(this.noChangesTicks <= this.ticks)
-        {
-            if(++this.noChangesTicks > this.ticks)  // Достигли заданного количества тиков.
-                this.invoker(newText)               // Отрапортуем
         }
     }
 }
@@ -179,8 +141,12 @@ TextWindowsWatcher = stdlib.Class.extend({
 
 function readMDtoVT()
 {
+    logger.info("Старт обхода метаданных")
+    if (!curMD)
+        curMD = metadata.current;
     vtMD = []
-    walkMdObjs(metadata.current.rootObject, "")
+    walkMdObjs(curMD.rootObject, "");
+    logger.info("Прочитали метаданные, количество "+vtMD.length);
 }
 
 function fillTableProcedur(filter)
@@ -269,7 +235,8 @@ function fillTable(newFilter)
         form.ТаблицаМетаданных.Clear();
     }
     var mode = ''
-    if(!currentFilter.length)
+    var formTitle = 'Навигатор метаданных';
+    if(!currentFilter.length & !isFilterOnSubSystem)
     {
         mode = "Недавно используемые объекты:"
         for(var k in listOfChoices)
@@ -278,7 +245,8 @@ function fillTable(newFilter)
             row.Name = listOfChoices[k].Name
             row.UUID = listOfChoices[k].UUID
         }
-    }
+        form.ЭлементыФормы.Подсистема.Видимость = false;
+    } 
     else
     {
         if (form.ТаблицаМетаданных.Columns.Find("Rate") == undefined){
@@ -307,12 +275,17 @@ function fillTable(newFilter)
             var lNameLength = 500;
             var maxIndex = 0;
             var rate = 0;
-            var filtersLenth = filters.length
+            if (isFilterOnSubSystem){
+                if (!subSystemFilter.hasOwnProperty(vtMD[k].UUID) && !subSystemFilter.hasOwnProperty(vtMD[k].parentUUID)){
+                    continue;
+                }
+            }
+            var filtersLenth = (!filters.length)?1:filters.length
             var surcharge = lNameLength/filtersLenth;
             for(var s in filters)
             {
                 var index = vtMD[k].lName.indexOf(filters[s])
-                if( index < 0) {
+                if( index < 0 && filters[s]!='*') {
                     continue outer
                 } else {
                     //Посчитаем рейтинг...
@@ -330,32 +303,52 @@ function fillTable(newFilter)
             row.Rate = rate;
         }
         form.ТаблицаМетаданных.Sort("Rate, Name");
-        mode = "Объекты, подходящие под фильтр '" + currentFilter + "' (" + form.ТаблицаМетаданных.Количество() + " шт.):"
+        mode+= (!currentFilter.length)?"":"фильтр '" + currentFilter + "' (" + form.ТаблицаМетаданных.Количество() + " шт.):"
+        if (isFilterOnSubSystem){
+            form.ЭлементыФормы.Подсистема.Видимость = true;
+            form.ЭлементыФормы.Подсистема.Заголовок  = "    "+currentSubSystemFilter+((recursiveSubsystems)?" (рекурсивно)":"");
+            formTitle+=" подсистема "+currentSubSystemFilter+((recursiveSubsystems)?" (рекурсивно)":"");
+        }
+        
+
     }
     form.ЭлементыФормы.Режим.Заголовок = mode
+    form.Заголовок = formTitle;
     if(form.ТаблицаМетаданных.Количество())
         form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока = form.ТаблицаМетаданных.Получить(0)
 }
 
 function findMdObj(uuid)
 {
-    if(uuid == metadata.current.rootObject.id)
-        return metadata.current.rootObject
-    return metadata.current.findByUUID(uuid);
+    if(uuid == curMD.rootObject.id)
+        return curMD.rootObject
+    return curMD.findByUUID(uuid);
+}
+
+function withSelected(func)
+{
+    var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
+    if(!curRow)
+        return
+    for(var rows = new Enumerator(form.Controls.ТаблицаМетаданных.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext())
+        func(rows.item().Окно)
 }
 
 // Единый метод обработки выбора пользователя.
 // Параметром передается функтор, который непосредственно выполняет действие.
 function doAction(func)
 {
+    var isMultiSelect = (form.Controls.ТаблицаМетаданных.ВыделенныеСтроки.Count() > 1)?true:false;
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     if(!curRow)
         return
     var mdObj = findMdObj(curRow.UUID);
     if(!mdObj)
     {
-        MessageBox("Объект '" + curRow.Name + "' не найден.");
-        return
+        //MessageBox("Объект '" + curRow.Name + "' не найден.");
+        logger.error("Объект '" + curRow.Name + "' не найден.");
+        if (!isMultiSelect)
+            return
     }
     // Сохраним текущий фильтр в списке
     if(form.ТекстФильтра.length)
@@ -363,24 +356,47 @@ function doAction(func)
         addToHistory(form.ТекстФильтра);
         
     }
-    // Сохраним текущий объект в списке
-    var row = {Name: curRow.Name, UUID: curRow.UUID}
-    for(var k in listOfChoices)
-    {
-        if(listOfChoices[k].UUID == row.UUID)
+    if (!isMultiSelect){
+        // Сохраним текущий объект в списке
+        var row = {Name: curRow.Name, UUID: curRow.UUID}
+        for(var k in listOfChoices)
         {
-            listOfChoices.splice(k, 1)
-            break
+            if(listOfChoices[k].UUID == row.UUID)
+            {
+                listOfChoices.splice(k, 1)
+                break
+            }
         }
+        listOfChoices.unshift(row)
+        if(listOfChoices.length > 15)
+            listOfChoices.pop()
+            
     }
-    listOfChoices.unshift(row)
-    if(listOfChoices.length > 15)
-        listOfChoices.pop()
     // Очистим фильтр и закроем форму, указав как результат объект и функтор
     form.ТекстФильтра = ''
     form.ТекущийЭлемент = form.ЭлементыФормы.ТекстФильтра
-    fillTable('')
-    form.Close({mdObj:mdObj, func:func})
+    var res = {mdObj:mdObj, func:func};
+    if (isMultiSelect){
+        var res = [];
+        for(var rows = new Enumerator(form.Controls.ТаблицаМетаданных.ВыделенныеСтроки); !rows.atEnd(); rows.moveNext()){
+
+            var mdObj = findMdObj(rows.item().UUID);
+            
+            if(!mdObj)
+            {
+                //Message("Объект '" + curRow.Name + "' не найден.");
+                logger.error("Объект '" + curRow.Name + "' не найден.");
+                continue;
+            }
+            res.push({mdObj:mdObj, func:func});
+        }
+
+    }
+
+    fillTable('');
+    form.Close(res);
+    
+    
 }
 
 function addToHistory(query) {
@@ -422,8 +438,8 @@ function updateCommands()
     // Сначала удалим непостоянные команды
     var cmdBar = form.ЭлементыФормы.Команды
     var buttons = cmdBar.Кнопки
-    for(var k = buttons.Count() - 6; k > 0; k--)
-        buttons.Delete(6)
+    for(var k = buttons.Count() - 7; k > 0; k--)
+        buttons.Delete(7)
     // Получим текущую выбранную строку
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var enabled = false
@@ -444,12 +460,7 @@ function updateCommands()
                     {
                         var cmd = buttons.Add(mdPropName, ТипКнопкиКоманднойПанели.Действие,
                             propsCommands[k].title, v8New("Действие", "openProperty"))
-                        // Очень хитрый способ назначить любой хоткей, любезно взято с
-                        // http://infostart.ru/public/22214/
-                        cmd.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
-                            '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,' +
-                            propsCommands[k].hotkey + ',' +
-                            propsCommands[k].modif + '}\n}')
+                        cmd.СочетаниеКлавиш = stdlib.v8hotkey(propsCommands[k].hotkey, propsCommands[k].modif)
                         cmd.ToolTip = cmd.Description = propsCommands[k].title
                         break
                     }
@@ -460,6 +471,8 @@ function updateCommands()
     buttons.Get(2).Enabled = enabled
     buttons.Get(3).Enabled = enabled
     buttons.Get(5).Enabled = enabled
+    buttons.Get(6).Enabled = true;
+    buttons.Get(6).Пометка = isFilterOnSubSystem;
     if (vtModules.Count()>0){
         vtModules.Clear();
     }
@@ -471,6 +484,7 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         readMDtoVT();
     if(!form)
     {
+
         form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
         form.КлючСохраненияПоложенияОкна = "mdNavigator"
         Icons = {
@@ -479,20 +493,131 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
         }
 
         // Заполним таблицу изначально
-        fillTable('')
+        fillTable('');
+
     }
     else
         currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
     
     updateCommands()
+
     // Будем отлавливать изменение текста с задержкой 300 мсек
     var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable)
     tc.start()
+    var wnd = GetTextWindow();    
+    if (wnd){
+        var selText = wnd.GetSelectedText();
+        selText = selText.replace(/^\s*|\s*$/g, '');
+        if (selText.length>0){
+            if (currentFilter.length==0){
+                form.ЭлементыФормы.ТекстФильтра.Значение = selText;
+            }
+        }
+    }
+
     var res = form.ОткрытьМодально()
     tc.stop()
-    if(res) // Если что-то выбрали, вызовем обработчик
-        res.func(res.mdObj)
+    if(res){
+        // Если что-то выбрали, вызовем обработчик
+        logger.info(res);
+        var typeName = Object.prototype.toString.call(res);
+        if (typeName === '[object Array]') {
+            for (var i=0; i<res.length; i++) {
+                res[i].func(res[i].mdObj);
+            }
+        } else if (typeName === '[object Object]') {    
+
+            res.func(res.mdObj)
+        }  
+    } 
 }
+
+function SelectMdUUID(){
+    
+    var result = [];
+    if(!vtMD)
+        readMDtoVT();
+    if(!form)
+    {
+
+        form = loadScriptForm(SelfScript.fullPath.replace(/js$/, 'ssf'), SelfScript.self)
+        form.КлючСохраненияПоложенияОкна = "mdNavigator"
+        Icons = {
+        'Func': form.Controls.PicFunc.Picture,
+        'Proc': form.Controls.PicProc.Picture
+        }
+
+        // Заполним таблицу изначально
+        fillTable('');
+
+    }
+    else
+        currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
+    
+    updateCommands()
+
+    // Будем отлавливать изменение текста с задержкой 300 мсек
+    var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable)
+    tc.start()
+    var wnd = GetTextWindow();    
+    if (wnd){
+        var selText = wnd.GetSelectedText();
+        selText = selText.replace(/^\s*|\s*$/g, '');
+        if (selText.length>0){
+            if (currentFilter.length==0){
+                form.ЭлементыФормы.ТекстФильтра.Значение = selText;
+            }
+        }
+    }
+
+    var res = form.ОткрытьМодально()
+    tc.stop()
+    if(res){
+        //debugger;
+        // Если что-то выбрали, вызовем обработчик
+        logger.info(res);
+        var typeName = Object.prototype.toString.call(res);
+        if (typeName === '[object Array]') {
+            for (var i=0; i<res.length; i++) {
+                result[res[i].mdObj.id] = true;
+                //res[i].func(res[i].mdObj);
+            }
+        } else if (typeName === '[object Object]') {    
+            result[res.mdObj.id] = true;
+            //res.func(res.mdObj)
+        }  
+    }
+    
+    return result;
+}
+
+SelfScript.self['macrosВыбрать контейнер метаданных для поиска'] = function(){
+
+    choice = v8New("СписокЗначений");
+        for(var i = 0, c = metadata.openedCount; i < c; i++)
+        {
+            var container = metadata.getContainer(i)
+            choice.Add(container, container.identifier)
+        }
+
+        if(choice.Count() == 0)
+        {
+            return 
+        } else if(choice.Count() == 1){
+            choice = choice.Get(0)
+        } else {
+            choice = choice.ChooseItem("Выберите конфигурацию для поиска");
+        }
+            
+        if(!choice)
+            return false; 
+
+        var container = choice.Value
+        curMD = container;
+        vtMD = null;
+        readMDtoVT();
+}
+
 
 /*
  * Обработчики событий формы
@@ -501,7 +626,7 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
 // Это для пермещения вверх/вниз текущего выбора
 function ТекстФильтраРегулирование(Элемент, Направление, СтандартнаяОбработка)
 {
-    //debugger
+    
     if (form.ЭлементыФормы.Панель1.ТекущаяСтраница == form.ЭлементыФормы.Панель1.Страницы.Страница1){
         var curTableForm = form.ЭлементыФормы.ТаблицаМетаданных;
         var curTable = form.ТаблицаМетаданных;
@@ -584,6 +709,67 @@ function КомандыCaptureIntoCfgStore(Кнопка){
             Message(""+e.description())
         }
     });
+}
+
+function fillSubSystemUUIDRecursive(row){
+    if (recursiveSubsystems){
+        for (var i=0; i<row.Rows.Count(); i++){
+            var curRow = row.Rows.Get(i);
+            fillSubSystemUUIDRecursive(curRow);
+        }
+    }
+    var arrayСостав = subSystemMap.Get(row.Имя);
+    for (var i=0; i<arrayСостав.Count(); i++){
+        var uuid = arrayСостав.Get(i);
+        subSystemFilter[uuid]=true;
+    }    
+}
+
+function КомандыFilterOnSubSystem(Кнопка){
+    var selectedRow = null;
+    if (!treeSubSystems)
+        walkSubSystems();
+    if (treeSubSystems.Rows.Count()>0){
+        var curRow = treeSubSystems.Rows.Get(0);
+        var indent = "";
+        var valuelist = v8New("ValueList");
+        (function (row,valuelist,indent) {
+            for (var i = 0; i<row.Rows.Count(); i++){
+                var curRow = row.Rows.Get(i);
+                valuelist.Add(curRow, ""+indent+curRow.Имя);
+
+                if (curRow.Rows.Count()>0){
+                    arguments.callee(curRow, valuelist, indent+"    ");
+                }
+            }
+        
+        })(curRow, valuelist, indent);    
+
+        var dlg = new SelectValueDialogMdNavigator("Какую подсистему желаете отобрать?", valuelist, form.Controls.PicRecursive.Picture);
+        dlg.form.sortByName = recursiveSubsystems; //Тут переорпределяем кнопку сортировки по алфавиту на кнопку рекурсивного обхода. 
+        
+        result = dlg.selectValue(null, currentSubSystemFilter);
+        selectedRow = dlg.selectedValue;
+        
+        recursiveSubsystems = dlg.form.sortByName;
+    }
+    
+    if (!selectedRow){
+        isFilterOnSubSystem = false;
+        currentSubSystemFilter = "";
+    } else{
+        subSystemFilter = {};
+        currentSubSystemFilter = selectedRow.Имя;
+        isFilterOnSubSystem = true;
+        fillSubSystemUUIDRecursive(selectedRow);
+    }
+
+    if(currentFilter.length)
+        fillTable(currentFilter);
+    else
+        fillTable('');
+
+    updateCommands();
 }
 
 // Команда открытия свойств
@@ -669,7 +855,106 @@ function ТаблицаПроцедурВыбор(Элемент, Выбранн
     
 }
 
+function parseSubSystems (mdObj, row){
+        // Получим и покажем класс объекта
+        var mdc = mdObj.mdclass;
+        //var mdPropName = mdc.propertyAt(0);
+        var Имя = toV8Value(mdObj.property(0)).presentation();
+        var Состав = toV8Value(mdObj.property("Content")).toStringInternal();
+        var newRow = row.Rows.Add();
+        newRow.Имя = ""+Имя;
+        var arrayСостав = v8New("Array");
+        //newRowContent = newRow.Rows.Add();
+        arrayСостав.Add(mdObj.id);
+        //newRowContent.Состав = mdObj.id; //Добавим самих себя в состав.
+        var listUUID = v8New("ValueList");
+        var re = new RegExp(/\{"#",157fa490-4ce9-11d4-9415-008048da11f9,\n\{1,(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\}/igm);
+        while ((matches = re.exec(Состав)) != null){
+            arrayСостав.Add( "{"+matches[1].toUpperCase()+"}");
+            //newRowContent = newRow.Rows.Add();
+            //newRowContent.Состав = "{"+matches[1].toUpperCase()+"}";
+        }
+        subSystemMap.Insert(newRow.Имя, arrayСостав);
+        
+        // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
+        for(var i = 0; i < mdc.childsClassesCount; i++)
+        {
+            var childMdClass = mdc.childClassAt(i)
+            
+            for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++)
+                parseSubSystems(mdObj.childObject(i, chldidx), newRow)
+        }
+}
 
+function walkSubSystems(){
+        
+    var md = curMD;
+    treeSubSystems = v8New("ValueTree");
+    treeSubSystems.Columns.Add("Имя");
+    if (!md){
+        return;
+    }
+
+        try{
+            if(md.rootObject.childObjectsCount("Подсистемы") > 0)
+                var newRow = treeSubSystems.Rows.Add();
+                newRow.Имя = "Подсистемы";
+                var mdObj = md.rootObject;
+                for(var i = 0, c = mdObj.childObjectsCount("Подсистемы"); i < c; i++){
+                    mdSubs = mdObj.childObject("Подсистемы", i);
+                    parseSubSystems(mdSubs, newRow);
+                }
+                
+        }catch(e){
+           Message("Не удалось распарсить подсистемы"+e.description);
+        }
+        //return tree;
+}
+
+SelectValueDialogMdNavigator = SelectValueDialog.extend({
+    //Меняем картинку у кнопки SortByName и в дальнейшем в логике учитываем ее как recursiveSubsystems
+    construct : function (caption, values, pic) {
+        this._super(caption, values);
+        if (pic == undefined) pic = null
+        this.pic = pic; //Сюда передаем картинку. 
+    },
+
+    selectValue: function (values, currentFilter) {
+        if (!this.pic){
+
+        } else {
+            try{
+                this.form.Controls.CmdBar.Buttons.SortByName.Picture = this.pic;    
+            } catch (e) {}
+        }
+        var currSearch = this.form.DoNotFilter;
+        this.form.DoNotFilter = true;
+        this.updateList(currentFilter);
+        this.form.DoNotFilter = currSearch;
+        this.form.Controls.CmdBar.Buttons.SortByName.ToolTip = "Рекурсивно обходить все вложенные подсистемы";
+        this._super(values);
+    },
+
+    sortValuesList: function (sortByName, vt) {
+        if (!vt) {
+            vt = this.form.ValuesList;
+        }
+        vt.Sort('Order');
+    }
+
+})
+
+SelfScript.self['macrosНастройка фильтра для подсистем'] = function(){
+    var values = v8New('СписокЗначений');
+    values.Add(1, 'Отбирать состав только текущей подсистемы');
+    values.Add(2, 'Рекурсивно обходить дерево подсистем');
+    var dlg = new SelectValueDialog("Выберете вариант фильтра по подсистеме!", values);
+    if (dlg.selectValue()) {
+        settings.current.recursiveSubsystems = (dlg.selectedValue==2)?true:false;
+        recursiveSubsystems = settings.current.recursiveSubsystems;
+        settings.SaveSettings();                        
+    }    
+}
 
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
@@ -694,12 +979,18 @@ function getDefaultMacros()
         }
     }
 })()
-
-settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList')}, pflBase);
+logger.info('Чтение настроек. ');
+settings = SettingsManagement.CreateManager('mdNavigator', { 'listOfFilters': v8New('ValueList'), 'recursiveSubsystems': false}, pflBase);
 settings.LoadSettings();
+
+logger.info(settings.current);
+
 listOfFilters = settings.current.listOfFilters;
+recursiveSubsystems = settings.current.recursiveSubsystems;
 function beforeExitApp(){
     settings.current.listOfFilters = listOfFilters;
+    settings.current.recursiveSubsystems = recursiveSubsystems;
+
     settings.SaveSettings();
 }
 

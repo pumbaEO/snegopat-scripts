@@ -14,9 +14,17 @@ $addin stdcommands
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
-
+stdlib.require('log4js.js', SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
 
 global.connectGlobals(SelfScript)
+
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
@@ -88,9 +96,9 @@ function FuncProcPanel() {
     this.tree.Колонки.Добавить("Действие");
     //Возьмем пример у Орефкова из wndpanel
     this.needHide = false;
+    this.RE_CONTEXT_ATCLIENT      = new RegExp('^\\s*(AtClient|НаКлиенте)\\s*', 'i')
 
-    this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = ЗначениеИзСтрокиВнутр(
-        '{"#",69cf4251-8759-11d5-bf7e-0050bae2bc79,1,\n{0,13,8}\n}')
+    this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = stdlib.v8hotkey(13,8)
     this.cache = v8New("Map");
 
 }
@@ -256,6 +264,108 @@ FuncProcPanel.prototype.GetList = function () {
     //проанализруем управляемую форму...
     this.form.CurrentControl=this.form.Controls.ТекстФильтра;
     
+}
+
+FuncProcPanel.prototype.InvisiblePanelAddSubscriptionAtServer = function(Button){
+    logger.debug("InvisiblePanelAddSubscriptionAtServer");
+    //debugger;
+    var curRow =  this.form.Controls.FunctionList.CurrentRow;
+    if (!curRow){
+        logger.error("Не выбрана строка!");
+        return;
+    }
+        
+
+    var Matches = this.RE_CONTEXT_ATCLIENT.exec(curRow.Context);
+    if (!Matches) {
+        logger.error('Текущая процедура не на клиенте '+curRow.Context);
+        return;
+    }
+
+    logger.debug(curRow.Method);
+    
+    var name = curRow.Method;
+
+    var newNameAtServer = name + ((curRow.Context == 'AtClient') ? 'AtServer':'НаСервере');
+    var newNameAtServerNoContext = name + ((curRow.Context == 'AtClient') ? 'AtServerNoContext':'НаСервереБезКонтекста');
+
+    var values = v8New('СписокЗначений');
+    values.Add(1, newNameAtServer + '('+((curRow.Context == 'AtClient') ? '&AtServer':'&НаСервере') + ')');
+    values.Add(2, newNameAtServerNoContext + '('+((curRow.Context == 'AtClient') ? '&AtServerNoContext':'&НаСервереБезКонтекста') + ')');
+    
+    var dlg = new SelectValueDialog("Выберите контекст создания процедуры!", values);
+    if (dlg.selectValue()) {
+
+        var name = '';
+        if (dlg.selectedValue==1){
+            var name = newNameAtServer;
+            var context = (curRow.Context == 'AtClient') ? '&AtServer':'&НаСервере';
+        } else {
+            var name = newNameAtServerNoContext;
+            var context = (curRow.Context == 'AtClient') ? '&AtServerNoContext':'&НаСервереБезКонтекста';
+        }
+    
+        //Проверим есть ли такая же процедура уже созданная. 
+        
+        var filter_struct = v8New("Структура");
+        filter_struct.Insert("Method", name);
+        var МассивСтрок = this.methods.Rows.FindRows(filter_struct);
+        if (МассивСтрок.Count()>0) {
+            logger.error("Такая процедура уже существует!");
+            return;
+        }
+        
+
+        if (!this.targetWindow)
+            return;
+     
+        if (!this.targetWindow.IsActive())
+        {
+            //DoMessageBox("Окно, для которого показывался список, было закрыто!\nОкно с результатами стало не актуально и будет закрыто.");
+            logger.error("Окно, для которого показывался список, было закрыто!\nОкно с результатами стало не актуально и будет закрыто.");
+            //this.Close();
+            return;
+        }
+
+        var newText = '\n'+context + '\n' + ((curRow.Context == 'AtClient')?'Procedure':'Процедура')+ ' '+name + '()\n';
+        newText += '\n\n'+((curRow.Context == 'AtClient')?'EndProcedure':'КонецПроцедуры')
+
+        this.activateEditor();
+        var curLine = 0;
+        var isActive = false;
+        var filter_struct = v8New("Структура");
+        filter_struct.Insert("Method", curRow.Method);
+        var МассивСтрок = this.methods.Rows.FindRows(filter_struct);
+        if (МассивСтрок.Count()>0) {
+            curLine = МассивСтрок.Get(0)._method.EndLine;
+            isActive = МассивСтрок.Get(0).isActive;
+        }
+        if (isActive){
+            var pos = this.targetWindow.GetCaretPos();
+            line = this.targetWindow.GetLine(pos.beginRow); //.replace(/^\s*|\s*$/g, '');
+
+            function getTextBlockOffset(str){
+                var match = str.match(/^([\s]+)/ig);
+                var res = !match ? "" : match[0];
+                return res;
+            }
+
+            insertLine = getTextBlockOffset(line)+ name+'();';
+            curLine += 1;
+            this.targetWindow.InsertLine(pos.beginRow, insertLine);
+        }
+
+        if (curLine<2){
+            this.targetWindow.addLine(newText);
+
+        } else {
+            this.targetWindow.InsertLine(curLine+2, newText);    
+        }
+        
+        
+    }
+
+
 }
 
 FuncProcPanel.prototype.CreateTreeManagmentForm = function(text, tree){
@@ -1114,8 +1224,12 @@ FuncProcPanel.prototype.CmdBarReloadFunc = function(Button){
 }
 
 FuncProcPanel.prototype.activateEditor = function () {
-    if (!snegopat.activeTextWindow())
-        stdcommands.Frame.GotoBack.send();
+    
+    var activeView = this.targetWindow.GetView() ;
+    if (activeView)
+        activeView.activate();
+    //if (!snegopat.activeTextWindow())
+    //    stdcommands.Frame.GotoBack.send();
 }
 
 FuncProcPanel.prototype.goToLine = function (row) {
@@ -1174,6 +1288,7 @@ FuncProcPanel.prototype.FuncProcOnRowOutput = function(Control, RowAppearance, R
     }
     
 
+                
     //if (RowData.val._method.IsProc !== undefined)
     //    RowAppearance.val.Cells.Method.SetPicture(RowData.val._method.IsProc ? this.Icons.Proc : this.Icons.Func);
     
@@ -1300,7 +1415,10 @@ FuncProcPanel.prototype.ТекстФильтраОкончаниеВводаТе
     
 }
 FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = function(Элемент){
-    //Message("FunctionListПриАктивизацииСтроки");
+
+    var Кнопка =this.form.Controls.InvisiblePanel.Кнопки.AddSubscriptionAtServer;
+    
+    Кнопка.Доступность = this.isForm;
 }
 
 FuncProcPanel.prototype.CmdBarВыводитьВызовы = function(Button) {

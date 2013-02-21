@@ -93,7 +93,7 @@ function onDoModal(dlgInfo)
 
 events.connect(Designer, "onIdle", SelfScript.self)
 var processedViews = {}
-
+//debugger
 function onIdle()
 {
     if(!savedPassword || windows.modalMode != msNone)
@@ -105,6 +105,14 @@ function onIdle()
     // Проверим, а не модуль ли это и не обрабатывает ли он команду установки пароля
     if(view.mdObj.isPropModule(view.mdProp.id) && stdcommands.ModulePass.SetPassword.getState())
     {
+        var tw = snegopat.activeTextWindow()
+        if(tw)
+        {
+            var hwnd = wapi.GetFocus()
+            if(!wapi.IsChild(view.hwnd, hwnd))
+                return
+        }
+
         // Получим редактор модуля
         try{
             // Если модуль запаролен и пароль не введен, тут будет исключение

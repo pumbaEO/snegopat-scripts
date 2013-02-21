@@ -139,6 +139,22 @@ SelfScript.self['macrosГлобальный поиск по текущему к�
     return true;
 }
 
+SelfScript.self['macrosГл поиск фильтр по метаданным'] = function() {
+    
+    var es = GetExtSearchGlobal();
+    if (es.isGlobalFind){
+        md = stdlib.require(stdlib.getSnegopatMainFolder() + 'scripts\\mdNavigator.js');
+        if (es.filterByUUID){
+            es.vtMD = {};
+            es.filterByUUID = null;
+        }
+        es.filterByUUID = md.SelectMdUUID();
+    } 
+    es.show();
+
+    return true;
+}
+
 
 
 SelfScript.self['macrosОтменить глобальный поиск'] = function() {
@@ -234,6 +250,7 @@ ExtSearch = ScriptForm.extend({
         this.results.Columns.Add('groupsCache');
         this.results.Columns.Add('_object');
         this.results.Columns.Add('_match');
+        this.results.Columns.Add('SortMetadata');
         
         this.watcher = new TextWindowsWatcher();
         this.watcher.startWatch();
@@ -306,8 +323,8 @@ ExtSearch = ScriptForm.extend({
 
         this.clearSearchResults();
                      
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
+        this.re = this.buildSearchRegExpObject();
+        if (!this.re) return;
         
         var activeWndResRow = null;
         
@@ -326,7 +343,7 @@ ExtSearch = ScriptForm.extend({
                 var obj = es.getWindowObject(v);
                 if (!obj) continue;
                 
-                var docRow = es.search(obj, re);
+                var docRow = es.search(obj, es.re);
                 if (v == activeView)
                     activeWndResRow = docRow;
             }
@@ -342,13 +359,13 @@ ExtSearch = ScriptForm.extend({
         var activeWindow = this.watcher.getActiveTextWindow();
         if (!activeWindow) return;
              
-        var re = this.buildSearchRegExpObject();
-        if (!re) return;
+        this.re = this.buildSearchRegExpObject();
+        if (!this.re) return;
 
         var obj = this.getWindowObject(activeWindow.GetView());
         if (!obj) return;
         
-        var docRow = this.search(obj, re);
+        var docRow = this.search(obj, this.re);
         
         this.showSearchResult(docRow, fromHotKey);
     },
@@ -394,6 +411,11 @@ ExtSearch = ScriptForm.extend({
         docRow.FoundLine = obj.getTitle();
         docRow._object = obj;
         docRow.RowType = RowTypes.SearchDoc;
+        if (!obj.sort) obj.sort = 999;
+        var strSort = "0000000000"+(obj.sort + this.results.Rows.Count());
+        strSort = strSort.substr(strSort.length-10);
+        docRow.SortMetadata = strSort;
+
         docRow.groupsCache = v8New('Map');
         if(!re.multiline)
         {
@@ -446,6 +468,7 @@ ExtSearch = ScriptForm.extend({
                 results.push(r)
             if(results.length)  // Что-то нашли. Теперь надо получить номера строк для каждого вхождения
             {
+                this.form.TreeView = false;
                 var idx = 0, lineNum = 0, currentRes = results[idx], beginIdx = currentRes.index
                 // Для исключение ситуации, когда текст найден в последней строке, не заканчивающейся переводом строки,
                 // добавим к тексту перевод строки
@@ -489,7 +512,7 @@ ExtSearch = ScriptForm.extend({
     },
 
     showResult: function(docRow, fromHotKey){
-        this.results.Rows.Sort('FoundLine', false);
+        this.results.Rows.Sort('SortMetadata, FoundLine', false);
         // Запомним строку поиска в истории.
         this.addToHistory(this.form.Query);
 
@@ -537,15 +560,15 @@ ExtSearch = ScriptForm.extend({
 
     getGroupRow: function (docRow, methodData) {
 
-        if (!this.form.TreeView)
+        if (!this.form.TreeView || this.re.multiline)
             return docRow;
 
         var groupRow = docRow.groupsCache.Get(methodData);
         if (!groupRow) 
         {
             groupRow = docRow.Rows.Add();
-            groupRow.FoundLine = methodData.Name;
-            groupRow.Method = methodData.Name;
+            groupRow.FoundLine = (!methodData.Name)?"":methodData.Name;
+            groupRow.Method = (!methodData.Name)?"":methodData.Name;
             groupRow._object = docRow._object;
             
             if (methodData.IsProc !== undefined)
@@ -553,6 +576,7 @@ ExtSearch = ScriptForm.extend({
                 
             groupRow.lineNo = methodData.StartLine + 1;
             groupRow._method = methodData;
+            groupRow.SortMetadata = methodData.SortMetadata;
             
             docRow.groupsCache.Insert(methodData, groupRow); 
         }
@@ -567,7 +591,6 @@ ExtSearch = ScriptForm.extend({
         resRow.FoundLine = line;
         resRow.lineNo = lineNo;
         resRow._object = docRow._object;
-        
         if(undefined != methodData)
             resRow.Method = methodData.Name;
 
@@ -982,6 +1005,8 @@ ExtSearchGlobal = ExtSearch.extend({
         //FIXME: вынести в настройку. 
         this.countRowsInIdleSearch = 25; //Количество объектов поиска в фоне(для слабеньких машин ставим меньше, для формула1 - как удобней)
         this.re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|\:)/i);
+            
+        this.filterByUUID = null;
 
         ExtSearchGlobal._instance = this;
     },
@@ -991,12 +1016,11 @@ ExtSearchGlobal = ExtSearch.extend({
         if (sort == undefined) sort = 999;
         var docRow = null;
         if (mdObj){
-            strSort = "000000"+sort;
-            strSort = strSort.substr(strSort.length-5);
             var obj = this.getWindowObject({
                                 mdObj:mdObj,
                                 mdProp:row.mdProp,
-                                title:strSort+" "+row.title});
+                                title:row.title});
+            obj.sort = sort+1;
             docRow = this.search(obj, this.re);
         }
         return docRow;
@@ -1283,12 +1307,31 @@ ExtSearchGlobal = ExtSearch.extend({
                             }
                         }
                     }                    
-
                 }
+                
+                
             }
             
         }
 
+        if (this.filterByUUID){
+            var arrayToFilter = v8New('Array');
+            var firstElement = false;
+            for (var k in this.filterByUUID){
+                firstElement = true;
+                var filter = v8New("Structure");
+                filter.Insert("UUID", k);
+                var findRows = this.vtMD[currentId].FindRows(filter);
+                if (findRows.Count()>0){
+                    for (var i=0; i<findRows.Count(); i++){
+                        arrayToFilter.Add(findRows.Get(i));
+                    }
+                }
+            }
+            if (firstElement)
+                this.vtMD[currentId] = this.vtMD[currentId].Copy(arrayToFilter);
+
+        }
         this.vtMD[currentId].Sort("sort, LineNumber, title");
 
     },

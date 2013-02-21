@@ -1,0 +1,10 @@
+var obj = addins.byUniqueName("sqlite").object;
+db = obj.OpenDatabase("d:\\Misha\\Projects\\Lazarus\\Snegopat\\sqlite\\test.sqlite")
+res = obj.ExecSQL(db, "CREATE TABLE test(id INTEGER PRIMARY KEY ASC, txt)")
+message(res)
+res = obj.ExecSQL(db, "INSERT INTO test(txt) values ('Row 1'),('Row 2')")
+message(res)
+res = obj.ExecSQL(db, "SELECT * FROM test")
+obj.ExecSQL(db, "DROP TABLE test")
+obj.CloseDatabase(db)
+res.ВыбратьСтроку()
