@@ -989,16 +989,6 @@ ExtSearchGlobal = ExtSearch.extend({
             }
         }
         
-        if (!this.vtMD){
-            this.vtMD = {};
-        }
-
-        this.reatingMdObjects = {"ОбщийМодуль":2, 
-                        "Конфигурация":3,
-                        "ПланОбмена":4,
-                        "ОбщаяФорма":5
-                    };
-
         this.expandetRows = {};
         
         this.SetControlsVisible();
@@ -1059,7 +1049,14 @@ ExtSearchGlobal = ExtSearch.extend({
         this.curCaption = windows.caption; //а вдруг, еще кто-то не пользуется configCaption... 
         
         this.startGlobalSearch = true;
-
+        if (!this.vtMD){
+            this.vtMD = {};
+        }
+        this.reatingMdObjects = {"ОбщийМодуль":2, 
+                                "Конфигурация":3,
+                                "ПланОбмена":4,
+                                "ОбщаяФорма":5
+                            };
         if (objTitle.length>0){
             this.reatingMdObjects[objTitle]=1; //Самый высокий рейтинг...     
         }
@@ -1068,7 +1065,6 @@ ExtSearchGlobal = ExtSearch.extend({
         this.readMdToVt(this.currentMdContainer);
         this.expandetRows = {};
         this.curId = 0;
-        this.countSearchedRows = 0;
         if (this.dynamicHotKey) 
             hotkeys.AddHotKey("Ctrl+Shift+BkSpace", "ExtendedSearch", "Отменить глобальный поиск");
         events.connect(Designer, "onIdle", this);
@@ -1131,10 +1127,6 @@ ExtSearchGlobal = ExtSearch.extend({
             return;
         }
         var currentId = this.currentMdContainer.rootObject.id;
-        // var vt = this.vtMD[currentId+"toSearch"];
-        // if (!vt){
-        //     vt = this.vtMD[currentId];
-        // }
         if (this.vtMD[currentId].Count()<1) {
             this.startGlobalSearch = false;
             events.disconnect(Designer, "onIdle", this);
@@ -1147,16 +1139,8 @@ ExtSearchGlobal = ExtSearch.extend({
             if (this.curId<this.vtMD[currentId].Count()){
                 //docRow = this.searchByUuid(this.vtMD[currentId][this.curId]);
                 var currRow = this.vtMD[currentId].Get(this.curId);
-                if (!currRow.search){
-                    this.startGlobalSearch = false;
-                    break;
-                }
                 docRow = this.searchByUuid(currRow, this.curId);
-                if (this.countSearchedRows==0){
-                    this.countSearchedRows = this.results.Rows.Count();
-                }
-                windows.caption =((this.countSearchedRows>0)?"* ":"" )+ currRow.mdName; //Добавим признак чего-либо найденного. Удобно знаете ли запустить поиск переключится и по заголовку увидеть, нашли или нет.
-
+                windows.caption = currRow.mdName;
             } else {
                 this.startGlobalSearch = false;
                 break;
@@ -1181,9 +1165,6 @@ ExtSearchGlobal = ExtSearch.extend({
             this.vtMD[currentId].Columns.Add("sortTitle");
             this.vtMD[currentId].Columns.Add("sort");
             this.vtMD[currentId].Columns.Add("LineNumber");
-            this.vtMD[currentId].Columns.Add("rootMetadata");
-            this.vtMD[currentId].Columns.Add("childMetadata");
-            this.vtMD[currentId].Columns.Add("search");
 
             var es = this;
             //Реквизиты пропустим
@@ -1208,7 +1189,7 @@ ExtSearchGlobal = ExtSearch.extend({
             var LineNumber = 0; //Для сортировки модулей функций по порядку обхода, а не по алфавиту.
             
             (function (mdObj){
-                //if (!es.startGlobalSearch) {return} 
+                if (!es.startGlobalSearch) {return} 
                 
                 var mdc = mdObj.mdclass;
             
@@ -1235,21 +1216,15 @@ ExtSearchGlobal = ExtSearch.extend({
                         var title = mdName + ': ' + mdPropName;
                         row.title = title;
 
-                        row.search = true;
-
-
                         row.sort = 9;
                         row.LineNumber = LineNumber;
                         var matches;
 
-                        //var re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|:)/i);
-                        var re = new RegExp(/^(([а-яa-z0-9_]{1,})\s([а-яa-z0-9_]{1,}))(\.|:)/i);
-
+                        var re = new RegExp(/(([а-яa-z0-9]{1,})\s[а-яa-z0-9]{1,})(\.|:)/i);
+                        
                         matches = re.exec(mdName);
                         if (matches!=null){
                             row.sortTitle = matches[1];
-                            row.rootMetadata = matches[2];
-                            row.childMetadata = matches[3];
 
                             if (!es.reatingMdObjects[matches[1]]){
                                 if (!es.reatingMdObjects[matches[2]]) {
@@ -1260,7 +1235,10 @@ ExtSearchGlobal = ExtSearch.extend({
                             } else {
                                 row.sort = es.reatingMdObjects[matches[1]];   
                             }
+                                
+                            
                         }                        
+                        
                     }
                 }
                 // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
@@ -1354,42 +1332,6 @@ ExtSearchGlobal = ExtSearch.extend({
         this.searchInMetadata(true);
     },
 
-    CmdBar_BtSearchSettings : function(control){
-        md = this.currentMdContainer;
-        if (!md){
-            md = this.getCurrentMd();
-        }
-        var currentId = md.rootObject.id;   
-        if (!this.vtMD[currentId]){
-
-            var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
-            var СистемнаяИнформация = v8New("СистемнаяИнформация");
-            var версия = СистемнаяИнформация.ВерсияПриложения;
-            if (версия.indexOf("8.2.13")==-1){
-                notifysend.provider = notifysend.initprovider("Встроенный1С");
-            }
-            notifysend.Error("Строим дерево конфигурации ", "Тут может быть ваша реклама.", 1);
-            this.readMdToVt(md);
-        } 
-        
-        vt = this.vtMD[currentId].Copy();
-
-        stdlib.require(stdlib.getSnegopatMainFolder() + 'scripts\\epf\\epfloader.js', SelfScript); 
-        // Получаем обработку по ее имени (как оно задано в свойстве Имя обработки).
-        testVt = ValueToStringInternal(vt);
-        treeSubsystems = this.getSubSystems();
-        treeSubsystemsText = ValueToStringInternal(treeSubsystems);
-        var epf = EpfLoader.getEpf("ExtendedSearchРасширенныйОтбор");
-        var result = epf.ОткрытФормуНастройкиОтбора(testVt, treeSubsystemsText);
-        try{
-            testVt = ValueFromStringInternal(result);
-            //this.vtMD[currentId] = testVt.Copy();
-        } catch (e){
-            Message(""+e.description);
-        }
-        
-    },
-
 
     SetControlsVisible : function(){
         this._super();
@@ -1434,59 +1376,7 @@ ExtSearchGlobal = ExtSearch.extend({
                 }
             }
         }
-    }, 
-
-    parseSubSystems: function(mdObj, row){
-        // Получим и покажем класс объекта
-        var mdc = mdObj.mdclass;
-        //var mdPropName = mdc.propertyAt(0);
-        var Имя = toV8Value(mdObj.property(0)).presentation();
-        var Состав = toV8Value(mdObj.property("Content")).toStringInternal();
-        var newRow = row.Rows.Add();
-        newRow.Имя = ""+Имя;
-        var listUUID = v8New("ValueList");
-        var re = new RegExp(/\{"#",157fa490-4ce9-11d4-9415-008048da11f9,\n\{1,(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\}/igm);
-        while ((matches = re.exec(Состав)) != null){
-            newRowContent = newRow.Rows.Add();
-            newRowContent.Состав = ""+matches[1].toUpperCase();
-        }
-        
-        // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
-        for(var i = 0; i < mdc.childsClassesCount; i++)
-        {
-            var childMdClass = mdc.childClassAt(i)
-            
-            for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++)
-                this.parseSubSystems(mdObj.childObject(i, chldidx), newRow)
-        }
-    },
-
-    getSubSystems : function(){
-        
-        var md = this.currentMdContainer;
-        if (!md){
-            md = this.getCurrentMd();
-        }
-        var tree = v8New("ValueTree");
-        tree.Columns.Add("Имя");
-        tree.Columns.Add("Состав");
-
-        try{
-            if(md.rootObject.childObjectsCount("Подсистемы") > 0)
-                var newRow = tree.Rows.Add();
-                newRow.Имя = "Подсистемы";
-                var mdObj = md.rootObject;
-                for(var i = 0, c = mdObj.childObjectsCount("Подсистемы"); i < c; i++){
-                    mdSubs = mdObj.childObject("Подсистемы", i);
-                    this.parseSubSystems(mdSubs, newRow);
-                }
-                
-        }catch(e){
-            //Message(""+e.description);
-        }
-        return tree.Copy();
     }
-
      
 
 
