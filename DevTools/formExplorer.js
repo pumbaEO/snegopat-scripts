@@ -44,8 +44,7 @@ function exploreForm(form, force)
             }
         }
     }
-    if(traceEvents)
-        form.trapDialogEvents = !form.trapDialogEvents
+    form.trapDialogEvents = traceEvents
 }
 
 function macrosПереключитьПоказКонтролов()          { showCtrlList = !showCtrlList }
