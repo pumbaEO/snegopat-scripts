@@ -142,7 +142,7 @@ SubSystemFilter = stdlib.Class.extend({
                     this.DisableSelection = false;
                     return
                 }
-                var props = dlgInfo.form.getControl('eOK').props;
+                //var props = dlgInfo.form.getControl('eOK').props;
                 //props.setValue("Высота", 100);
                 //Message(ЗначениеВСтрокуВнутр(props.getValue("Заголовок")));
                 //props.setValue("Подсказка", TitleStr("jklewhfwjkjrhfgjhgj"));
