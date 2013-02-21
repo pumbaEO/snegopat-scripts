@@ -2,12 +2,12 @@
 $uname choiceSubSystem
 $dname Выбрать подсистему
 $addin stdlib
-$addin hotkeys
+$addin hotkeys hk
+$addin stdcommands
 
 // (c) Сосна Евгений <shenja@sosna.zp.ua>
 // Скрипт позволяет быстрее выбрать нужную подсистему при отборе по подсистемам
 // 
-
 
 
 stdlib.require("SelectValueDialog.js", SelfScript);
@@ -36,8 +36,45 @@ SelfScript.self['macrosПоиск подсистемы'] = function() {
     return true;
 }
 
+function activateSubSystemSelect(bForClear)
+{
+    var mdTreeView = null
+    // Получим активное окно
+    var view = windows.getActiveView()
+    if(view)
+    {
+        // Проверим, обрабатывает ли окно команду отключения отбора подсистем
+        var state = stdcommands.Frntend.SelectSubSystem.getState(view)
+        if(state && state.enabled)
+            mdTreeView = view
+    }
+    if(!mdTreeView)
+    {
+        // Активное окно не обрабатывает команду отключения отбора подсистем
+        // Значит, надо активировать окно конфигурации, если она открыта
+        if(stdlib.isConfigOpen())
+        {
+            stdcommands.Config.Window.send()
+            mdTreeView = windows.getActiveView()
+        }
+        else
+            return false// Конфигурация не открыта, нечего и отбирать
+    }
+    if(bForClear)
+        GetSubSystemFilter().DisableSelection = true
+    stdcommands.Frntend.SelectSubSystem.sendToView(mdTreeView)
+    if(view.id != mdTreeView.id)
+        view.activate()
+    return true
+}
 
+SelfScript.self['macrosВключить отбор по подсистемам'] = function() {
+    return activateSubSystemSelect(false)
+}
 
+SelfScript.self['macrosОтключить отбор по подсистемам'] = function() {
+    return activateSubSystemSelect(true)
+}
 
 
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
@@ -64,17 +101,12 @@ SubSystemFilter = stdlib.Class.extend({
         this.treeSubSystems = null;
         this.settings = SettingsManagement.CreateManager(this.settingsRootPath, this.defaultSettings);
         this.loadSettings();
-
-        this.md = metadata.current;
-        this.mdId = this.md.identifier;
-
         SubSystemFilter._instance = this;
     },
 
     loadSettings:function(){
         this.settings.LoadSettings();
         events.connect(windows, "onDoModal", this)
-
     },
 
     changeSettings : function(){
@@ -98,27 +130,28 @@ SubSystemFilter = stdlib.Class.extend({
         
     }, 
 
-
     onDoModal:function(dlgInfo){
         if(dlgInfo.caption == "Отбор по подсистемам")
         {
-            if(dlgInfo.stage == openModalWnd)
+            if(dlgInfo.stage == afterInitial)
             {
-                this.filterOnSubSystem();
-                
-                hotkeys.AddHotKey("Ctrl+F", "choiceSubSystem", "Поиск подсистемы");
-            } else if (dlgInfo.stage == afterDoModal){
-                for(var i = 0; i < HotKeys.count; i++)
+                if(this.DisableSelection)
                 {
-                    var hk = HotKeys.item(i);
-                    Команда = hk.addin + "::" + hk.macros
-                    if (Команда.indexOf("choiceSubSystem::Поиск подсистемы")!=-1){
-                        try {
-                            HotKeys.remove(i);
-                            hotkeys.AddHotKey("Ctrl+F", "ExtendedSearch", "Найти текст");
-                        } catch (e) {}
-                    }
+                    // Это мы окрыли окно диалога для отключения отбора
+                    dlgInfo.form.sendEvent(dlgInfo.form.getControl('eClear').id, 0)
+                    this.DisableSelection = false;
+                    return
                 }
+                //var props = dlgInfo.form.getControl('eOK').props;
+                //props.setValue("Высота", 100);
+                //Message(ЗначениеВСтрокуВнутр(props.getValue("Заголовок")));
+                //props.setValue("Подсказка", TitleStr("jklewhfwjkjrhfgjhgj"));
+                //props.setValue("Заголовок", TitleStr("Проверка"));
+                this.filterOnSubSystem();
+                this.hotKey = hotkeys.addTemp(hk.stringTovkcode('Ctrl+F'), SelfScript.uniqueName, "Поиск подсистемы")
+            } else if (dlgInfo.stage == afterDoModal && this.hotKey){
+                hotkeys.removeTemp(this.hotKey)
+                this.hotKey = 0
             }
         }
     },
