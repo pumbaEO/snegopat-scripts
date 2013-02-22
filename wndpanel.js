@@ -20,6 +20,7 @@ global.connectGlobals(SelfScript)
 var form
 var needActivate, needHide
 var api = stdlib.require('winapi.js')
+var diff;
 
 function getFullMDName(mdObj, mdProp)
 {
@@ -555,6 +556,55 @@ function CmdsConfig(Кнопка)
     мФормаНастройки.ОткрытьМодально()
 }
 
+function КонтекстноеМенюДобавитьКСравнениюА(Кнопка) {
+    if(form.Controls.WndList.ТекущаяСтрока) {
+        var obj = getWindowObject(form.Controls.WndList.ТекущаяСтрока.Окно.view);
+        if (!obj)
+            return
+        diff.addA(obj);
+        
+    }
+}
+
+function КонтекстноеМенюДобавитьКСравнениюВ(Кнопка) {
+ if(form.Controls.WndList.ТекущаяСтрока) {
+        var obj = getWindowObject(form.Controls.WndList.ТекущаяСтрока.Окно.view);
+        if (!obj)
+            return
+        diff.addB(obj);
+        
+    }
+}
+
+function КонтекстноеМенюДобавитьКСравнениюС(Кнопка) {
+    if(form.Controls.WndList.ТекущаяСтрока) {
+        var obj = getWindowObject(form.Controls.WndList.ТекущаяСтрока.Окно.view);
+        if (!obj)
+            return
+        diff.addC(obj);
+        
+    }
+}
+
+function КоманднаяПанельСравненияДействиеОчиститьБуфер(Кнопка) {
+    diff.clearCache();
+}
+
+function getWindowObject  (view) {
+   
+        if (view.mdObj && view.mdProp) 
+            return new MdObject(view.mdObj, view.mdProp, view.title);
+            
+        var obj = view.getObject();
+        if (obj && toV8Value(obj).typeName(0) == 'TextDocument')
+            return new TextDocObject(obj, view.title);        
+            
+        if (obj) Message('Неподдерживаемый тип объекта для сравнения: ' + toV8Value(obj).typeName(0));
+        
+        return null;
+}
+
+
 function мЗаписатьНастройки() {
     мДляВнешнихФайловОтображатьТолькоИмяФайла=мФормаНастройки.ДляВнешнихФайловОтображатьТолькоИмяФайла
     мИспользоватьСессии = мФормаНастройки.ИспользоватьСессии;
@@ -596,6 +646,193 @@ function WndListПередУдалением(Элемент, Отказ)
     Отказ.val = true
     closeSelected()
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Вспомогательные объекты.
+////
+
+MdObject = stdlib.Class.extend({           
+    construct: function (obj, prop, title) {
+        this.obj = obj;
+        this.prop = prop;
+        this.title = null;
+        this.md = obj.container;
+        this.isForm = (prop.name(1) == "Форма");
+    },
+    getText: function() {
+        return this.obj.getModuleText(this.prop.id);
+    },
+
+    saveTextToTempFile: function(path){
+        if (!path) path = GetTempFileName('txt');
+
+        text = this.getText();
+        var file = v8New("textDocument");
+        file.setText(text);
+        try{
+            file.Write(path);    
+        } catch (e) {
+            return null;
+        }
+        
+        return path;
+
+    },
+
+    activate: function() {
+        this.obj.openModule(this.prop.id);
+        return GetTextWindow();
+    },
+    getTitle: function() {
+        if (!this.title)
+        {
+            function getMdName(mdObj) {                             
+                if (mdObj.parent && mdObj.parent.mdClass.name(1) != 'Конфигурация')
+                    return getMdName(mdObj.parent) + '.' + mdObj.mdClass.name(1) + '.' + mdObj.name;
+                var cname = mdObj.mdClass.name(1);
+                return  (cname ? cname +'.':'') + mdObj.name;
+            }
+            this.title = getMdName(this.obj) + '.' + this.prop.name(1);
+        }
+        return this.title;
+    },
+
+    getForm: function(){
+        if (!this.isForm) {
+            return null
+        }
+
+        var tempPath = GetTempFileName('ssf');
+
+        var ep = this.obj.getExtProp("Форма");
+        var file = ep.saveToFile();
+        try{
+            // создадим хранилище на базе файла. Для управляемых форм тут вывалится в catch
+            var stg = v8Files.attachStorage(file);
+            // Получим из хранилища содержимое под-файла form
+            var form = ep.getForm();
+            var file1 = v8New("textDocument");
+            file1.setText(' ');
+            file1.Write(tempPath);
+            file1=null;
+
+            var file = ep.saveToFile(v8files.open("file://"+tempPath,  fomIn | fomOut | fomTruncate));
+            file.close();
+            isManagmendForm = false
+        } catch(e) {
+            //logger.error(e.description);
+            //isManagmendForm = true;
+            file.seek(0, fsBegin)
+            var text = file.getString(dsUtf8);
+            var file = v8New("textDocument");
+
+            file.setText(text);
+            var tempPath = GetTempFileName('txt');
+            file.Write(tempPath);
+            newPath = GetTempFileName('ssf');
+            MoveFile(tempPath, newPath);
+            tempPath = newPath;
+        }
+
+        return tempPath;
+    }
+});
+
+TextDocObject = stdlib.Class.extend({
+    construct: function (txtDoc, title) {
+        this.obj = txtDoc;
+        this.title = title;
+    },
+    getText: function() {
+        return this.obj.GetText();
+    },
+    activate: function() {
+        this.obj.Show();
+        return GetTextWindow();
+    },
+    getTitle: function() {
+        if (!this.title)
+            this.title = this.obj.UsedFileName;
+        return this.title;
+    }
+});
+
+diffObject = stdlib.Class.extend({
+    construct: function (bla) {
+        this.kdiffpath = "d:\\WORK\\snegopat\\local\\KDiff3\\kdiff3.exe";
+        this.A = null;
+        this.B = null;
+        this.C = null;
+    },
+
+    addA : function(obj){
+        this.A = obj;
+    }, 
+
+    addB : function(obj){
+        this.B = obj;
+        this.diffObjects();
+    }, 
+
+    addC : function(obj){
+        this.C = obj;
+    }, 
+
+    diffObjects: function(){
+        //debugger;
+        if (!this.A || !this.B) {
+            Message("Не заполенны А или В");
+            return;
+        }
+
+
+        if (this.A.isForm = this.B.isForm) {
+            //diff form...
+
+            //diff files...
+            pathA = this.A.getForm();
+            if (!pathA) return;
+
+            pathB = this.B.getForm();
+            if (!pathB) return
+
+            v8reader = stdlib.require(stdlib.getSnegopatMainFolder() + "scripts\\dvcs\\diff-v8Reader.js").GetBackend();
+            v8reader(pathA, pathB);
+
+        } else {
+            //diff files...
+            pathA = this.A.saveTextToTempFile();
+            if (!pathA) return;
+
+            pathB = this.B.saveTextToTempFile();
+            if (!pathB) return
+
+            if (this.C) {
+                pathC = +this.C.saveTextToTempFile();
+                if (!pathC) return    
+
+                pathC = ' '+pathC;
+            } else {
+                pathC = ''
+            }
+            
+
+            var cmd = this.kdiffpath +' "'+pathA+'" "'+ pathB +'" '+ pathC + ' -o '+ '"d:\\work\\temp\\'+this.A.getTitle()+'.txt"';
+            Message(""+cmd);
+            ЗапуститьПриложение(cmd, "", true);
+
+        }
+
+
+    },
+
+    clearCache: function () {
+        this.A = null;
+        this.B = null;
+        this.C = null;
+    }
+
+});
 
 (function(){
     // Инициализация скрипта
@@ -639,3 +876,4 @@ if (мИспользоватьСессии){
 }
 
 мФормаНастройки=null
+diff = new diffObject();
