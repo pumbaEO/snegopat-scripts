@@ -70,10 +70,15 @@ function macrosПоказатьСвойстваКонтрола()
         return
     }
     var vl = v8New("СписокЗначений")
-    vl.Add(-1, "Форма")
+    vl.Add(-1 + 2, "Форма")
     for(var i = 0, k = form.controlsCount; i < k; i++)
-        vl.Add(i, form.getControl(i).name)
+    {
+        var name = form.getControl(i).name
+        if(!name.length)
+            name = "" + i
+        vl.Add(i + 2, name)  // SelectValueDialog не дает выбрать значение 0, поэтому сдвинем все на 2
+    }
     var dlg = new SelectValueDialog("Укажите контрол", vl);
-    if (dlg.selectValue())
-        form.getControl(dlg.selectedValue).props.activateProperty("Имя")
+    if(dlg.selectValue())
+        form.getControl(dlg.selectedValue - 2).props.activateProperty("Имя")
 }
