@@ -33,7 +33,7 @@ TextChangesWatcher = stdlib.Class.extend({
     // Начать отслеживание изменения текста
     start: function() {
         this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
-        this.noChangesTicks = 0
+        this.noChangesTicks = this.ticks + 1
         this.timerID = createTimer(100, this, "onTimer")
     },
     
