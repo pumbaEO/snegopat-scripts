@@ -15,7 +15,7 @@ stdlib.require("TextChangesWatcher.js", SelfScript);
 
 events.connect(windows, "onDoModal", SelfScript.self)
 
-var form, typeTreeCtrl, multyTypeCtrl, quickSel, tc, initName, hkID, v8Form
+var form, typeTreeCtrl, multyTypeCtrl, quickSel, tc, initName, hkID, v8Form, fOnlySelected = false
 
 function calcInitName()
 {
@@ -52,6 +52,7 @@ function initForm()
 
 function walkTypeTree(f)
 {
+    var grid = typeTreeCtrl.extInterface
     function forAllTypes(parent, prefix, f)
     {
         var row = parent.firstChild
@@ -59,9 +60,7 @@ function walkTypeTree(f)
         {
             var ca = row.getCellAppearance(0)
             var fullName = prefix + ca.text
-            if(row.firstChild)
-                forAllTypes(row, fullName + ".", f)
-            else if(f(fullName))
+            if((!fOnlySelected || grid.isCellChecked(row, 0)) && f(fullName))
             {
                 var r = form.Types.Add()
                 r.Type = fullName
@@ -70,10 +69,12 @@ function walkTypeTree(f)
                 if(fullName == initName)
                     form.Controls.Types.CurrentRow = r
             }
+            if(row.firstChild)
+                forAllTypes(row, fullName + ".", f)
             row = row.next
         }
     }
-    forAllTypes(typeTreeCtrl.extInterface.dataSource.root, '', f)
+    forAllTypes(grid.dataSource.root, '', f)
 }
 
 function updateList(pattern)
@@ -101,6 +102,7 @@ function updateList(pattern)
 
 function ПриОткрытии()
 {
+    form.Pattern = ''
     tc.start()
     updateList('')
 }
@@ -185,20 +187,23 @@ function onDoModal(dlgInfo)
                 dlgInfo.cancel = true;
                 dlgInfo.result = 0;
             }
-            else
-            {
-                if(quickSel.result) // Нажали Ok, закрываем штатный диалог
-                {
-                    // Посылаем форме нажатие кнопки OK
-                    v8Form.sendEvent(v8Form.getControl('OK').id, 0)
-                }
-                else
-                {
-                    // Нажали "Показать стандартный" - добавим горячих клавиш
-                    hkID = [hotkeys.addTemp(hk.stringTovkcode('Ctrl+F'), SelfScript.uniqueName, "НайтиТип"),
-                            hotkeys.addTemp(hk.stringTovkcode('Ctrl+K'), SelfScript.uniqueName, "ПереключитьСоставныеТипы")]
-                }
-            }
+        }
+        if(quickSel && quickSel.result) // Нажали Ok, закрываем штатный диалог
+        {
+            // Посылаем форме нажатие кнопки OK
+            v8Form.sendEvent(v8Form.getControl('OK').id, 0)
+        }
+        else
+        {
+            // Показывается стандартный диалог - добавим горячих клавиш и подсказок
+            hkID = [hotkeys.addTemp(hk.stringTovkcode('Ctrl+F'), SelfScript.uniqueName, "НайтиТип"),
+                    hotkeys.addTemp(hk.stringTovkcode('Ctrl+Shift+F'), SelfScript.uniqueName, "ПоказатьОтмеченныеТипы"),
+                    hotkeys.addTemp(hk.stringTovkcode('Ctrl+K'), SelfScript.uniqueName, "ПереключитьСоставныеТипы")]
+            // Надо показать в диалоге, что мы добавили
+            typeTreeCtrl.props.setValue("Подсказка", stdlib.LocalWString("Для поиска нажмите Ctrl + F, для поиска только среди уже выбранных типов - Ctrl + Shift + F"))
+            multyTypeCtrl.props.setValue("Подсказка", stdlib.LocalWString("Включить/выключить составной тип данных (Ctrl + K)"))
+            multyTypeCtrl.props.setValue("Заголовок", stdlib.LocalWString("Cоставной тип данных (Ctrl + K)"))
+            multyTypeCtrl.props.setValue("Ширина", 500)
         }
         break
     case openModalWnd:
@@ -217,6 +222,7 @@ function onDoModal(dlgInfo)
         {
             hotkeys.removeTemp(hkID[0])
             hotkeys.removeTemp(hkID[1])
+            hotkeys.removeTemp(hkID[2])
             hkID = 0
         }
         break
@@ -242,6 +248,18 @@ function macrosНайтиТип()
         return false
     calcInitName()
     var res = selectType()
+    if(res && res.result)
+        wapi.SetFocus(typeTreeCtrl.hwnd)
+}
+
+function macrosПоказатьОтмеченныеТипы()
+{
+    if(!typeTreeCtrl)
+        return false
+    calcInitName()
+    fOnlySelected = true
+    var res = selectType()
+    fOnlySelected = false
     if(res && res.result)
         wapi.SetFocus(typeTreeCtrl.hwnd)
 }
