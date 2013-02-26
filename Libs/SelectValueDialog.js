@@ -17,6 +17,7 @@ $addin stdlib
 ////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////
 
+global.connectGlobals(SelfScript)
 stdlib.require("ScriptForm.js", SelfScript);
 stdlib.require("TextChangesWatcher.js", SelfScript);
 stdlib.require("TextWindow.js", SelfScript);
@@ -275,24 +276,46 @@ SelectValueDialog = ScriptForm.extend({
             grid.CurrentRow = grid.Value.Get(curIndex);
         }
         DefaultHandler.val = false;
+    },
+    // Вставляет кнопку в командную панель, в правую часть.
+    AddCmdButton: function(commands) {
+        function tuneButton(button, params)
+        {
+            for(var k in params)
+                button[k] = params[k]
+        }
+        var pThis = this;
+        (function InsertCmdButtons(cmds, to, startIdx) {
+            for(var k in cmds)
+            {
+                var cmd = cmds[k]
+                if(cmd.id == '|')
+                    to.Вставить(startIdx, '', ТипКнопкиКоманднойПанели.Разделитель)
+                else if(cmd.id == '>')
+                {
+                    var subMenu = to.Вставить(startIdx, '', ТипКнопкиКоманднойПанели.Подменю)
+                    tuneButton(subMenu, cmd.params)
+                    InsertCmdButtons(cmd.buttons, subMenu.Кнопки, 0)
+                }
+                else
+                {
+                    var button = to.Вставить(startIdx, cmd.id, ТипКнопкиКоманднойПанели.Действие, undefined, v8New("Действие", "_onAdditionalButton"))
+                    tuneButton(button, cmd.params)
+                    if(!pThis.handlers)
+                        pThis.handlers = {}
+                    pThis.handlers[cmd.id] = cmd.handler
+                }
+                startIdx++
+                
+            }
+        })(commands, this.form.Controls.CmdBarMain.Кнопки, 0)
+    },
+    // Обработчик нажатий дополнительных кнопок
+    _onAdditionalButton: function(button){
+        button = button.val
+        var SelectedVal = this.form.Controls.ValuesList.CurrentRow;
+        if(SelectedVal)
+            SelectedVal = SelectedVal.Value;
+        this.handlers[button.Имя](this, SelectedVal, button)
     }
-    
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
