@@ -1,11 +1,9 @@
 ﻿$engine JScript
 $uname jump2refs
 $dname Переход к ссылкам метаданных
-$addin global
 $addin stdlib
 $addin stdcommands
 
-global.connectGlobals(SelfScript);
 stdlib.require("SelectValueDialog.js", SelfScript);
 
 var refs, lastObjects = [];
@@ -28,22 +26,24 @@ SelfScript.self['macrosПерейти обратно'] = function ()
     return true
 }
 
+// Перехват вывода в окно сообщений
 function onMessage(params)
 {
-    refs.push(params.text)
-    params.cancel = true
+    refs.push(params.text)  // Запомним, что выводилось
+    params.cancel = true    // Не будем реально выводить
 }
-
+// Перехват появления модального диалога
 function onDoModal(dlgInfo)
 {
-    dlgInfo.cancel = true
+    dlgInfo.cancel = true   // Просто сразу скажем, что в нем нажали OK
     dlgInfo.result = mbaOK
 }
 
+// Функция ищет объект метаданных в контейнере по его имени
 function findObject(root, name)
 {
     //Message(name)
-    var names = name.split(".")
+    var names = name.split(".")     // Разобъем имя на части
     for(var idx = 0; idx < names.length; idx += 2)
     {
         var mdc = root.mdclass
@@ -71,7 +71,9 @@ function doJump(command)
     events.connect(Designer, "onMessage", SelfScript.self)
     // Подавляем показ диалога
     events.connect(windows, "onDoModal", SelfScript.self)
+    // Посылаем команду поиска ссылок
     command.sendToView(view)
+    // Убираем перехваты
     events.disconnect(Designer, "onMessage", SelfScript.self)
     events.disconnect(windows, "onDoModal", SelfScript.self)
     //Message(refs[0]);
@@ -82,7 +84,7 @@ function doJump(command)
         return false
     }
     var rootObject = view.mdObj.container.rootObject
-    lastObjects.push(findObject(rootObject, refs[0].match(/"(.+)"/)[1]))
+    var currentObject = findObject(rootObject, refs[0].match(/"(.+)"/)[1])
     
     if(refs.length == 2)
         choice = refs[1]
@@ -97,6 +99,7 @@ function doJump(command)
     }
     var mdObj = findObject(rootObject, choice)
     mdObj.activateInTree()
+    lastObjects.push(currentObject)
     return true
 }
 
