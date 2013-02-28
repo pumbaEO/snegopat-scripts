@@ -4,6 +4,7 @@ $dname Выбрать подсистему
 $addin stdlib
 $addin hotkeys hk
 $addin stdcommands
+$addin vbs
 
 // (c) Сосна Евгений <shenja@sosna.zp.ua>
 // (c) Александр Орефков <orefkov@gmail.com>
@@ -79,8 +80,8 @@ function getDefaultMacros() {
 SubSystemFilter = stdlib.Class.extend({
     settingsRootPath : 'subSystemFilter',
     defaultSettings : {
-            'useEnter': false, 
-            'clearFilter':false
+            LastChoices: undefined,
+            MaxLastChoices: 5
     },
 
     construct : function () {    
@@ -91,29 +92,23 @@ SubSystemFilter = stdlib.Class.extend({
 
     loadSettings:function(){
         this.settings.LoadSettings();
+        if(!this.settings.current.LastChoices)
+            this.settings.current.LastChoices = v8New("ValueList")
         events.connect(windows, "onDoModal", this)
     },
 
     changeSettings : function(){
-        var values = v8New('СписокЗначений');
-        values.Add(0, 'Сразу устанавливать фильтр (после установки фильтра Enter)');
-        values.Add(1, 'Только отметить необходимую систему');
-        var dlg = new SelectValueDialog("Выберите вариант установки фильтра!", values);
-        if (dlg.selectValue()) {
-            this.settings.current.useEnter = (dlg.selectedValue==1)?true:false;
-            this.settings.SaveSettings();                        
+        var s = this.settings.current
+        vbs.result = s.MaxLastChoices
+        if(vbs.DoEval('InputNumber(result, "Максимальный размер быстрого списка", 1, 0)'))
+        {
+            s.MaxLastChoices = vbs.result
+            var cnt = s.LastChoices.Count()
+            while(cnt > s.MaxLastChoices)
+                s.LastChoices.Delete(--cnt)
+            this.settings.SaveSettings()
         }
-        
-        var values = v8New('СписокЗначений');
-        values.Add(0, 'Только отмечать новый выбор подсистемы');
-        values.Add(1, 'Очищать фильтр перед установкой нового фильтра');
-        var dlg = new SelectValueDialog("Выберите вариант установки фильтра!", values);
-        if (dlg.selectValue()) {
-            this.settings.current.clearFilter = (dlg.selectedValue==1)?true:false;
-            this.settings.SaveSettings();                        
-        }
-        
-    }, 
+    },
 
     onDoModal:function(dlgInfo){
         try{
@@ -169,6 +164,7 @@ SubSystemFilter = stdlib.Class.extend({
                 // Ставим пометку на выбранной подсистеме
                 grid.checkCell(result.row, 0, 1)
                 form.sendEvent(treeSubSystem.id, 17, 1)
+                this.saveChoice(result.row)
                 // Нажмем Ok
                 form.sendEvent(form.getControl('eOK').id, 0)
                 return
@@ -201,14 +197,27 @@ SubSystemFilter = stdlib.Class.extend({
     fillSubSystemList: function(treeSubSystem) {
         // Заполним список подсистем
         var valuelist = v8New("ValueList");
-        (function forAllRows(parent, indent)
+        var lastChoices = this.settings.current.LastChoices
+        var hotPos = [];
+        (function forAllRows(parent, indent, fullPath)
         {
             for(var row = parent.firstChild; row; row = row.next)
             {
-                valuelist.Add(row, indent + row.getCellAppearance(0).text);
-                forAllRows(row, indent + '    ')
+                var name = row.getCellAppearance(0).text
+                valuelist.Add(row, indent + name);
+                var fullName = fullPath + (fullPath.length ? "." : "") + name
+                var found = lastChoices.FindByValue(fullName)
+                if(found)
+                    hotPos.push({idx: lastChoices.IndexOf(found), name: fullName, row: row})
+                forAllRows(row, indent + '    ', fullName)
             }
-        })(treeSubSystem.extInterface.dataSource.root, '')
+        })(treeSubSystem.extInterface.dataSource.root, '', '')
+        if(hotPos.length)
+        {
+            hotPos.sort(function(a, b){return a.idx - b.idx})
+            for(var k in hotPos)
+                valuelist.Insert(k, hotPos[k].row, hotPos[k].name);
+        }
         return valuelist
     },
     filterDialog: function(subSystemList){
@@ -247,6 +256,7 @@ SubSystemFilter = stdlib.Class.extend({
             // Ставим пометку на выбранной подсистеме
             grid.checkCell(row, 0, 1)
             this.data.form.sendEvent(this.data.treeSubSystem.id, 17, 1)
+            this.saveChoice(row)
         }
     },
     toggleCheckParents: function()
@@ -258,6 +268,34 @@ SubSystemFilter = stdlib.Class.extend({
     {
         if(this.data)
             this.data.checkChilds.value = !this.data.checkChilds.value
+    },
+    // Сохранение выбранной подсистемы в списке недавно выбранных
+    saveChoice: function(row)
+    {
+        // Для начала сформируем полное имя подсистемы
+        var fullName = ""
+        while(row)
+        {
+            fullName = row.getCellAppearance(0).text + (fullName.length ? "." : "") + fullName
+            row = row.parent
+        }
+        var vl = this.settings.current.LastChoices
+        // Теперь надо вставить полученную строку в начало списка.
+        // Если она уже есть, сдвинем ее
+        var found = vl.FindByValue(fullName)
+        if(found)
+        {
+            var idx = vl.IndexOf(found)
+            if(0 != idx) {
+                vl.Move(idx, -idx)
+                this.settings.SaveSettings()
+            }
+            return
+        }
+        vl.Insert(0, fullName)
+        if(vl.Count() > this.settings.current.MaxLastChoices)
+            vl.Delete(this.settings.current.MaxLastChoices)
+        this.settings.SaveSettings()
     }
 })
 
