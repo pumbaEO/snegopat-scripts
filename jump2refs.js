@@ -44,7 +44,7 @@ function findObject(root, name)
 {
     //Message(name)
     var names = name.split(".")     // Разобъем имя на части
-    for(var idx = 0; idx < names.length; idx += 2)
+    for(var idx = 0; idx < names.length - 1; idx += 2)
     {
         var mdc = root.mdclass
         for(var i = 0, c = mdc.childsClassesCount; i < c; i++)
