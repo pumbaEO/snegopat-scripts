@@ -61,8 +61,12 @@ function findObject(root, name)
 
 function doJump(command)
 {
+    if(windows.modalMode != msNone)
+        return false
     // Для начала проверим, что мы в окне метаданных
-    var view = windows.getActiveView()
+    var view = windows.getFocusedView()//windows.getActiveView()
+    if(!view)
+        return false
     var state = command.getState(view)
     if(!state || !state.enabled)
         return false
