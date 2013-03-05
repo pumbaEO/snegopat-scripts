@@ -10,12 +10,22 @@ var refs, lastObjects = [];
 
 SelfScript.self['macrosПерейти к ссылке ИЗ'] = function ()
 {
-    return doJump(stdcommands.Frntend.FindRefsFrom);
+    return doJump(stdcommands.Frntend.FindRefsFrom, false);
 }
 
 SelfScript.self['macrosПерейти к ссылке НА'] = function ()
 {
-    return doJump(stdcommands.Frntend.MDSearchRefs);
+    return doJump(stdcommands.Frntend.MDSearchRefs, false);
+}
+
+SelfScript.self['macrosПросмотр ссылок ИЗ'] = function ()
+{
+    return doJump(stdcommands.Frntend.FindRefsFrom, true);
+}
+
+SelfScript.self['macrosПросмотр ссылок НА'] = function ()
+{
+    return doJump(stdcommands.Frntend.MDSearchRefs, true);
 }
 
 SelfScript.self['macrosПерейти обратно'] = function ()
@@ -59,7 +69,7 @@ function findObject(root, name)
     return root
 }
 
-function doJump(command)
+function doJump(command, forceShow)
 {
     if(windows.modalMode != msNone)
         return false
@@ -81,16 +91,14 @@ function doJump(command)
     events.disconnect(Designer, "onMessage", SelfScript.self)
     events.disconnect(windows, "onDoModal", SelfScript.self)
     //Message(refs[0]);
-    var choice
     if(refs.length < 2)
-    {
-        MessageBox("Ссылок нет")
         return false
-    }
+    
     var rootObject = view.mdObj.container.rootObject
     var currentObject = findObject(rootObject, refs[0].match(/"(.+)"/)[1])
     
-    if(refs.length == 2)
+    var choice
+    if(refs.length == 2 && !forceShow)
         choice = refs[1]
     else
     {
