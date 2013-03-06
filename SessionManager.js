@@ -258,7 +258,16 @@ SessionManager = ScriptForm.extend({
                         }    
 
                     } catch(e){
-                        Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
+                        try{
+                            mdObj.editProperty(n.toString());
+                        }catch(e){
+                            try{
+                                mdObj.openEditor();
+                            }catch(e){
+                                Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
+                            }
+                        }
+                        //Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
                     }
 
                 }
@@ -683,7 +692,8 @@ TextWindowsWatcher = stdlib.Class.extend({
     onTimer : function (timerId) {
         var activeView = windows.getActiveView();
         if (!activeView){
-            return
+            this.wndlist.removeOldViews();
+            return;
         }
         if (activeView.id == this.oldActiveViewId){
             return;
