@@ -279,7 +279,9 @@ SessionManager = ScriptForm.extend({
             return
         }
         try {
-            activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
+            if (activeView.mdObj) {
+                activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
+            }
         } catch (e) {}
         
     },
