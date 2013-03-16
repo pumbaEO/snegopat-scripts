@@ -1,52 +1,84 @@
 ﻿$engine JScript
 $uname InternalFormExplorer
 $dname Исследование форм 1С
+$addin stdlib
 
 // Александр Орефков
 // Скрипт предназначен для вывода информации о составе контролов, свойствах и событиях
 // внутренних форм 1С
-var showCtrlList = false, showProps = false, traceEvents = false
+stdlib.require("SelectValueDialog.js", SelfScript);
 
-events.connect(windows, "onDoModal", SelfScript.self)
+var lastModalForm
 
 function onDoModal(dlgInfo)
 {
-    if(dlgInfo.stage == afterInitial)
-        exploreForm(dlgInfo.form, false)
+    if(openModalWnd == dlgInfo.stage && dlgInfo.form)
+        lastModalForm = dlgInfo.form
 }
 
-function macrosИсследоватьАктивнуюФорму()
+events.connect(windows, "onDoModal", SelfScript.self)
+
+function getForm()
 {
-    var av = windows.getActiveView()
-    if(av)
-        exploreForm(av.getInternalForm(), true)
+    if(windows.modalMode == msNone)
+    {
+        var av = windows.getActiveView()
+        return av ? av.getInternalForm() : null
+    }
+    return lastModalForm
 }
 
-function exploreForm(form, force)
+function exploreActiveForm(withProps)
 {
+    var form = getForm()
     if(!form)
         return
-    if(showCtrlList || force)
+    // -1 - это сама форма
+    for(var i = -1, k = form.controlsCount; i < k; i++)
     {
-        // -1 - это сама форма
-        for(var i = -1, k = form.controlsCount; i < k; i++)
+        var ctr = form.getControl(i)
+        Message("Control #" + i + " name=" + ctr.name + " id=" + ctr.id, mInfo)
+        if(withProps)
         {
-            var ctr = form.getControl(i)
-            Message("Control #" + i + " name=" + ctr.name + " id=" + ctr.id, mInfo)
-            if(showProps)
+            var props = ctr.props
+            for(var idx = 0, cnt = props.count; idx < cnt; idx++)
             {
-                var props = ctr.props
-                for(var idx = 0, cnt = props.count; idx < cnt; idx++)
-                {
-                    var v = toV8Value(props.getValue(idx))
-                    Message("\t" + props.propName(idx) + " = " + v.presentation() + "  Тип=" + v.typeName(1) + " " + v.toStringInternal());
-                }
+                var v = toV8Value(props.getValue(idx))
+                Message("\t" + props.propName(idx) + " = " + v.presentation() + "  Тип=" + v.typeName(1) + " " + v.toStringInternal());
             }
         }
     }
-    form.trapDialogEvents = traceEvents
 }
 
-function macrosПереключитьПоказКонтролов()          { showCtrlList = !showCtrlList }
-function macrosПереключитьПоказСвойств()            { showProps = !showProps }
-function macrosПереключитьЗапускТрассировкиСобытий(){ traceEvents = !traceEvents }
+function enableTrace(enable)
+{
+    var form = getForm()
+    if(form)
+        form.trapDialogEvents = enable
+}
+
+function macrosПоказатьКонтролыАктивнойФормы()              { exploreActiveForm(false) }
+function macrosПоказатьКонтролыАктивнойФормыCоСВойствами()  { exploreActiveForm(true) }
+function macrosНачатьОтслеживаниеСобытийАктивнойФормы()     { enableTrace(true) }
+function macrosЗавершитьОтслеживаниеСобытийАктивнойФормы()  { enableTrace(false) }
+function macrosПоказатьСвойстваКонтрола()
+{
+    var form = getForm()
+    if(!form)
+    {
+        MessageBox("Нет активной формы")
+        return
+    }
+    var vl = v8New("СписокЗначений")
+    vl.Add(-1 + 2, "Форма")
+    for(var i = 0, k = form.controlsCount; i < k; i++)
+    {
+        var name = form.getControl(i).name
+        if(!name.length)
+            name = "" + i
+        vl.Add(i + 2, name)  // SelectValueDialog не дает выбрать значение 0, поэтому сдвинем все на 2
+    }
+    var dlg = new SelectValueDialog("Укажите контрол", vl);
+    if(dlg.selectValue())
+        form.getControl(dlg.selectedValue - 2).props.activateProperty("Имя")
+}

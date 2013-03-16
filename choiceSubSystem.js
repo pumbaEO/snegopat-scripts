@@ -4,11 +4,12 @@ $dname Выбрать подсистему
 $addin stdlib
 $addin hotkeys hk
 $addin stdcommands
+$addin vbs
 
 // (c) Сосна Евгений <shenja@sosna.zp.ua>
+// (c) Александр Орефков <orefkov@gmail.com>
 // Скрипт позволяет быстрее выбрать нужную подсистему при отборе по подсистемам
 // 
-
 
 stdlib.require("SelectValueDialog.js", SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
@@ -24,18 +25,18 @@ SelfScript.self['macrosНастройка'] = function() {
     return true;
 }
 
-SelfScript.self['macrosОтфильтровать подсистемы'] = function() {
-    var sm = GetSubSystemFilter();
-    sm.filterOnSubSystem();
-    return true;
-}
+// Макросы для возможности повесить команду отбора подсистем на хоткей
+SelfScript.self['macrosВключить отбор по подсистемам']  = function() { return activateSubSystemSelect(false) }
+SelfScript.self['macrosОтключить отбор по подсистемам'] = function() { return activateSubSystemSelect(true)  }
+// Макросы начинающиеся с _ не показываются в списке диалога макросов
+// Но нужны, чтобы повесить их на хоткеи в диалоге
+SelfScript.self['macros_FindSubSystem'] = function() { GetSubSystemFilter().findSubSystem() }
+SelfScript.self['macros_ToggleChilds']  = function() { GetSubSystemFilter().toggleCheckChilds() }
+SelfScript.self['macros_ToggleParents'] = function() { GetSubSystemFilter().toggleCheckParents() }
 
-SelfScript.self['macrosПоиск подсистемы'] = function() {
-    var sm = GetSubSystemFilter();
-    sm.findSubSystem();
-    return true;
-}
-
+// Функция для посылания команды отбора по подсистемам
+// Посылать эту команду в основное окно бесполезно, надо именно
+// в то окно, которое может ее обработать
 function activateSubSystemSelect(bForClear)
 {
     var mdTreeView = null
@@ -68,15 +69,6 @@ function activateSubSystemSelect(bForClear)
     return true
 }
 
-SelfScript.self['macrosВключить отбор по подсистемам'] = function() {
-    return activateSubSystemSelect(false)
-}
-
-SelfScript.self['macrosОтключить отбор по подсистемам'] = function() {
-    return activateSubSystemSelect(true)
-}
-
-
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
@@ -86,19 +78,13 @@ function getDefaultMacros() {
 ////} Макросы
 
 SubSystemFilter = stdlib.Class.extend({
-
-
     settingsRootPath : 'subSystemFilter',
-    
     defaultSettings : {
-            'useEnter': false, 
-            'clearFilter':false
+            LastChoices: undefined,
+            MaxLastChoices: 5
     },
 
-
     construct : function () {    
-        
-        this.treeSubSystems = null;
         this.settings = SettingsManagement.CreateManager(this.settingsRootPath, this.defaultSettings);
         this.loadSettings();
         SubSystemFilter._instance = this;
@@ -106,204 +92,212 @@ SubSystemFilter = stdlib.Class.extend({
 
     loadSettings:function(){
         this.settings.LoadSettings();
+        if(!this.settings.current.LastChoices)
+            this.settings.current.LastChoices = v8New("ValueList")
         events.connect(windows, "onDoModal", this)
     },
 
     changeSettings : function(){
-        var values = v8New('СписокЗначений');
-        values.Add(0, 'Сразу устанавливать фильтр (после установки фильтра Enter)');
-        values.Add(1, 'Только отметить необходимую систему');
-        var dlg = new SelectValueDialog("Выберите вариант установки фильтра!", values);
-        if (dlg.selectValue()) {
-            this.settings.current.useEnter = (dlg.selectedValue==1)?true:false;
-            this.settings.SaveSettings();                        
+        var s = this.settings.current
+        vbs.result = s.MaxLastChoices
+        if(vbs.DoEval('InputNumber(result, "Максимальный размер быстрого списка", 1, 0)'))
+        {
+            s.MaxLastChoices = vbs.result
+            var cnt = s.LastChoices.Count()
+            while(cnt > s.MaxLastChoices)
+                s.LastChoices.Delete(--cnt)
+            this.settings.SaveSettings()
         }
-        
-        var values = v8New('СписокЗначений');
-        values.Add(0, 'Только отмечать новый выбор подсистемы');
-        values.Add(1, 'Очищать фильтр перед установкой нового фильтра');
-        var dlg = new SelectValueDialog("Выберите вариант установки фильтра!", values);
-        if (dlg.selectValue()) {
-            this.settings.current.clearFilter = (dlg.selectedValue==1)?true:false;
-            this.settings.SaveSettings();                        
-        }
-        
-    }, 
+    },
 
     onDoModal:function(dlgInfo){
-        if(dlgInfo.caption == "Отбор по подсистемам")
+        try{
+            var form = dlgInfo.form
+            var treeSubSystem   = form.getControl('eMDTreeCtrl')
+            var checkParents    = form.getControl('eParentCheck')
+            var checkChilds     = form.getControl('eChildCheck')
+        }catch(e)   { return }
+        // Если это не диалог отбора подсистем, то сюда уже не попадем
+        if(dlgInfo.stage == afterInitial)
         {
-            if(dlgInfo.stage == afterInitial)
+            if(this.DisableSelection)
             {
-                if(this.DisableSelection)
+                // Это мы открыли окно диалога для отключения отбора
+                // Имитируем нажатие кнопки "Отключить"
+                form.sendEvent(form.getControl('eClear').id, 0)
+                delete this.DisableSelection
+                return
+            }
+            // Вытащим список подсистем
+            var subSystemList = this.fillSubSystemList(treeSubSystem)
+            // Запросим ввод нашим списком
+            var result = this.filterDialog(subSystemList)
+            if(!result)    // Нажали отмену
+            {
+                dlgInfo.cancel = true;
+                dlgInfo.result = 0;
+                return
+            }
+            // Если просто нажали Ок, то результат будет строка грида
+            // иначе результат будет объект с полями mode и val
+            if(!result.mode)
+                result = {mode:0, row: result}
+            if(result.mode != 5)    // Не "Открыть стандартный"
+            {
+                if(result.mode == 4)    // Отключить
                 {
-                    // Это мы окрыли окно диалога для отключения отбора
-                    dlgInfo.form.sendEvent(dlgInfo.form.getControl('eClear').id, 0)
-                    this.DisableSelection = false;
+                    form.sendEvent(form.getControl('eClear').id, 0)
                     return
                 }
-                //var props = dlgInfo.form.getControl('eOK').props;
-                //props.setValue("Высота", 100);
-                //Message(ЗначениеВСтрокуВнутр(props.getValue("Заголовок")));
-                //props.setValue("Подсказка", TitleStr("jklewhfwjkjrhfgjhgj"));
-                //props.setValue("Заголовок", TitleStr("Проверка"));
-                this.filterOnSubSystem();
-                this.hotKey = hotkeys.addTemp(hk.stringTovkcode('Ctrl+F'), SelfScript.uniqueName, "Поиск подсистемы")
-            } else if (dlgInfo.stage == afterDoModal && this.hotKey){
-                hotkeys.removeTemp(this.hotKey)
-                this.hotKey = 0
-            }
-        }
-    },
-    
-    walkSubSystems:function(){
-        
-        var md = this.md;
-        this.treeSubSystems = v8New("ValueTree");
-        this.treeSubSystems.Columns.Add("Имя");
-        if (!md){
-            return;
-        }
-        try{
-            if(md.rootObject.childObjectsCount("Подсистемы") > 0)
-                var newRow = this.treeSubSystems.Rows.Add();
-                newRow.Имя = "Подсистемы";
-                var mdObj = md.rootObject;
-                for(var i = 0, c = mdObj.childObjectsCount("Подсистемы"); i < c; i++){
-                    mdSubs = mdObj.childObject("Подсистемы", i);
-                    this.parseSubSystems(mdSubs, newRow);
-                }
+                // Тут осталось с выбором. Ставим галочки если надо
+                checkParents.value  = (result.mode & 1) != 0    // С родителями
+                checkChilds.value   = (result.mode & 2) != 0    // С потомками
                 
-        }catch(e){
-           Message("Не удалось распарсить подсистемы"+e.description);
-        }
-    
-    },
-    
-    parseSubSystems: function (mdObj, row) {
-        // Получим и покажем класс объекта
-        var mdc = mdObj.mdclass;
-        var Имя = toV8Value(mdObj.property(0)).presentation();
-        var newRow = row.Rows.Add();
-        newRow.Имя = ""+Имя;
-        
-        // Перебираем классы потомков (например у Документа это Реквизиты, ТабличныеЧасти, Формы)
-        for(var i = 0; i < mdc.childsClassesCount; i++)
-        {
-            var childMdClass = mdc.childClassAt(i)
-            
-            for(var chldidx = 0, c = mdObj.childObjectsCount(i); chldidx < c; chldidx++)
-                this.parseSubSystems(mdObj.childObject(i, chldidx), newRow)
-        }
-    }, 
-
-    filterDialog:function(){
-        
-        var selectedRow = null;
-        if (this.mdId!=this.md.identifier){
-            this.walkSubSystems();
-            this.mdId = this.md.identifier;
-        }
-        if (!this.treeSubSystems)
-            this.walkSubSystems();
-        if (this.treeSubSystems.Rows.Count()>0){
-            var curRow = this.treeSubSystems.Rows.Get(0);
-            var indent = "";
-            var index = 0;
-            var valuelist = v8New("ValueList");
-            var es = this;
-            (function (row,valuelist,indent) {
-                for (var i = 0; i<row.Rows.Count(); i++){
-                    var curRow = row.Rows.Get(i);
-                    index = index+1;
-                    valuelist.Add(index, ""+indent+curRow.Имя);
-                    if (curRow.Rows.Count()>0){
-                        arguments.callee(curRow, valuelist, indent+"    ");
-                    }
-                }
-            
-            })(curRow, valuelist, indent);    
-
-            var dlg = new SelectValueDialog("Какую подсистему желаете отобрать?", valuelist);
-            
-            result = dlg.selectValue();
-            selectedRow = dlg.selectedValue;
-        }
-        return selectedRow
-    },
-    
-    findSubSystem:function(){
-        selectedRow = this.filterDialog();
-        
-        if (selectedRow!=undefined){
-            var sk = ""
-            sk = "{HOME}";
-            
-            for (var i = 0; i<selectedRow; i++) {
-                    sk += "{DOWN}"
-                };
-                //Message("sk:"+sk);
-                new ActiveXObject("WScript.Shell").SendKeys(sk);
-                new ActiveXObject("WScript.Shell").SendKeys(" ");
-            
-        } 
-        
-    },
-    
-    filterOnSubSystem: function(){
-        
-        choice = v8New("СписокЗначений");
-        for(var i = 0, c = metadata.openedCount; i < c; i++)
-        {
-            var container = metadata.getContainer(i)
-            try{
-                if(container.rootObject.childObjectsCount("Подсистемы") > 0){
-                    if (container == metadata.ib){
-                        continue;                        
-                    }
-                    choice.Add(container, container.identifier)
-                }
-                 
-            }catch(e){}
-        }
-
-        if(choice.Count() == 0)
-        {
-            Message("Нет конфигураций с подсистемами...")
-            return null
-        }
-        else if(choice.Count() == 1)
-            choice = choice.Get(0)
-        else
-            choice = choice.ChooseItem("Выберите конфигурацию для отбора подсистем");
-        if(!choice)
-            return null
-
-        var container = choice.Value
-        this.md = container;
-        //var mdObj = container.rootObject
-        selectedRow = this.filterDialog();
-        if (selectedRow!=undefined){
-            var sk = ""
-            sk = "{HOME}";
-            
-            if (this.settings.current.clearFilter){
-                sk+=" ";
+                var grid = treeSubSystem.extInterface
+                // Снимаем метки со всех подсистем
+                var root = grid.dataSource.root.firstChild
+                grid.currentRow = root
+                grid.checkCell(root, 0, 0)
+                form.sendEvent(treeSubSystem.id, 17, 1)
+                // Активируем строку
+                grid.currentRow = result.row
+                // Ставим пометку на выбранной подсистеме
+                grid.checkCell(result.row, 0, 1)
+                form.sendEvent(treeSubSystem.id, 17, 1)
+                this.saveChoice(result.row)
+                // Нажмем Ok
+                form.sendEvent(form.getControl('eOK').id, 0)
+                return
             }
-            for (var i = 0; i<selectedRow; i++) {
-                    sk += "{DOWN}"
-                };
-                //Message("sk:"+sk);
-                new ActiveXObject("WScript.Shell").SendKeys(sk);
-                new ActiveXObject("WScript.Shell").SendKeys(" ");
-                if (this.settings.current.useEnter){
-                    new ActiveXObject("WScript.Shell").SendKeys("~");
-                }
-        } 
+            // Сюда попадаем, если выбрали "Открыть стандартный"
+            // Запомним контролы и список для работы макросов
+            this.data = {subSystemList: subSystemList, form: form, treeSubSystem: treeSubSystem,
+                checkParents: checkParents, checkChilds: checkChilds}
+            this.hotKeys  = [
+                hotkeys.addTemp(hk.stringTovkcode('Ctrl+F'), SelfScript.uniqueName, "_FindSubSystem"),
+                hotkeys.addTemp(hk.stringTovkcode('Ctrl+Q'), SelfScript.uniqueName, "_ToggleChilds"),
+                hotkeys.addTemp(hk.stringTovkcode('Ctrl+W'), SelfScript.uniqueName, "_ToggleParents")
+            ]
+            checkChilds.props.setValue("Заголовок", stdlib.LocalWString("Включать объекты подчиненных подсистем (Ctrl + Q)"))
+            checkChilds.props.setValue("Подсказка", stdlib.LocalWString("Ctrl + Q"))
+            checkChilds.props.setValue("Положение заголовка", 1)
+            checkParents.props.setValue("Заголовок", stdlib.LocalWString("Включать объекты родительских подсистем (Ctrl + W)"))
+            checkParents.props.setValue("Подсказка", stdlib.LocalWString("Ctrl + W"))
+            checkParents.props.setValue("Положение заголовка", 1)
+            treeSubSystem.props.setValue("Подсказка", stdlib.LocalWString("Для поиска подсистемы нажмите Ctrl + F"))
+        } else if(dlgInfo.stage == afterDoModal) {
+            for(var k in this.hotKeys)
+                hotkeys.removeTemp(this.hotKeys[k])
+            delete this.hotKeys
+            delete this.data
+        }
+    },
+    // Функция при открытии диалога отбора подсистем заполняет наш список значений с подсистемами,
+    // вытаскивая их состав из грида на форме
+    fillSubSystemList: function(treeSubSystem) {
+        // Заполним список подсистем
+        var valuelist = v8New("ValueList");
+        var lastChoices = this.settings.current.LastChoices
+        var hotPos = [];
+        (function forAllRows(parent, indent, fullPath)
+        {
+            for(var row = parent.firstChild; row; row = row.next)
+            {
+                var name = row.getCellAppearance(0).text
+                valuelist.Add(row, indent + name);
+                var fullName = fullPath + (fullPath.length ? "." : "") + name
+                var found = lastChoices.FindByValue(fullName)
+                if(found)
+                    hotPos.push({idx: lastChoices.IndexOf(found), name: fullName, row: row})
+                forAllRows(row, indent + '    ', fullName)
+            }
+        })(treeSubSystem.extInterface.dataSource.root, '', '')
+        if(hotPos.length)
+        {
+            hotPos.sort(function(a, b){return a.idx - b.idx})
+            for(var k in hotPos)
+                valuelist.Insert(k, hotPos[k].row, hotPos[k].name);
+        }
+        return valuelist
+    },
+    filterDialog: function(subSystemList){
+        function makeButton(id, text, tooltip, hotkey, modif, mode) {
+            return {
+                id:id,
+                handler: function(dlg, val, btn){if(val || btn.Name.charAt(0)=='e') dlg.form.Закрыть({mode: mode, row:val})},
+                params: {Text: text, ToolTip:tooltip, Description: tooltip, Shortcut: stdlib.v8hotkey(hotkey, modif)}
+            }
+        }
+        var dlg = new SelectValueDialog("Какую подсистему желаете отобрать?", subSystemList);
+        dlg.AddCmdButton([
+            {id:'>', params: {Text: 'Дополнительно'}, buttons:
+                [
+                    makeButton('withParents', "С родителями", "Выбрать подсистему и включить объекты родительских подсистем", 13, 4/*"Shift+Enter"*/, 1),
+                    makeButton('withChilds', "С потомками", "Выбрать подсистему и включить объекты подчинённых подсистем", 13, 16/*"Alt+Enter"*/, 2),
+                    makeButton('withPC', "С родителями и потомками", "Выбрать подсистему и включить объекты подчинённых и родительских подсистем", 13, 20, 3),
+                    makeButton('eClear', "Отключить", "Отключить отбор подсистем", 'Z'.charCodeAt(0), 8/*Ctrl + Z*/, 4)
+                ]
+            },
+            makeButton('eStd', "Открыть стандартный", "Открыть стандартный диалог для отбора нескольких подсистем", 0x25, 8, 5),
+            {id:'|'}
+            ])
+        return dlg.selectValue() ? dlg.selectedValue : null;
+    },
+    findSubSystem: function () {
+        if(!this.data)
+            return
+        var dlg = new SelectValueDialog("Какую подсистему желаете отобрать?", this.data.subSystemList);
+        if(dlg.selectValue())
+        {
+            var row = dlg.selectedValue
+            var grid = this.data.treeSubSystem.extInterface
+            // Активируем строку
+            grid.currentRow = row
+            // Ставим пометку на выбранной подсистеме
+            grid.checkCell(row, 0, 1)
+            this.data.form.sendEvent(this.data.treeSubSystem.id, 17, 1)
+            this.saveChoice(row)
+        }
+    },
+    toggleCheckParents: function()
+    {
+        if(this.data)
+            this.data.checkParents.value = !this.data.checkParents.value
+    },
+    toggleCheckChilds: function()
+    {
+        if(this.data)
+            this.data.checkChilds.value = !this.data.checkChilds.value
+    },
+    // Сохранение выбранной подсистемы в списке недавно выбранных
+    saveChoice: function(row)
+    {
+        // Для начала сформируем полное имя подсистемы
+        var fullName = ""
+        while(row)
+        {
+            fullName = row.getCellAppearance(0).text + (fullName.length ? "." : "") + fullName
+            row = row.parent
+        }
+        var vl = this.settings.current.LastChoices
+        // Теперь надо вставить полученную строку в начало списка.
+        // Если она уже есть, сдвинем ее
+        var found = vl.FindByValue(fullName)
+        if(found)
+        {
+            var idx = vl.IndexOf(found)
+            if(0 != idx) {
+                vl.Move(idx, -idx)
+                this.settings.SaveSettings()
+            }
+            return
+        }
+        vl.Insert(0, fullName)
+        if(vl.Count() > this.settings.current.MaxLastChoices)
+            vl.Delete(this.settings.current.MaxLastChoices)
+        this.settings.SaveSettings()
     }
-
 })
-
 
 function GetSubSystemFilter() {
     if (!SubSystemFilter._instance)
@@ -311,6 +305,5 @@ function GetSubSystemFilter() {
     
     return SubSystemFilter._instance;
 }
-
 
 var cht = GetSubSystemFilter();

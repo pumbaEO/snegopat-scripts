@@ -258,7 +258,16 @@ SessionManager = ScriptForm.extend({
                         }    
 
                     } catch(e){
-                        Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
+                        try{
+                            mdObj.editProperty(n.toString());
+                        }catch(e){
+                            try{
+                                mdObj.openEditor();
+                            }catch(e){
+                                Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
+                            }
+                        }
+                        //Message("Не удалось восстановить окно "+currRow.name+" prop:"+currRow.prop+" error:"+e.description);
                     }
 
                 }
@@ -270,7 +279,9 @@ SessionManager = ScriptForm.extend({
             return
         }
         try {
-            activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
+            if (activeView.mdObj) {
+                activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
+            }
         } catch (e) {}
         
     },
@@ -683,7 +694,8 @@ TextWindowsWatcher = stdlib.Class.extend({
     onTimer : function (timerId) {
         var activeView = windows.getActiveView();
         if (!activeView){
-            return
+            this.wndlist.removeOldViews();
+            return;
         }
         if (activeView.id == this.oldActiveViewId){
             return;
