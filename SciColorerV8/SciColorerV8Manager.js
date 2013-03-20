@@ -2,76 +2,73 @@
 $uname SciColorerV8Manager
 $dname SciColorerV8 Manager
 
-ReadScintillaMessageDefs()
+var addinSciColorerV8 = 0;
+var objectSciColorerV8 = 0;
+InitAddin()
 
 function macros_ПриКликеПоГиперссылке(){ //предопределенная, вызывается при Ctrl+Click на любом идентификаторе в тексте модуля
     addins.byUniqueName("SnegopatMainScript").invokeMacros("ПерейтиКОпределению")
 }
 
 function macros_ПриКонтекстномМенюНаНомерахСтрок(){ //предопределенная, вызывается при правом клике на номерах строк
-    //addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе"); // например
-    addins.byUniqueName("SciColorerV8").invokeMacros("_ПоказатьМеню");
+    addinSciColorerV8.invokeMacros("_ПоказатьМеню");
 }
 
 function macrosОтключитьАвтосравнениеДляТекущегоОкнаОтладка(){
-    addins.byUniqueName("SciColorerV8").invokeMacros("_ОтключитьАвтосравнениеДляТекущегоОкна")
+    addinSciColorerV8.invokeMacros("_ОтключитьАвтосравнениеДляТекущегоОкна")
 }
 
 SelfScript.self['macrosСвернуть или развернуть текущий блок'] = function() {
-    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьРазвернутьТекущийБлок")
+    addinSciColorerV8.invokeMacros("_СвернутьРазвернутьТекущийБлок")
 }
 
 SelfScript.self['macrosСвернуть все'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьВсе")
+    addinSciColorerV8.invokeMacros("_СвернутьВсе")
 }
 
 SelfScript.self['macrosРазвернуть все'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе")
+    addinSciColorerV8.invokeMacros("_РазвернутьВсе")
 }
 
 SelfScript.self['macrosПрокрутка строки вверх'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("_ПрокруткаСтрокиВверх")
+    addinSciColorerV8.invokeMacros("_ПрокруткаСтрокиВверх")
 }
 
 SelfScript.self['macrosПрокрутка строки вниз'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("_ПрокруткаСтрокиВниз")
+    addinSciColorerV8.invokeMacros("_ПрокруткаСтрокиВниз")
 }
 
 SelfScript.self['macrosСброс модифицированности строк'] = function()
 {
-    addins.byUniqueName("SciColorerV8").invokeMacros("_СбросМодифицированныхСтрок")
+    addinSciColorerV8.invokeMacros("_СбросМодифицированныхСтрок")
 }
 
 function macrosНастройки(){
-    addins.byUniqueName("SciColorerV8").invokeMacros("_Настройки")
+    addinSciColorerV8.invokeMacros("_Настройки")
 }
 
 SelfScript.self['macrosСкрыть\\Показать Scintilla'] = function(){
-    addins.byUniqueName("SciColorerV8").invokeMacros("_Скрыть")
+    addinSciColorerV8.invokeMacros("_Скрыть")
 }
 
 //подробное описание по работе с компонентой Scintilla находится здесь http://www.scintilla.org/ScintillaDoc.html
 SelfScript.self['macrosКлонировать текущий блок'] = function()
 {
-    var hwnd = addins.byUniqueName("SciColorerV8").invokeMacros("_GetActiveScintillaHandle")
+    var hwnd = getActiveScintillaHandle()
     if (hwnd){
-        var objColorer = addins.byUniqueName("SciColorerV8").invokeMacros("_GetObject")
-        
-        var curPos = objColorer.SendSciMessage(hwnd,SCI_GETCURRENTPOS,0,0);
-        var curLine = objColorer.SendSciMessage(hwnd,SCI_LINEFROMPOSITION,curPos,0);
+        var curPos = SendSciMessage(hwnd,SCI_GETCURRENTPOS);
+        var curLine = SendSciMessage(hwnd,SCI_LINEFROMPOSITION,curPos);
         var startLine = curLine;
-        if (!(objColorer.SendSciMessage(hwnd,SCI_GETFOLDLEVEL,curLine,0) & SC_FOLDLEVELHEADERFLAG))
-            startLine = objColorer.SendSciMessage(hwnd,SCI_GETFOLDPARENT,curLine,0);
-        var endLine = objColorer.SendSciMessage(hwnd,SCI_GETLASTCHILD,startLine,-1);
-        
-        var startPos = objColorer.SendSciMessage(hwnd,SCI_POSITIONFROMLINE,startLine,0);
-        var endPos = objColorer.SendSciMessage(hwnd,SCI_GETLINEENDPOSITION,endLine,0);
-        
-        objColorer.SendSciMessage(hwnd,SCI_SETSEL,startPos,endPos);
+        if (!(SendSciMessage(hwnd,SCI_GETFOLDLEVEL,curLine) & SC_FOLDLEVELHEADERFLAG))
+            startLine = SendSciMessage(hwnd,SCI_GETFOLDPARENT,curLine);
+        var endLine = SendSciMessage(hwnd,SCI_GETLASTCHILD,startLine,-1);
+        var startPos = SendSciMessage(hwnd,SCI_POSITIONFROMLINE,startLine);
+        var endPos = SendSciMessage(hwnd,SCI_GETLINEENDPOSITION,endLine);
+        SendSciMessage(hwnd,SCI_SETSEL,startPos,endPos);
         addins.byUniqueName("textEditorExt").invokeMacros("КлонироватьТекст")
     }
 }
@@ -87,8 +84,14 @@ function getPredefinedHotkeys(predef)
     predef.add("Прокрутка строки вниз", "Ctrl + Down")
 }
 
-function ReadScintillaMessageDefs()
+function InitAddin()
 {
+    addinSciColorerV8 = addins.byUniqueName("SciColorerV8");
+    if (!addinSciColorerV8) {
+        MessageBox("SciColorerV8Manager: Ошибка инициализации, не найден загруженный аддин SciColorerV8!");
+        return;
+    }
+    objectSciColorerV8 = addinSciColorerV8.invokeMacros("_GetObject");
     var msgFile = v8New("ТекстовыйДокумент")
     var path = SelfScript.fullPath.replace(/^script:/i,'').replace(/SciColorerV8Manager.js$/i,'SciMessages.inl')
     try{
@@ -100,8 +103,18 @@ function ReadScintillaMessageDefs()
     for(i=1;i<=msgFile.КоличествоСтрок();i++){
         var curLine = msgFile.ПолучитьСтроку(i);
         var arr = curLine.split(" ")
-        SelfScript.self[arr[0]] = arr[1]
+        SelfScript.self[arr[0]] = parseInt(arr[1])
     }
+}
+
+function getActiveScintillaHandle(){
+    return addinSciColorerV8.invokeMacros("_GetActiveScintillaHandle");
+}
+
+function SendSciMessage(hwnd,msg){
+    var wparam = (arguments.length > 2) ? arguments[2] : 0;
+    var lparam = (arguments.length > 3) ? arguments[3] : 0;
+    return objectSciColorerV8.SendSciMessage(hwnd,msg,wparam,lparam);
 }
 
 events.connect(snegopat, "onProcessTemplate", SelfScript.self)
