@@ -2,6 +2,7 @@
 $dname Выбор типа в подсказке о параметрах
 $addin stdlib
 $addin global
+$addin stdcommands
 
 global.connectGlobals(SelfScript)
 
@@ -242,8 +243,7 @@ function createDOM(xml)
 {
     var readxml = v8New('ЧтениеXML');
     readxml.УстановитьСтроку(xml);
-    var domBuilder = v8New('ПостроительDOM');
-    return domBuilder.Прочитать(readxml)
+    return v8New('ПостроительDOM').Прочитать(readxml)
 }
 
 function fatFormToXML(form)

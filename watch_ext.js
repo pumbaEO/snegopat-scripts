@@ -1,6 +1,6 @@
 ﻿$engine JScript
 $uname watch_ext
-$dname Отладчик:Расширенное табло
+$dname Расширенное табло
 $addin stdcommands
 $addin stdlib
 $addin global
@@ -33,9 +33,12 @@ var timerExpressionUpdater = null;
 
 function onDebugEvent(eventID, eventParam)
 {
-    if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD3XEDF2EF1}")
+    if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD30EDF2EF1}")
     {
+        var view = windows.getActiveView()
         form.Open() // Покажем окно
+        if(view)
+            view.activate()
     }
     else if(eventID == "{71501A9D-CD34-427D-81B6-562491BEF945}")
     {
@@ -49,14 +52,12 @@ function onDebugEvent(eventID, eventParam)
             needTestModified = true
             fillLocalVariables()    // Заполним локальные переменные
             //events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
-            form.Открыть();
             timerExpressionUpdater.updateTimer();
         }
     }
-    //Message("eventID:"+eventID+" eventParam:"+eventParam);
 }
 
-SelfScript.self["macrosОткрыть окно отладки"] = function()
+SelfScript.self['macrosОткрыть окно отладки'] = function()
 {
     form.Open() // Покажем окно
 }
