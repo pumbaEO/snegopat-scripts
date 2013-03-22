@@ -656,7 +656,7 @@ ExtSearch = ScriptForm.extend({
         }
         
         // Установим выделение на найденное совпадение со строкой поиска.
-        targetWindow.SetCaretPos(lineStart, lineEnd);
+        targetWindow.SetCaretPos(lineStart, colEnd);
         targetWindow.SetSelection(lineStart, colStart, lineEnd, colEnd);
     },
 
