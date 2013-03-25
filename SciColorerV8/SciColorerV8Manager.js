@@ -11,48 +11,48 @@ function macros_ПриКликеПоГиперссылке(){ //предопре
 }
 
 function macros_ПриКонтекстномМенюНаНомерахСтрок(){ //предопределенная, вызывается при правом клике на номерах строк
-    addinSciColorerV8.invokeMacros("_ПоказатьМеню");
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПоказатьМеню");
 }
 
 function macrosОтключитьАвтосравнениеДляТекущегоОкнаОтладка(){
-    addinSciColorerV8.invokeMacros("_ОтключитьАвтосравнениеДляТекущегоОкна")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ОтключитьАвтосравнениеДляТекущегоОкна")
 }
 
 SelfScript.self['macrosСвернуть или развернуть текущий блок'] = function() {
-    addinSciColorerV8.invokeMacros("_СвернутьРазвернутьТекущийБлок")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьРазвернутьТекущийБлок")
 }
 
 SelfScript.self['macrosСвернуть все'] = function()
 {
-    addinSciColorerV8.invokeMacros("_СвернутьВсе")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьВсе")
 }
 
 SelfScript.self['macrosРазвернуть все'] = function()
 {
-    addinSciColorerV8.invokeMacros("_РазвернутьВсе")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе")
 }
 
 SelfScript.self['macrosПрокрутка строки вверх'] = function()
 {
-    addinSciColorerV8.invokeMacros("_ПрокруткаСтрокиВверх")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПрокруткаСтрокиВверх")
 }
 
 SelfScript.self['macrosПрокрутка строки вниз'] = function()
 {
-    addinSciColorerV8.invokeMacros("_ПрокруткаСтрокиВниз")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПрокруткаСтрокиВниз")
 }
 
 SelfScript.self['macrosСброс модифицированности строк'] = function()
 {
-    addinSciColorerV8.invokeMacros("_СбросМодифицированныхСтрок")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СбросМодифицированныхСтрок")
 }
 
 function macrosНастройки(){
-    addinSciColorerV8.invokeMacros("_Настройки")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_Настройки")
 }
 
 SelfScript.self['macrosСкрыть\\Показать Scintilla'] = function(){
-    addinSciColorerV8.invokeMacros("_Скрыть")
+    addins.byUniqueName("SciColorerV8").invokeMacros("_Скрыть")
 }
 
 //подробное описание по работе с компонентой Scintilla находится здесь http://www.scintilla.org/ScintillaDoc.html
@@ -86,12 +86,6 @@ function getPredefinedHotkeys(predef)
 
 function InitAddin()
 {
-    addinSciColorerV8 = addins.byUniqueName("SciColorerV8");
-    if (!addinSciColorerV8) {
-        MessageBox("SciColorerV8Manager: Ошибка инициализации, не найден загруженный аддин SciColorerV8!");
-        return;
-    }
-    objectSciColorerV8 = addinSciColorerV8.invokeMacros("_GetObject");
     var msgFile = v8New("ТекстовыйДокумент")
     var path = SelfScript.fullPath.replace(/^script:/i,'').replace(/SciColorerV8Manager.js$/i,'SciMessages.inl')
     try{
@@ -108,6 +102,10 @@ function InitAddin()
 }
 
 function getActiveScintillaHandle(){
+    if (!addinSciColorerV8) {
+        addinSciColorerV8 = addins.byUniqueName("SciColorerV8");
+        objectSciColorerV8 = addinSciColorerV8.invokeMacros("_GetObject");
+    }
     return addinSciColorerV8.invokeMacros("_GetActiveScintillaHandle");
 }
 
