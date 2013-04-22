@@ -262,15 +262,15 @@ _TextWindow = stdlib.Class.extend({
     },
 
     /** Возвращает слово под курсором. */
-    GetWordUnderCursor : function () {
+    GetWordUnderCursor : function (re) {
 
         /*TODO: Добавить необязательный параметр: регулярное выражение для проверки символов слова. */
 
         var pos = this.GetCaretPos();
         var line = this.GetLine(pos.beginRow);
-        var isChar = /[\w\dА-я]/;
+        var isChar = re ? re : /[\w\dА-я]/;
 
-        var wordBegPos = pos.beginCol - 1;
+        var wordBegPos = pos.beginCol - 2;
         
         if (!isChar.test(line.charAt(wordBegPos)))
             return '';
@@ -283,7 +283,7 @@ _TextWindow = stdlib.Class.extend({
             wordBegPos--;
         }
             
-        var wordEndPos = pos.beginCol - 1;
+        var wordEndPos = pos.beginCol - 2;
         
         while (wordEndPos < line.length - 1)
         {
