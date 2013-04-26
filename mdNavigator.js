@@ -151,18 +151,33 @@ function readMDtoVT()
 
 function fillTableProcedur(filter)
 {
+    var isGoToLine = false;
+    logger.debug("fillTableProcedur");
     //Определим надо ли нам заполнять таблицу и надо ли вообще ее показывать...
     var curRow = form.ЭлементыФормы.ТаблицаМетаданных.ТекущаяСтрока
     var propsModules = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
     {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
-    {propName: "Форма",            title: "Открыть модуль",        hotkey: 13, modif: 0},
-    {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4}
+    {propName: "Форма",             title: "Открыть модуль",        hotkey: 13, modif: 0},
+    {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4},
+    {propName: "МодульНабораЗаписей",      title: "Открыть модуль",        hotkey: 13, modif: 0}
     ]
     
-    
+    var curency = "1234567890"
+    if (filter.length > 0 && curency.indexOf(filter.charAt(0)) !=-1) {
+        isGoToLine = true;
+        vtModules.Clear();
+        
+        try {
+            lineNo = parseInt(filter);
+        } catch(e) {
+            lineNo  = 0;
+        }
+        logger.debug("is go to Line "+isGoToLine + " number "+lineNo)
+    }        
     if(curRow && vtModules.Count()==0)
     {
+        logger.debug(curRow.UUID);
         var mdObj = findMdObj(curRow.UUID)
         if(mdObj)
         {
@@ -177,14 +192,47 @@ function fillTableProcedur(filter)
                     if(propsModules[k].propName == mdPropName)
                     {
                         var text = mdObj.getModuleText(mdPropName);
-                        parseModule = SyntaxAnalysis.AnalyseModule(text, true);
-                        for (var z=0; z<parseModule._vtAllMethods.Count(); z++){
-                            var НоваяСтрока = vtModules.Add();
-                            var RowMethod = parseModule._vtAllMethods.Get(z);
-                            НоваяСтрока.Модуль = mdPropName;
-                            НоваяСтрока.Наименование = RowMethod.Name;
-                            НоваяСтрока.Module1C = RowMethod._method;
+                        if (!isGoToLine) {
+                            
+                                parseModule = SyntaxAnalysis.AnalyseModule(text, true);
+                                for (var z=0; z<parseModule._vtAllMethods.Count(); z++){
+                                    var НоваяСтрока = vtModules.Add();
+                                    var RowMethod = parseModule._vtAllMethods.Get(z);
+                                    НоваяСтрока.Модуль = mdPropName;
+                                    НоваяСтрока.Наименование = RowMethod.Name;
+                                    НоваяСтрока.Module1C = RowMethod._method;
+                                }
+
+                            
+                            } else {
+                                lines = text.split('\n');
+                                if (lines.length>0){
+                                    var НоваяСтрока = vtModules.Add();
+                                    НоваяСтрока.Модуль = mdPropName;
+                                    НоваяСтрока.Наименование = mdPropName;
+                                    
+                                    НоваяСтрока.Module1C = {
+                                        'StartLine':0,
+                                        'IsProc':true
+                                    };
+                                    
+                                    for (var i = 0; i < lines.length; i++) {
+                                        
+                                        var НоваяСтрока = vtModules.Add();
+                                        НоваяСтрока.Модуль = mdPropName;
+                                        НоваяСтрока.Наименование = "" + i + " : "+lines[i];
+                                        
+                                        НоваяСтрока.Module1C = {
+                                            'StartLine':i,
+                                            'IsProc':true
+                                        };
+                                        
+                                    }
+                                    
+                            }
+                            
                         }
+
                     }
                 }
             }
@@ -424,6 +472,7 @@ function addToHistory(query) {
 // Описание команд для обработки свойств
 var propsCommands = [
     {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
+    {propName: "МодульНабораЗаписей",      title: "Открыть модуль",        hotkey: 13, modif: 0},
     {propName: "Картинка",          title: "Открыть картинку",      hotkey: 13, modif: 0},
     {propName: "Форма",             title: "Открыть форму",         hotkey: 13, modif: 0},
     {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
