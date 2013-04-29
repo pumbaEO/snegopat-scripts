@@ -298,6 +298,101 @@ _SpellChecker.prototype.SpellModule = function(text, wnd) {
         stdcommands.Frame.GotoBack.send();}
 }
 
+_SpellChecker.prototype.SpellLine = function(text, wnd, i) {
+    var re = new RegExp('([\wА-яёЁієїґ\d]+)','gi');
+    //var Lines = text.split('\n')
+    //var n = Lines.length;
+    //var i =  0;
+    var isValid = true;
+    //while (i<n){
+
+        var str = '';
+        str = text;
+        
+        wordsparse = new Array();
+        while( (Matches = re.exec(str)) != null ) {
+            wordsparse.push(Matches[1]);
+        }
+        for (var z=0; z<wordsparse.length; z++){
+            if (!this.words[wordsparse[z]]) {
+                if (!(this.settings.dict.FindByValue(wordsparse[z].toLowerCase()) == undefined)) {
+                    var result = {}
+                    result[wordsparse[z].toLowerCase()] = {"spell":false, "alternatives":new Array(), "isValid":true}
+                    this.words[wordsparse[z]] = result;
+                    continue;
+                }
+                this.words[wordsparse[z]] = this.WordJoin(wordsparse[z], this.settings.prefix, this.settings.suffix)
+                // а теперь проверим текст... 
+                this.words[wordsparse[z]] = this.CheckWords(this.words[wordsparse[z]]);    
+            }
+        }
+        var wordsNotValid = new Array()
+        for (var z=0; z<wordsparse.length; z++){ 
+            var words = this.words[wordsparse[z]];
+            for (var key in words) {
+                if (!words[key]['isValid']){
+                    isValid = false;
+                    wordsNotValid.push(wordsparse[z]);
+                    break
+                }
+            }
+        }
+        // запишем сообщение об ошибке... 
+        if (wordsNotValid.length > 0) {
+            var errorstr = 'Ошибки в словах: ';
+            for (var z = 0; z<wordsNotValid.length; z++) {
+                errorstr = (z==0)? errorstr+wordsNotValid[z]:errorstr+'; '+wordsNotValid[z]
+            }
+            errorstr = errorstr + '\n'+str;
+            var param = {}
+            param['wnd'] = wnd;
+            param['words'] = wordsNotValid;
+            param['LineNo'] = i;
+            param['str'] = str;
+
+            Message(errorstr, mExc1, (function(param){
+            
+    if (!param['wnd']) {
+        return }
+    if (!param['wnd'].IsActive()) {
+        return }
+    
+    //FIXME: магия, когда перестанет работать не знаю. Исправь на windows.activate(), но hwnd от ActiveTextWindow <> hwnd из списка windows.list...
+    stdcommands.Frame.GotoBack.send();
+        
+    var colNo = 1;
+    if (param['words'].length>0){
+        var searchPattern = param['words'][0];
+        var re = new RegExp(searchPattern, 'g');
+        var matches = re.exec(param['str']);
+        if (matches) 
+        {   
+            colNo = re.lastIndex - param['words'][0].length + 1;
+        }
+
+    }
+    
+    param['wnd'].SetCaretPos(param['LineNo']+1, colNo);
+    param['wnd'].SetSelection(param['LineNo']+1, colNo, param['LineNo']+1, colNo +param['words'][0].length);
+    
+    param = null;
+}
+    
+    ), param);
+        }
+        //i++;
+        //Состояние("Всего строк "+Lines.length+" проверяется строка "+i);
+    //}
+    //if (isValid) {
+        //TODO: добавить в настройку 
+    //    Message('Ошибок не обнаруженно!', mInfo);
+    //}
+    //if (!snegopat.activeTextWindow()) {
+    //    stdcommands.Frame.GotoBack.send();}
+}
+
+
+
 _SpellChecker.prototype.КнЗаменитьНажатие = function (Элемент) {
 
     Message("еще не реализовано")
