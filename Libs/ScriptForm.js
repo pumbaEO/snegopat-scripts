@@ -145,26 +145,38 @@ ScriptForm = stdlib.Class.extend({
         
         if (!this.hasSettings())
             return false;
-            
+			
+		var _reuseDefaults = false; // Пока так обходим неприятный баг с настройками.
         if (!this._defaultSettings) {
-        	this._defaultSettings = {};
+        	this._defaultSettings = {};			
         	for(var prop in this.settings) {
-	        	this._defaultSettings[prop] = this.settings[prop];
+	        	if (this.settings[prop].DefaultSettings) { 
+					this._defaultSettings[prop] = this.settings[prop].DefaultSettings
+					_reuseDefaults = true;
+				}
+				else {
+					this._defaultSettings[prop] = this.settings[prop];
+				}
         	}
-        }    
-            
+        }
+		
+		if (_reuseDefaults) {
+			this.settings = this._defaultSettings;
+		}
+		            
         var sm = stdlib.require('SettingsManagement.js').SettingsManagement;
         for (var pflType in this._defaultSettings) 
         {
             var defaults = this._defaultSettings[pflType];
             // Имя ключа = строка - имя значения перечисления. Выполняя строку получаем необходимое значение. 
-            var pflTypeValue = eval(pflType); 
+            var pflTypeValue = eval(pflType);
+					
             var settings = sm.CreateManager(this.settingsRootPath, defaults, pflTypeValue);
             
             settings.LoadSettings();
             if (this.form)
                 settings.ApplyToForm(this.form);            
-                
+    
             this.settings[pflType] = settings;
         }
         
@@ -185,6 +197,10 @@ ScriptForm = stdlib.Class.extend({
         
         return true;
     },
+	
+	restoreDefaultSettings: function () {
+		this.settings = this._defaultSettings;
+	},
     //} Чтение/сохранение сохраняемых значений (реквизитов формы).
     
     //{ Приватные методы
@@ -247,7 +263,7 @@ ScriptForm = stdlib.Class.extend({
                                 ctrl.SetAction(matches[2], v8New('Action', fname));                            
                             }
                         }
-                        else
+                        else if (ctrl)
                         {
                             // Событие элемента управления колонки табличного поля (ИмяТабПоля_ИмяКолонки_ИмяСобытия).
                             var col = ctrl.Columns.Find(matches[2]);
@@ -279,7 +295,8 @@ ScriptForm = stdlib.Class.extend({
         ff += '"this.fire(\\\"' + eventName + '\\\", arguments)");';
         
         // Создаем проксирующий обработчик события нашей формы
-        // и устанавливаем в качестве обработчика события.
+        // и устанавл
+        // иваем в качестве обработчика события.
         
         this[this.hName(eventName)] = eval(ff);
                 
