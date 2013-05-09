@@ -155,14 +155,31 @@ SelfScript.self['macrosГл поиск фильтр по метаданным'] 
     return true;
 }
 
-
-
 SelfScript.self['macrosОтменить глобальный поиск'] = function() {
     var es = GetExtSearchGlobal();
     if (es.startGlobalSearch){
         es.startGlobalSearch = false;
     }
 }
+
+//// МАКРОСЫ С ПРЕДВАРИТЕЛЬНЫМ ОТКРЫТИЕМ ДИАЛОГА ДЛЯ НАСТРОЙКИ ПАРАМЕТРОВ ПОИСКА
+
+SelfScript.self['macrosНайти текст в текущем модуле (с диалогом)'] = function() {    
+	openSearchDialog(SearchAreas.ActiveWindow);	
+    return true;
+}
+
+SelfScript.self['macrosНайти текст в открытых окнах (с диалогом)'] = function() {    
+	openSearchDialog(SearchAreas.AllOpenedWindows);	
+    return true;
+}
+
+SelfScript.self['macrosГлобальный поиск (с диалогом)'] = function() {    
+	openSearchDialog(SearchAreas.Global);	
+    return true;
+}
+
+//// МАКРОСЫ ДЛЯ УПРАВЛЕНИЯ ОКНОМ РЕЗУЛЬТАТОВ ПОИСКА 
 
 SelfScript.self['macrosОткрыть окно поиска'] = function() {
     GetExtSearch().show();
@@ -174,6 +191,11 @@ SelfScript.self['macrosЗакрыть окно поиска'] = function() {
         es.close();
         return true;
     }
+	es = GetExtSearchGlobal();
+	if (es.isOpen()) {
+		es.close();
+		return true;
+	}
     return false;
 }
 
@@ -199,7 +221,6 @@ SelfScript.self['macrosРазвернуть группировки'] = function(
     es.expandTree(false);
 }
 
-
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
@@ -223,6 +244,145 @@ RE = {
     METHOD_START : /^\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\s+([\wА-яёЁ\d]+)\s*\(/i,
     METHOD_END : /((?:EndProcedure)|(?:EndFunction)|(?:КонецПроцедуры)|(?:КонецФункции))/i
 }
+
+SearchAreas = {
+	'ActiveWindow' 		: 0, // В текущем модуле
+	'AllOpenedWindows' 	: 1, // Во всех открытых окнах
+	'Global'			: 2, // Глобально (во всех модулях основной конфигурации)
+	'CurrentContainer'	: 3  // В текущем открытом контейнере (внешней обработке, конфигурации ИБ и т.п.)
+};
+
+/* Осуществляет поиск с предварительным открытием диалогового окна. */
+function openSearchDialog(initSearchArea) {
+	
+	if (!initSearchArea)
+		initSearchArea = SearchAreas.ActiveWindow;
+	
+	var w = GetTextWindow();
+    if (!w) return false;
+            
+    var selText = w.GetSelectedText();
+    if (selText == '')
+        selText = w.GetWordUnderCursor();
+		
+    var sDlg = new ExtSearchDialog(selText, initSearchArea);
+		
+	if (sDlg.show(true) == true) 
+	{
+		var searchQuery = sDlg.getSearchQueryParams();
+		
+	    if (searchQuery.Query == '')
+	    {
+			var es = GetExtSearch();
+	        es.clearSearchResults();
+	        es.setDefaultSearchQuery();
+	    }
+		else
+		{	
+			switch(sDlg.getSearchArea()) 
+			{
+			case SearchAreas.AllOpenedWindows:
+				var es = GetExtSearch();
+				es.setQuery(searchQuery);
+				es.show();
+				es.searchOpenedWindows(true);
+				break;
+				
+			case SearchAreas.CurrentContainer:
+			    var es = GetExtSearchGlobal();
+			    es.isGlobalFind = true;
+			    es.activeView = windows.getActiveView();
+			    es.isInCurrentMdConteinerFind = true;
+				es.setQuery(searchQuery);
+			    es.show();
+				es.searchInMetadata(true);
+				break;
+				
+			case SearchAreas.Global:
+			    var es = GetExtSearchGlobal();
+			    es.isGlobalFind = true;
+			    es.activeView = windows.getActiveView();
+			    es.isInCurrentMdConteinerFind = false;
+				es.setQuery(searchQuery);
+			    es.show();
+				es.searchInMetadata(true);			
+				break;
+				
+			case SearchAreas.ActiveWindow:
+			default:
+				var es = GetExtSearch();
+				es.setQuery(searchQuery);
+				es.show();
+	        	es.searchActiveDoc(true);
+				break;
+			}
+		}
+	}
+}
+
+/* Реализует диалог настройки параметров поиска.*/
+ExtSearchDialog = ScriptForm.extend({
+
+    settingsRootPath : SelfScript.uniqueName,
+    
+    settings : {
+        pflSnegopat : {
+            'IsRegExp'      : false, // Поиск регулярными выражениями.
+            'CaseSensetive' : false, // Учитывать регистр при поиске.
+            'WholeWords'    : false, // Поиск слова целиком.
+            'SearchHistory' : v8New('ValueList'), // История поиска.
+            'HistoryDepth'  : 15, // Количество элементов истории поиска.
+            'TreeView'      : false // Группировать результаты поиска по методам.            
+        }
+    },
+
+    construct : function (query, initSearchArea) {	
+        this._super("scripts\\extSearch.ssf");                
+        this.form.КлючСохраненияПоложенияОкна = "extSearch.dialog.js"
+        this.loadSettings();
+		this.form.Query = query;
+		this.form.SearchArea = initSearchArea;		
+	},
+	
+	getSearchQueryParams: function () {
+		var params = v8New('Structure');
+		params.Insert('Query', 			this.form.Query);
+		params.Insert('WholeWords', 	this.form.WholeWords);
+		params.Insert('CaseSensetive',	this.form.CaseSensetive);
+		params.Insert('IsRegExp', 		this.form.IsRegExp);
+		return params;
+	},
+	
+	getSearchArea: function () {
+		return this.form.SearchArea;
+	},
+	
+    Form_OnClose : function () {
+        this.saveSettings();
+    },
+	
+    Query_StartListChoice : function (control, defaultHandler) {
+        control.val.ChoiceList = this.form.SearchHistory;
+    },
+	
+	btFind_Click: function (btn) {
+		this.close(true);
+	},
+	
+	btCancel_Click: function (btn) {
+		this.close(false);
+	},
+	
+    IsRegExp_OnChange : function(Элемент) {
+        if (this.form.IsRegExp)
+            this.form.WholeWords = false;
+    },
+
+    WholeWords_OnChange : function(Элемент) {
+        if (this.form.WholeWords)
+            this.form.IsRegExp = false;
+    }
+}); // end of ExtSearchDialog
 
 ExtSearch = ScriptForm.extend({
 
@@ -278,7 +438,15 @@ ExtSearch = ScriptForm.extend({
         this.form.CaseSensetive = false;
         this.addToHistory(query);
     },
-    
+	
+	setQuery : function (searchQueryParams) {
+        this.form.Query 		= searchQueryParams.Query;
+        this.form.IsRegExp 		= searchQueryParams.IsRegExp;
+        this.form.CaseSensetive = searchQueryParams.CaseSensetive;
+		this.form.WholeWords	= searchQueryParams.WholeWords;
+        this.addToHistory(this.form.Query);
+    },
+
     expandTree : function (collapse) {
         var tree = this.form.Controls.SearchResults;
         for (var i=0; i < this.results.Rows.Count(); i++)
