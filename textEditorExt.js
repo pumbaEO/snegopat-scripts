@@ -319,6 +319,7 @@ function macrosКлонироватьТекст(){
         var pos = w.getCaretPos();
         w.setSelection(pos.beginRow, 1, pos.beginRow, 1 + w.line(pos.beginRow).length);
         w.SetSelectedText(w.selectedText() + "\n" + w.selectedText());
+        w.setCaretPos(pos.beginRow+1, pos.beginCol);
     }
     return true;
 }
