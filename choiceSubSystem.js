@@ -131,6 +131,7 @@ SubSystemFilter = stdlib.Class.extend({
             // Вытащим список подсистем
             var subSystemList = this.fillSubSystemList(treeSubSystem)
             // Запросим ввод нашим списком
+			//debugger;
             var result = this.filterDialog(subSystemList)
             if(!result)    // Нажали отмену
             {
@@ -158,12 +159,17 @@ SubSystemFilter = stdlib.Class.extend({
                 var root = grid.dataSource.root.firstChild
                 grid.currentRow = root
                 grid.checkCell(root, 0, 0)
-                form.sendEvent(treeSubSystem.id, 17, 1)
+				
+				// artbear - отключил оповещение формы, т.к. на многих системах падает 1С 
+				this.eraseCheckingInTree(grid)
+				
                 // Активируем строку
                 grid.currentRow = result.row
                 // Ставим пометку на выбранной подсистеме
                 grid.checkCell(result.row, 0, 1)
-                form.sendEvent(treeSubSystem.id, 17, 1)
+				// artbear - отключил оповещение формы, т.к. на многих системах падает 1С 
+					//form.sendEvent(treeSubSystem.id, 17, 1)
+				
                 this.saveChoice(result.row)
                 // Нажмем Ok
                 form.sendEvent(form.getControl('eOK').id, 0)
@@ -251,14 +257,35 @@ SubSystemFilter = stdlib.Class.extend({
         {
             var row = dlg.selectedValue
             var grid = this.data.treeSubSystem.extInterface
+
+			this.eraseCheckingInTree(grid)
+			
             // Активируем строку
             grid.currentRow = row
             // Ставим пометку на выбранной подсистеме
             grid.checkCell(row, 0, 1)
-            this.data.form.sendEvent(this.data.treeSubSystem.id, 17, 1)
+			// artbear - отключил оповещение формы, т.к. на многих системах падает 1С 
+				//this.data.form.sendEvent(this.data.treeSubSystem.id, 17, 1)
+			
             this.saveChoice(row)
         }
     },
+	eraseCheckingInTree: function(grid)
+	{
+		//
+		function eraseCheckingForAllRows(grid, parent)
+		{
+			var row = parent.firstChild
+			while(row)
+			{
+				grid.checkCell(row, 0, 0)
+				if(row.firstChild)
+					eraseCheckingForAllRows(grid, row)
+				row = row.next
+			}
+		}
+		eraseCheckingForAllRows(grid, grid.dataSource.root)
+	},
     toggleCheckParents: function()
     {
         if(this.data)
