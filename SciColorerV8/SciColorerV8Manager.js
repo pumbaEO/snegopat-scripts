@@ -73,6 +73,41 @@ SelfScript.self['macrosКлонировать текущий блок'] = functi
     }
 }
 
+SelfScript.self['macrosПерейти к следующему изменённому блоку'] = function()
+{
+    var hwnd = getActiveScintillaHandle()
+    if (hwnd){
+        var curPos = SendSciMessage(hwnd,SCI_GETCURRENTPOS);
+        var curLine = SendSciMessage(hwnd,SCI_LINEFROMPOSITION,curPos);
+        var nextModLine = SendSciMessage(hwnd,SCI_GETNEXTMODLINE,0,curLine);
+        var startPos = SendSciMessage(hwnd,SCI_POSITIONFROMLINE,nextModLine);
+        SendSciMessage(hwnd,SCI_SETSEL,startPos,startPos);
+    }
+}
+
+SelfScript.self['macrosПерейти к предыдущему изменённому блоку'] = function()
+{
+    var hwnd = getActiveScintillaHandle()
+    if (hwnd){
+        var curPos = SendSciMessage(hwnd,SCI_GETCURRENTPOS);
+        var curLine = SendSciMessage(hwnd,SCI_LINEFROMPOSITION,curPos);
+        var nextModLine = SendSciMessage(hwnd,SCI_GETPREVMODLINE,0,curLine);
+        var startPos = SendSciMessage(hwnd,SCI_POSITIONFROMLINE,nextModLine);
+        SendSciMessage(hwnd,SCI_SETSEL,startPos,startPos);
+    }
+}
+
+SelfScript.self['macrosПоказать список изменённых блоков'] = function()
+{
+    var WM_COMMAND = 273
+    var ID_SHOWMODLINES = 20068
+    var hwnd = getActiveScintillaHandle()
+    if (hwnd){
+        SendSciMessage(hwnd,WM_COMMAND,ID_SHOWMODLINES);
+    }
+}
+
+
 function getPredefinedHotkeys(predef)
 {
     predef.setVersion(3)
