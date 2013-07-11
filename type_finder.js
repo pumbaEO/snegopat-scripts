@@ -271,34 +271,13 @@ function selectType()
     {
         var grid = typeTreeCtrl.extInterface, row = res.selectedRow
 		
-		if(!multyTypeCtrl || !multyTypeCtrl.value){
-			eraseCheckingInTree(grid)
-		}
-		
-        // Активируем строку
+       // Активируем строку
         grid.currentRow = row
         // Ставим пометку
         grid.checkCell(row, 0, 1)
         
 		// Сообщим форме о смене метки
-		// artbear - отключил оповещение формы, т.к. на многих системах падает 1С 
-        //v8Form.sendEvent(typeTreeCtrl.id, 17, 1)
+        v8Form.sendEvent(typeTreeCtrl.id, 17, 1)
     }
     return res
-}
-
-function eraseCheckingInTree(grid)
-{
-	function eraseCheckingForAllRows(grid, parent)
-	{
-		var row = parent.firstChild
-		while(row)
-		{
-			grid.checkCell(row, 0, 0)
-			if(row.firstChild)
-				eraseCheckingForAllRows(grid, row)
-			row = row.next
-		}
-	}
-	eraseCheckingForAllRows(grid, grid.dataSource.root)
 }
