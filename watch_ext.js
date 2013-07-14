@@ -33,7 +33,8 @@ var timerExpressionUpdater = null;
 
 function onDebugEvent(eventID, eventParam)
 {
-    if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD30EDF2EF1}")
+	//Message("SCRIPT " + eventID + ", " + eventParam);
+	if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD30EDF2EF1}")
     {
         var view = windows.getActiveView()
         form.Open() // Покажем окно
@@ -47,9 +48,11 @@ function onDebugEvent(eventID, eventParam)
     }
     if(eventID == "{5B5F928D-DF2D-4804-B2D0-B453163A2C4C}")
     {
-        if(eventParam == 37 || eventParam == 24 )    // Остановились в точке останова
+		//Message("eventParam " + eventParam);
+		if(eventParam == 37 || eventParam == 24 )    // Остановились в точке останова
         {
-            needTestModified = true
+			//Message("SCRIPT Остановились в точке останова")
+			needTestModified = true
             fillLocalVariables()    // Заполним локальные переменные
             //events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
             timerExpressionUpdater.updateTimer();
