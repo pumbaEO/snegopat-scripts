@@ -27,6 +27,11 @@ SelfScript.self['macrosСвернуть все'] = function()
     addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьВсе")
 }
 
+SelfScript.self['macrosСвернуть все (с учетом настроек)'] = function()
+{
+    addins.byUniqueName("SciColorerV8").invokeMacros("_СвернутьВсеПоНастройкам")
+}
+
 SelfScript.self['macrosРазвернуть все'] = function()
 {
     addins.byUniqueName("SciColorerV8").invokeMacros("_РазвернутьВсе")
@@ -106,6 +111,11 @@ SelfScript.self['macrosПоказать список изменённых бло
         SendSciMessage(hwnd,WM_COMMAND,ID_SHOWMODLINES);
     }
 }
+
+SelfScript.self['macrosПоказать\\Скрыть непечатные символы'] = function(){
+    addins.byUniqueName("SciColorerV8").invokeMacros("_ПоказатьСкрытьНепечатныеСмволы")
+}
+
 
 
 function getPredefinedHotkeys(predef)
