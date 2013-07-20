@@ -9,6 +9,14 @@ $addin global
 
 global.connectGlobals(SelfScript)
 
+stdlib.require('log4js.js', SelfScript);
+
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
+
 var mainFolder = stdlib.getSnegopatMainFolder();
 
 var FSO = new ActiveXObject("Scripting.FileSystemObject");
@@ -50,6 +58,8 @@ BackendGit = stdlib.Class.extend({
 	            ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1)
 	            TextDoc.Read(this.pathToTempOutput, "UTF-8");
 	            if (TextDoc.LineCount() == 0) {
+                    logger.error("root catalog not found, комманда не выполнилась ");
+                    logger.error(this.pathToTempOutput);
 	                return "" //что то пошло не так. 
 	            }
 	        
@@ -69,6 +79,7 @@ BackendGit = stdlib.Class.extend({
 	            TextDoc.Write(this.pathToTempOutput, "UTF-8");
 	        }
     	}
+        logger.debug("root catalog for "+path + " is "+result)
 	    return result;
     },
 
@@ -77,6 +88,7 @@ BackendGit = stdlib.Class.extend({
             Message("not defined");
             this.CatalogAndFilesStatus=[]
         }
+        logger.trace("getStatusForCatalog");
     	this.CatalogAndFilesStatus[pathToCatalog] = {};
     	var СоответствиеСтатусов = this.CatalogAndFilesStatus[pathToCatalog];
     	var TextDoc = v8New("TextDocument");
@@ -87,25 +99,30 @@ BackendGit = stdlib.Class.extend({
     	ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1);
     	TextDoc.Read(this.pathToTempOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
+                logger.error("получечение статуса файлов для каталогов сломалось.")
+                logger.error(pathToCatalog);
+                logger.error(this.pathToTempOutput);
                 return false //что то пошло не так. 
         }
         var i=0;
-        re = new RegExp(/^(M|A|D|\?\?|R|C|U)\s{1,2}(.*)$/);
+        re = new RegExp(/^(\sM|\sA|\sD|\?\?|R|C|U)\s{1,2}(.*)$/);
         for (var i=1; i<=TextDoc.LineCount(); i++)
         {
 	        var r = TextDoc.GetLine(i);
+            logger.trace(r);
 	        var mathes = r.match(re);
 	        if (mathes && mathes.length) {
 	            filename = ""+mathes[2] 
 	            filename = filename.replace(/\//g, '\\'); 
                 filename = filename.replace(/"/g, ''); //FIXME: для линукс версии это неправильно. 
+                logger.trace("match to file "+ filename +" is "+ mathes[1])
 	            switch (mathes[1]) 
 	            {
-	                case "M":
+	                case " M":
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "EDITED"
 	                break;
 	                
-	                case "A":
+	                case " A":
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "ADDED"
 	                break;
 	                
@@ -113,19 +130,19 @@ BackendGit = stdlib.Class.extend({
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "NOTVERSIONED"
 	                break;
 	                
-	                case "D":
+	                case " D":
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "DELETED"
 	                break;
 
-	                case "R":
+	                case " R":
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "rename";
 	                break;
 
-	                case "C":
+	                case " C":
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "copied";
 	                break;
 
-	                case "U":
+	                case " U":
 	                СоответствиеСтатусов[FSO.BuildPath(pathToCatalog, filename)]= "update";
 	                break;
 	            }
@@ -165,7 +182,10 @@ BackendGit = stdlib.Class.extend({
 		var rootCatalog = this.getRootCatalog(pathToFile);
 
 	    СоответсвиеФайлов = this.CatalogAndFilesStatus[rootCatalog];
-	    if (СоответсвиеФайлов == undefined) return null 
+	    if (СоответсвиеФайлов == undefined) {
+            logger.debug("Не найденно соответсвие статусов файлов для каталога "+rootCatalog);
+            return null 
+        }
 	    
 	    return (СоответсвиеФайлов[pathToFile] == undefined) ? null : СоответсвиеФайлов[pathToFile]
 	},
