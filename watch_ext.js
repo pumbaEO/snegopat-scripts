@@ -26,7 +26,7 @@ rLocal.Название = "Локальные переменные";
 var rHands = form.ПеременныеОтладки.Строки.Добавить();
 rHands.Название = "Табло";
 getRow(rHands, '');
-var curMdObject = "";
+var curViewHwnd = "";
 var curSyntaxAnalysis = null;
 var needTestModified = false;
 var timerExpressionUpdater = null;
@@ -144,9 +144,10 @@ function fillLocalVariables()
                 return  (cname ? cname + ' ' : '') + mdObj.name;
             }
             title = getMdName(view.mdObj) + ': ' + view.mdProp.name(1);
-            if (title != curMdObject)
+            
+            if (wnd.GetHwnd() != curViewHwnd)
                 curSyntaxAnalysis = null;
-                curMdObject = title;
+                curMdObject = wnd.GetHwnd();
         }
     }
     
