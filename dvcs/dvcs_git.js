@@ -29,7 +29,7 @@ BackendGit = stdlib.Class.extend({
         this.mainFolder = mainFolder;
         this.pathToBin = "git";
         this.CatalogAndFilesStatus = [];
-    	this.pathToTempOutput = TempDir+"gitstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
+      this.pathToTempOutput = TempDir+"gitstatus.txt" // Пишем 1С файл в utf-8, выводим туда статус fossil после этого читаем его. 
 		this.pathToCmd = TempDir + "gitcmd.bat";
 
 		BackendGit._instance = this;
@@ -99,7 +99,7 @@ BackendGit = stdlib.Class.extend({
     	ErrCode = WshShell.Run('"'+this.pathToCmd+'"', 0, 1);
     	TextDoc.Read(this.pathToTempOutput, "UTF-8");
         if (TextDoc.LineCount() == 0) {
-                logger.error("получечение статуса файлов для каталогов сломалось.")
+                logger.error("получение статуса файлов для каталогов сломалось.")
                 logger.error(pathToCatalog);
                 logger.error(this.pathToTempOutput);
                 return false //что то пошло не так. 
