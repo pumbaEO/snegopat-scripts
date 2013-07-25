@@ -133,6 +133,7 @@ function fillLocalVariables()
     if(!wnd)
         return
     view = wnd.GetView();
+    title = "";
     if (!view){
     } else {
         if (view.mdObj && view.mdProp) {
