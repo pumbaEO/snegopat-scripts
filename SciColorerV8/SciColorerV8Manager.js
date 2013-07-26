@@ -1,6 +1,7 @@
 ﻿$engine JScript
 $uname SciColorerV8Manager
 $dname SciColorerV8 Manager
+$addin stdcommands
 
 var addinSciColorerV8 = 0;
 var objectSciColorerV8 = 0;
@@ -199,4 +200,20 @@ function onIdle()
     }
     // Отписываемся от события
     events.disconnect(Designer, "onIdle", SelfScript.self)
+}
+
+stdcommands.Frntend.GoToDefinition.addHandler(SelfScript.self, "onGoToDefinition");
+
+function onGoToDefinition(cmd)
+{
+    if (!cmd.isBefore){
+        var hwnd = getActiveScintillaHandle()
+        if (hwnd){
+            var curPos = SendSciMessage(hwnd,SCI_GETCURRENTPOS);
+            var curLine = SendSciMessage(hwnd,SCI_LINEFROMPOSITION,curPos);
+            var visibleLine = SendSciMessage(hwnd,SCI_VISIBLEFROMDOCLINE,curLine);
+            var firstVisible = SendSciMessage(hwnd,SCI_GETFIRSTVISIBLELINE);
+            SendSciMessage(hwnd,SCI_LINESCROLL,0,visibleLine-firstVisible-1); //скроллим редактор так чтобы текущая строка оказалась на самом верху
+        }
+    }
 }
