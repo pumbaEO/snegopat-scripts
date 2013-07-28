@@ -203,13 +203,20 @@ function onIdle()
 }
 
 stdcommands.Frntend.GoToDefinition.addHandler(SelfScript.self, "onGoToDefinition");
-
+var prevSciHwnd = 0;
+var prevSciPos = 0;
 function onGoToDefinition(cmd)
 {
-    if (!cmd.isBefore){
+    if (cmd.isBefore){
+        prevSciHwnd = getActiveScintillaHandle();
+        if (prevSciHwnd) prevSciPos = SendSciMessage(prevSciHwnd,SCI_GETCURRENTPOS);
+    }else{
         var hwnd = getActiveScintillaHandle()
         if (hwnd){
             var curPos = SendSciMessage(hwnd,SCI_GETCURRENTPOS);
+            
+            if ((hwnd==prevSciHwnd) && (curPos==prevSciPos)) return;
+            
             var curLine = SendSciMessage(hwnd,SCI_LINEFROMPOSITION,curPos);
             var visibleLine = SendSciMessage(hwnd,SCI_VISIBLEFROMDOCLINE,curLine);
             var firstVisible = SendSciMessage(hwnd,SCI_GETFIRSTVISIBLELINE);
