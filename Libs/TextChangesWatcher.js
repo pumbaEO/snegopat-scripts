@@ -24,15 +24,21 @@ $addin vbs
 
 TextChangesWatcher = stdlib.Class.extend({
 
-    construct: function (field, ticks, invoker) {
+    construct: function (field, ticks, invoker, toLowerCase) {
         this.ticks = ticks
         this.invoker = invoker
         this.field = field
+        if (toLowerCase==undefined) toLowerCase = true
+        this.toLowerCase = toLowerCase;
     },
 
     // Начать отслеживание изменения текста
     start: function() {
-        this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '').toLowerCase()
+        this.lastText = this.field.Значение.replace(/^\s*|\s*$/g, '')
+        if (this.toLowerCase){
+            this.lastText = this.lastText.toLowerCase();
+        }
+        
         this.noChangesTicks = this.ticks + 1
         this.timerID = createTimer(100, this, "onTimer")
     },
@@ -48,7 +54,10 @@ TextChangesWatcher = stdlib.Class.extend({
         vbs.var0 = this.field
         vbs.DoExecute("var0.GetTextSelectionBounds var1, var2, var3, var4")
         this.field.УстановитьГраницыВыделения(1, 1, 1, 10000)
-        var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '').toLowerCase()
+        var newText = this.field.ВыделенныйТекст.replace(/^\s*|\s*$/g, '');
+        if (this.toLowerCase){
+            newText = newText.toLowerCase()
+        }
         this.field.УстановитьГраницыВыделения(vbs.var1, vbs.var2, vbs.var3, vbs.var4)
         // Проверим, изменился ли текст по сравению с прошлым разом
         if(newText != this.lastText)

@@ -13,7 +13,7 @@ $addin stdlib
 
 
 global.connectGlobals(SelfScript)
-
+stdlib.require('log4js.js', SelfScript);
 var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
 
 // Восстановим настройки
@@ -23,6 +23,13 @@ profileRoot.createValue(pflTrayMessageInterval, 1, pflSnegopat)
 // Теперь прочитаем актуальные значения из профайла
 var interval = profileRoot.getValue(pflTrayMessageInterval)
 
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
+
+var isCfgMessageStrat = false;
 Init();
 
 function onSaveDB(cmd) {
@@ -145,6 +152,33 @@ function onMessageBoxUpdateDBCf(dlgInfo) {
     
 }
 
+function onMessageCfgStore(param) {
+    
+    text = param.text;
+    if (!text.length)
+        return;
+    
+    
+    if (text.indexOf("Начало операции с хранилищем")!=-1){
+       isCfgMessageStrat = new Date();
+    }
+    
+    if (text.indexOf("хранилищем конфигурации завершена")!=-1){
+        var curDate = new Date();
+        try {
+            if ((curDate - isCfgMessageStrat) > 60000){
+                TrayMessage("Хранилище", "Операция законченна. Дождались!", 20);
+            }
+         } catch(e){}
+    }
+    
+    //events.disconnect(Designer, "onMessage", SelfScript.self, "onMessageCfgStore");
+    //logger.error(text);
+    //param.cancel = true;
+    
+
+}
+
 function Init(){
     
     var compare = new TrayCompareWatcher();
@@ -158,6 +192,8 @@ function Init(){
     stdcommands.Config.SaveIBDataToFile.addHandler(SelfScript.self, "onSaveDB");
     stdcommands.Config.LoadIBDataFromFile.addHandler(SelfScript.self, "onRestoreDB");
     stdcommands.Config.SaveToFile.addHandler(SelfScript.self, "onSaveToFileCF");
+    logger.debug('onMessage connect')
+    events.connect(Designer, "onMessage", SelfScript.self, "onMessageCfgStore");
 
 }
 

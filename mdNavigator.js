@@ -311,7 +311,27 @@ function fillTable(newFilter)
             fillTableProcedur(filtersProc);
             return;
         } else {
-            var filters = currentFilter.split(' ')
+            var filtersToUpdate = currentFilter.split(' ')
+            var filters = new Array();
+            
+            for(var s in filtersToUpdate)
+            { 
+                camelString = filtersToUpdate[s];
+                logger.debug("string "+camelString+" length "+camelString.length);
+                if (camelString.toUpperCase() == camelString){
+                    //filters.push(camelString.toLowerCase());
+                    for (var i=0; i<camelString.length; i++){
+                        logger.trace("chart:"+camelString.charAt(i))
+                        filters.unshift(camelString.charAt(i));
+                    }
+
+                } else {
+                    filters.push(camelString.toLowerCase());
+                }
+            }
+
+            logger.debug(filters);
+
             var filtersProc = "";
             fuctionlistview = false;
         }
@@ -332,7 +352,20 @@ function fillTable(newFilter)
             var surcharge = lNameLength/filtersLenth;
             for(var s in filters)
             {
-                var index = vtMD[k].lName.indexOf(filters[s])
+
+                if (filters[s].toUpperCase() == filters[s] ){
+                    var index = vtMD[k].Name.indexOf(filters[s]);
+                } else {
+                    var index = vtMD[k].lName.indexOf(filters[s])    
+                }
+
+                
+                if (vtMD[k].lName.indexOf('приход')!=-1){
+                    logger.trace('search '+filters[s] + 'index '+index + " name "+vtMD[k].Name);
+                    logger.trace(filters[s].toUpperCase() + " "+filters[s]);
+                    logger.trace(vtMD[k].Name.indexOf(filters[s]));
+                }
+                
                 if( index < 0 && filters[s]!='*') {
                     continue outer
                 } else {
@@ -344,6 +377,8 @@ function fillTable(newFilter)
                     maxIndex = percent
                 }
             }
+
+
 
             var row = form.ТаблицаМетаданных.Add()
             row.Name = vtMD[k].Name
@@ -551,7 +586,7 @@ SelfScript.self['macrosОткрыть объект метаданных'] = func
     updateCommands()
 
     // Будем отлавливать изменение текста с задержкой 300 мсек
-    var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable)
+    var tc = new TextChangesWatcher(form.ЭлементыФормы.ТекстФильтра, 3, fillTable, false);
     tc.start()
     var wnd = GetTextWindow();    
     if (wnd){
@@ -601,7 +636,7 @@ function SelectMdUUID(){
 
     }
     else
-        currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '').toLowerCase()
+        currentFilter = form.ТекстФильтра.replace(/^\s*|\s*$/g, '');
     
     updateCommands()
 
