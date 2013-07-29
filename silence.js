@@ -13,8 +13,6 @@ events.connect(windows, "onMessageBox", SelfScript.self)
 if (profileRoot.getValue("ModuleTextEditor/CheckAutomatically")){
     events.connect(windows, "onDoModal", SelfScript.self);  
 }
-events.connect(windows, "onDoModal", SelfScript.self, "onDoModalDebug");  
-var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
 var notify = true;
 // Функция - обработчик
 function onMessageBox(param)
@@ -31,7 +29,7 @@ function onMessageBox(param)
         //Message("Месторасположение информационной базы изменилось.", mInfo)
         param.result = mbaYes
         param.cancel = true
-        return ;
+        return;
     }
     
     // artbear сообщения типа "Объект Роль.Менеджер заблокирован." или "Объект Справочник.СохраненныеНастройки заблокирован."
@@ -89,58 +87,9 @@ function onDoModal(dlgInfo){
                         }
                     } catch (e){
                 };
-                
-                
-                return;
+                return
                 }
-                
-                
             }
        }
     }
 }
-
-function onDoModalDebug(dlgInfo){
-    if(dlgInfo.stage == openModalWnd)
-    {
-        
-        if (dlgInfo.Caption == "Конфигуратор"){
-
-            for(var c = 0; c < dlgInfo.form.controlsCount; c++)
-            {
-                if (c > 2){
-                    return;
-                }
-                var ctr = dlgInfo.form.getControl(c);
-                
-                var text = ctr.value;
-                if (!text){
-                    continue;
-                }
-                
-                Message(text);
-                if (text.indexOf("Приложение запущено. Перезапустить?")!=-1){
-                    new ActiveXObject("WScript.Shell").SendKeys("{ENTER}");
-                    TrayMessage("Приложение уже запущенно!", "Перезапускаем не спрашивая!", 3);
-                    return;
-                }
-                
-            }
-       }
-    }
-}
-
-function TrayMessage(Title, Text, Timeout, Type) {
-    var notifysend = stdlib.require('NotifySend.js').GetNotifySend();
-      var СистемнаяИнформация = v8New("СистемнаяИнформация");
-      var версия = СистемнаяИнформация.ВерсияПриложения;
-      if (версия.indexOf("8.2.13")==-1){
-          notifysend.provider = notifysend.initprovider("Встроенный1С");
-      }
-      notifysend.Error(Title, Text, Timeout);
-      notify = false;
-      stdlib.setTimeout(function () {
-          notify = true;
-      }, 3000);
-}
-
