@@ -216,7 +216,12 @@ WndList = stdlib.Class.extend({
                     	}
 		                else 
 		                {
-		                	лРодитель = vt.Rows.Найти(лЗаголовок.substr(0, лПозицияДвоеточия), "Заголовок", true)
+		                	лЗаголовокДляПоиска = лЗаголовок.substr(0, лПозицияДвоеточия);
+		                	лРодитель = vt.Rows.Найти(лЗаголовокДляПоиска , "Заголовок", true)
+		                	
+	    		            if(лРодитель == undefined)
+	    		            	лРодитель = vt.Rows.Найти(лЗаголовокДляПоиска+" *", "Заголовок", true)
+		                    
 	    		            if(лРодитель == undefined)
 		                        item.rowInVt = vt.Rows.Insert(idxInVt)
 			                else
