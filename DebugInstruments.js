@@ -45,6 +45,7 @@ SelfScript.self['macrosОтладить запрос модально'] = functi
 }
 
 SelfScript.self['macrosОтладить запрос не модально'] = function() {
+    var sm = GetDebugInstruments();
     var w = GetTextWindow();
     if (!w) return false;
     
@@ -172,6 +173,32 @@ SelfScript.self['macrosНастройка'] = function() {
 }
 
 
+
+SelfScript.self['macrosУстановить точку останова по условию ='] = function(){
+    var sm = GetDebugInstruments();
+    exp = sm.getDebuggerExpr();
+    if (!exp)
+        return false;
+    sm.setDebuggerOnif(""+exp.expression+"="+exp.expressionvalue);
+    return true;
+
+    // if (!form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока) {
+    //     logger.error("Не определенна текущая строка для выражения");
+    //     return;
+    // }
+    
+    // events.connect(windows, "onDoModal", SelfScript.self, "hookBrkptCond");
+    // var state = stdcommands.CDebug.BrkptCond.getState();
+    // var curRow = form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока;
+    // var curValue = ''+curRow.Значение;
+    // var name = fullName(curRow);
+    // valueBrkptCond = ""+ name + " = "+curValue;
+    // stdcommands.CDebug.BrkptCond.send();
+    // events.disconnect(windows, "onDoModal", SelfScript.self, "hookBrkptCond");
+    
+}
+
+
 /* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
 дважды щелкает мышью по названию скрипта в окне Снегопата. */
 function getDefaultMacros() {
@@ -206,6 +233,7 @@ DebugInstruments = ScriptForm.extend({
 
 
         this.loadSettings();
+        this.lastModalForm = null;
 
         DebugInstruments._instance = this;
 
@@ -233,6 +261,13 @@ DebugInstruments = ScriptForm.extend({
                 logger.error(" "+e.description);
            }
         }
+
+        try{
+            events.disconnect(windows, "onDoModal", this)
+        } catch (e) {}
+
+        //events.connect(windows, "onDoModal", this);
+        stdcommands.CDebug.EvalExpr.addHandler(this, "onEvalExpr")
     },
     
     v8debugEval:function(command){
@@ -326,7 +361,13 @@ DebugInstruments = ScriptForm.extend({
         if (!this.isDebugEvalEnabled())
             return
         if (!doModal) doModal = true;
-        //debugger;
+        
+        if (text.length==0){
+            exp = this.getDebuggerExpr();
+            if (!exp){
+                text = exp.expression;
+            }
+        }
         exprCtrl = ''+ this.form.researchCommand + '(' + text + ', ' + (doModal ? 'Истина' :  'Ложь') + ')';
         
         exprCtrl = this.exprText(exprCtrl);
@@ -464,7 +505,112 @@ DebugInstruments = ScriptForm.extend({
         return result;
         
     },
+
+    getDebuggerExpr:function(){
+
+        if (windows.modalMode != msModal)
+            return false;
+
+         if (!this.grid)
+            return false;
+
+
+        var row = this.grid.currentRow;
+        if(!row) row = this.grid.dataSource.root.firstChild;
+        var expressionvalue = row.getCellValue(1);
+        debugger;
+        if (!!this.lastModalForm){
+            var control = this.lastModalForm.getControl("Expression");
+            var expression = control.value;
+        } else {
+            var expression = row.getCellValue(0);            
+        }
+
+
+
+        return {
+            "expression":expression, 
+            "expressionvalue":expressionvalue           
+        };
+
+    },
+
+    setDebuggerOnif:function(exp, autoclose){
+        if (!exp)
+            return false;
+
+        if (!autoclose) autoclose = true;
+        this.autocloseExpression = autoclose;
+
+        if (windows.modalMode == msModal && !!this.lastModalForm){
+            this.lastModalForm.sendEvent(this.lastModalForm.getControl('ButtonClose').id, 0);
+        }
+        wnd =new TextWindow();
+        if (!wnd)
+            return false;
+        
+        var state = stdcommands.CDebug.BrkptCond.getState();
+        if (state && state.enabled){
+            this.valueBrkptCond = exp;
+            var es = this
+
+            stdlib.setTimeout(function(){
+                events.connect(windows, "onDoModal", es, "hookBrkptCond1");       
+                stdcommands.CDebug.BrkptCond.send();
+                events.disconnect(windows, "onDoModal", es, "hookBrkptCond1");    
+            }, 1000);
+            
+        }
+        
+        
+
+    },
     
+    hookBrkptCond1:function(dlgInfo){
+        try{
+            if(dlgInfo.stage == beforeDoModal && dlgInfo.form.getControl(0).name == "Condition")
+            {
+                dlgInfo.form.getControl("Condition").value = this.valueBrkptCond;
+
+                dlgInfo.cancel = !this.autocloseExpression?false:true;
+                dlgInfo.result = mbaOk;
+            } 
+        } catch(e){}
+        
+    },
+
+    onEvalExpr:function(cmd) {
+        if(cmd.isBefore)    // Вызывается до обработки команды 1С
+            events.connect(windows, "onDoModal", this, "onDoModal")
+        else                // вызывается после обработки команды 1С
+        {
+            try{
+                events.disconnect(windows, "onDoModal", this, "onDoModal");
+            } catch(e){};
+            
+            this.grid = null
+            this.lastModalForm = null; 
+        }
+    },
+
+    onDoModal:function (dlgInfo) {
+        try{
+            if(dlgInfo.stage == afterInitial){
+                if (dlgInfo.form.getControl(0).name == "Expression"){
+                    this.grid = dlgInfo.form.getControl('ResultGrid').extInterface;
+                    this.lastModalForm = dlgInfo.form;
+                    return true;
+                } else {
+                    return;
+                }
+                
+            }
+        }catch(e){
+            //Message(e)
+        }
+        return false;
+    },
+
     
     beforeExitApp : function () {
         //this.watcher.stopWatch();
@@ -531,8 +677,7 @@ DebugInstruments = ScriptForm.extend({
         } else {
             Control.val.Значение = ДиалогОткрытияФайла.ПолноеИмяФайла;
         }
-    }
-    
+    } 
 
 })
 
