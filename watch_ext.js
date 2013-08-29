@@ -9,7 +9,21 @@ stdlib.require('SyntaxAnalysis.js', SelfScript);
 stdlib.require('TextWindow.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
 
+stdlib.require('log4js.js', SelfScript);
+
 global.connectGlobals(SelfScript);
+
+
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
+var loggerInfo = Log4js.getLogger(SelfScript.uniqueName+"info");
+loggerInfo.addAppender(appender);
+loggerInfo.setLevel(Log4js.Level.INFO);
+
+
 
 events.connect(v8debug, "onDebugEvent", SelfScript.Self)
 stdcommands.CDebug.Break.addHandler(SelfScript.self, "onStopDebug")
@@ -26,15 +40,155 @@ rLocal.Название = "Локальные переменные";
 var rHands = form.ПеременныеОтладки.Строки.Добавить();
 rHands.Название = "Табло";
 getRow(rHands, '');
+var colorRed = v8new("Цвет", 255, 0, 0), colorGray = v8new("Цвет", 200, 200, 200)
 var curViewHwnd = "";
 var curSyntaxAnalysis = null;
 var needTestModified = false;
 var timerExpressionUpdater = null;
+var valueBrkptCond = "";
 
+SelfScript.self['macrosОткрыть окно отладки'] = function()
+{
+	
+    form.Open() // Покажем окно
+}
+
+SelfScript.self['macrosПереключитьавтообновление'] = function()
+{
+    logger.debug(this.name);
+    if (!timerExpressionUpdater){
+        logger.debug("timerExpressionUpdater: "+timerExpressionUpdater);
+    }
+    else {
+
+        timerExpressionUpdater.stop = !timerExpressionUpdater.stop;
+        //Message("Теперь автообновление "+timerExpressionUpdater.stop?"остановленно" : "включено");
+        loggerInfo.info("timerExpressionUpdater.stop is "+timerExpressionUpdater.stop);
+    }
+}
+
+/* Возвращает название макроса по умолчанию - вызывается, когда пользователь 
+дважды щелкает мышью по названию скрипта в окне Снегопата. */
+function getDefaultMacros() {
+    return 'Переключитьавтообновление';
+}
+
+function setTimeForUpdateExpression(timeout) {
+
+    logger.debug(this.name);
+    if (!timerExpressionUpdater){
+    } else {
+        if ((timerExpressionUpdater.timeout + timeout) < 0 ) {
+            Message("Время ниже нуля нельзя. "+(timerExpressionUpdater.timeout + timeout));
+            return;
+        }
+        timerExpressionUpdater.timeout = timerExpressionUpdater.timeout + timeout;
+    }
+
+    logger.debug(timerExpressionUpdater.timeout);
+
+}
+
+function hookBrkptCond(dlgInfo)
+{
+    if(dlgInfo.stage == openModalWnd)
+    {
+        dlgInfo.form.getControl("Condition").value = valueBrkptCond;
+
+        dlgInfo.cancel = false;
+        dlgInfo.result = mbaOk;
+    }
+}
+
+function hookBrkptCondAuto(dlgInfo)
+{
+    if(dlgInfo.stage == openModalWnd)
+    {
+        dlgInfo.form.getControl("Condition").value = valueBrkptCond;
+
+        dlgInfo.cancel = true   // Отменяем показ диалога
+        dlgInfo.result = 1      // как будто в нем нажали Ок
+    }
+}
+
+
+
+SelfScript.self['macrosУстановить точку останова по условию'] = function(){
+    if (!form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока) {
+        logger.error("Не определенна текущая строка для выражения");
+        return;
+    }
+    
+    events.connect(windows, "onDoModal", SelfScript.self, "hookBrkptCond");
+    var state = stdcommands.CDebug.BrkptCond.getState();
+    var curRow = form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока;
+    var curValue = ''+curRow.Значение;
+    var name = fullName(curRow);
+    valueBrkptCond = ""+ name + " = "+curValue;
+    stdcommands.CDebug.BrkptCond.send();
+    events.disconnect(windows, "onDoModal", SelfScript.self, "hookBrkptCond");
+    
+}
+
+SelfScript.self['macrosУстановить точку останова по условию для выделенных строк'] = function(){
+    if (!form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока) {
+        logger.error("Не определенна текущая строка для выражения");
+        return;
+    }
+
+    var wnd = GetTextWindow();
+    if(!wnd)
+        return;
+    view = wnd.GetView();
+
+    var curRow = form.ЭлементыФормы.ПеременныеОтладки.ТекущаяСтрока;
+    var curValue = ''+curRow.Значение;
+    var name = fullName(curRow);
+    valueBrkptCond = ""+ name + " = "+curValue;
+
+    var vbs = addins.byUniqueName("vbs").object
+    vbs.var0 = valueBrkptCond; vbs.var1 = "Введите выражение"; vbs.var2 = 0, vbs.var3 = false;
+    if (vbs.DoEval("InputString(var0, var1, var2, var3)")) {
+            valueBrkptCond  = vbs.var0;
+    }
+    if (valueBrkptCond.length = 0)
+        return;
+
+    events.connect(windows, "onDoModal", SelfScript.self, "hookBrkptCondAuto");
+    var state = stdcommands.CDebug.BrkptCond.getState();
+
+    sel = wnd.GetSelection();
+    for (var i = sel.beginRow; i<sel.endRow; i++){
+        stdcommands.CDebug.BrkptCond.send();
+        wnd.SetCaretPos(i, sel.beginCol);
+    }
+    
+    events.disconnect(windows, "onDoModal", SelfScript.self, "hookBrkptCondAuto");
+    valueBrkptCond = "";
+    loggerInfo.info("Точки останова установленны!");
+    
+}
+
+
+SelfScript.self['macrosУвеличить период обновления на 1 сек. '] = function() {
+    setTimeForUpdateExpression(1000);
+}
+
+SelfScript.self['macrosУменьшить период обновления на 1 сек. '] = function() {
+    setTimeForUpdateExpression(-1000);
+}
+
+//TODO: Добавить вычисление выражения. 
 function onDebugEvent(eventID, eventParam)
 {
-	//Message("SCRIPT " + eventID + ", " + eventParam);
-	if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD30EDF2EF1}")
+    logger.debug(this.name);
+    logger.debug(eventID);
+    if (!timerExpressionUpdater){
+        logger.debug("timerExpressionUpdater не определен "+timerExpressionUpdater)
+        timerExpressionUpdater = GetTimerExpressionUpdater();
+    }
+    //Message("SCRIPT " + eventID + ", " + eventParam);
+    if(eventID == "{FE7C6DDD-7C99-42F8-BA14-CDD30EDF2EF1}")
     {
         var view = windows.getActiveView()
         form.Open() // Покажем окно
@@ -48,11 +202,11 @@ function onDebugEvent(eventID, eventParam)
     }
     if(eventID == "{5B5F928D-DF2D-4804-B2D0-B453163A2C4C}")
     {
-		//Message("eventParam " + eventParam);
-		if(eventParam == 37 || eventParam == 24 )    // Остановились в точке останова
+        //Message("eventParam " + eventParam);
+        if(eventParam == 37 || eventParam == 24 )    // Остановились в точке останова
         {
-			//Message("SCRIPT Остановились в точке останова")
-			needTestModified = true
+            //Message("SCRIPT Остановились в точке останова")
+            needTestModified = true
             fillLocalVariables()    // Заполним локальные переменные
             //events.connect(Designer, "onIdle", SelfScript.self) // Будем их обновлять
             timerExpressionUpdater.updateTimer();
@@ -60,10 +214,6 @@ function onDebugEvent(eventID, eventParam)
     }
 }
 
-SelfScript.self['macrosОткрыть окно отладки'] = function()
-{
-    form.Open() // Покажем окно
-}
 
 function isDebugEvalEnabled()
 {
@@ -278,12 +428,12 @@ function updateDebugExpressions()
 
 function fullName(row)
 {
+    logger.debug(this.name + " уровень "+row.Уровень());
     var t = row.Название
-    for(var k = row.Уровень(); k > 1; k--)
-    {
-        row = row.Родитель
-        t = row.Название + "." + t
+    if (row.Уровень() > 1){
+        t = fullName(row.Родитель) +"."+t;
     }
+    logger.debug(""+t);
     return t
 }
 
@@ -297,8 +447,6 @@ function ПеременныеОтладкиВыбор(Элемент, Выбра
         Message(value)
     }
 }
-
-var colorRed = v8new("Цвет", 255, 0, 0), colorGray = v8new("Цвет", 200, 200, 200)
 
 function ПеременныеОтладкиПриВыводеСтроки(Элемент, ОформлениеСтроки, ДанныеСтроки)
 {
@@ -360,7 +508,9 @@ function ПеременныеОтладкиНазваниеПриИзменен�
     
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
+
+function GetTimerExpressionUpdater(){
+    ////////////////////////////////////////////////////////////////////////////////////////
 ////{ TimerExpressionUpdater - переодически обновляем значения переменных
 ////
 
@@ -368,18 +518,29 @@ TimerExpressionUpdater = stdlib.Class.extend({
 
     construct : function() {
         this.timerId = 0;
+        this.stop = false;
+        this.timeout = 100;
         //this.startWatch();
     },
 
     updateTimer: function(){
+        logger.debug(this.name);
         this.stopWatch();
         this.startWatch()
     },
 
     startWatch : function () {
+        logger.debug(this.name + " "+ this.constructor.name);
+
         if (this.timerId)
             this.stopWatch();
-        this.timerId = createTimer(100, this, 'onTimer');
+        
+        if (this.stop){
+            logger.debug("Таймер отключен "+this.stop);
+            return;
+        }
+
+        this.timerId = createTimer(this.timeout, this, 'onTimer');
     },
 
     stopWatch : function () {
@@ -413,6 +574,6 @@ TimerExpressionUpdater = stdlib.Class.extend({
     
 }); // end of TimerExpressionUpdater class
 
-//} TimerExpressionUpdater 
+    return new TimerExpressionUpdater();
+}
 
-timerExpressionUpdater = new TimerExpressionUpdater();
