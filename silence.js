@@ -2,11 +2,20 @@
 $uname silence
 $dname Тишина в отсеках
 $addin stdlib
+$addin stdcommands
 
 // (с) Александр Орефков orefkov at gmail.com
 // Это небольшой скрипт для подавления некоторых сообщений Конфигуратора, бессмысленных и беспощадных.
 // Пока реализовано "в-лоб", в дальнейшем надо сделать список из "регэксп + результат",
 // и гуи по настройке, какие подавлять, какие нет.
+
+stdlib.require('log4js.js', SelfScript);
+
+var logger = Log4js.getLogger(SelfScript.uniqueName);
+var appender = new Log4js.BrowserConsoleAppender();
+appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
+logger.addAppender(appender);
+logger.setLevel(Log4js.Level.ERROR);
 
 // Подпишемся на событие при выводе предупреждения/вопроса
 events.connect(windows, "onMessageBox", SelfScript.self)
@@ -26,13 +35,12 @@ function onMessageBox(param)
 
     if(param.text == "Внимание!!! Месторасположение информационной базы изменилось.\nПродолжить?")
     {
-        //Message("Месторасположение информационной базы изменилось.", mInfo)
         param.result = mbaYes
         param.cancel = true
         return;
     }
     
-    // artbear сообщения типа "Объект Роль.Менеджер заблокирован." или "Объект Справочник.СохраненныеНастройки заблокирован."
+    // сообщения типа "Объект Роль.Менеджер заблокирован." или "Объект Справочник.СохраненныеНастройки заблокирован."
     reRoleBlock = /Объект\s*[\d\wzа-яё]+\.[\d\wzа-яё\.]+\s*заблокирован\./ig
     if(reRoleBlock.test(param.text)){
         Message(param.text)
@@ -41,7 +49,7 @@ function onMessageBox(param)
         return;
     }
     
-    // artbear сообщения типа "Объединение конфигураций завершено."
+    // сообщения типа "Объединение конфигураций завершено."
     reConfigUnionEnd = /объединение\s+конфигураций\s+завершено\./ig
     if(reConfigUnionEnd.test(param.text)){
         param.result = mbaYes
@@ -93,3 +101,88 @@ function onDoModal(dlgInfo){
        }
     }
 }
+
+/** 
+ Во время активной разработки очень часто приходится перезапускать предприятие, открытое в режиме отладки 
+ при этом у конфигуратора возникают вопросы на которые вроде как чаще отвечаешь да, чем нет. 
+По факту оазы
+@constructor
+@uses stdlib.Class
+**/  
+DebugModeHelper = stdlib.Class.extend({
+
+    construct : function () {    
+        DebugModeHelper._instance = this;
+        //events.connect(windows, "onDoModal", this);
+        //stdcommands.CDebug.Start.addHandler(this, "onStartDebug");
+        stdcommands.CDebug.Restart.addHandler(this, "onRestartDebug");
+
+    },
+
+    onStartDebug:function(cmd){
+        if(!cmd.isBefore)
+        {   
+            //Проверяем Находимся ли в режиме отладки. 
+
+            if (this.isDebugEvalEnabled()) {
+
+            }
+            
+        }  else {
+            
+        }
+
+    },
+
+    onRestartDebug:function(cmd){
+        if(!cmd.isBefore)
+        {   
+            if (stdlib.isConfigsDifferent()){
+                events.connect(windows, "onDoModal", this, "onDoModalRestart");    
+            }
+        }  else {
+            events.disconnect(windows, "onDoModal", this, "onDoModalRestart");
+        }
+
+    },
+    isDebugEvalEnabled:function()
+    {
+        // Команда "Шагнуть в" неактивна - значит, мы не в останове. Считать переменные нельзя, возможен вылет
+        var state = stdcommands.CDebug.StepIn.getState()
+        return state && state.enabled
+    },
+
+
+    onDoModalRestart:function(dlgInfo){
+        if(dlgInfo.caption == "Выбор главы" && dlgInfo.stage == afterInitial)
+        {
+            var grid = dlgInfo.form.getControl("tblTopics").extInterface
+            var sel = this.choiceNative(grid);
+            if(sel)
+            {
+                grid.currentRow = sel
+                dlgInfo.form.sendEvent(dlgInfo.form.getControl('btnShow').id, 0)
+            }
+        }
+    },
+
+    choiceNative:function(grid) {
+        var choices = v8New('СписокЗначений');
+        for(var k = grid.dataSource.root.firstChild; k ; k = k.next)
+            choices.Add(k, this.setFilter(k.getCellValue(0)));
+
+        var dlg = new SelectValueDialog("Выберите главу", choices);
+        dlg.form.GreedySearch = true;
+        if (dlg.selectValue())
+            return dlg.selectedValue
+        return null
+    }
+})
+
+function GetDebugModeHelper() {
+    if (!DebugModeHelper._instance)
+        new DebugModeHelper();
+    return DebugModeHelper._instance;
+}
+
+var dbg = GetDebugModeHelper();
