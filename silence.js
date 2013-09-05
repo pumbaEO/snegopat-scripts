@@ -11,6 +11,8 @@ $addin stdcommands
 
 // Подключение библиотеки log4js, для удобвного логгирования различных событий. 
 stdlib.require('log4js.js', SelfScript);
+stdlib.require('SettingsManagement.js', SelfScript);
+stdlib.require("SelectValueDialog.js", SelfScript);
 
 var logger = Log4js.getLogger(SelfScript.uniqueName);
 var appender = new Log4js.BrowserConsoleAppender();
@@ -28,6 +30,7 @@ events.connect(windows, "onMessageBox", SelfScript.self)
 if (profileRoot.getValue("ModuleTextEditor/CheckAutomatically")){
     events.connect(windows, "onDoModal", SelfScript.self);  
 }
+
 var notify = true;
 // # onMessageBox
 //  Функция - обработчик
@@ -129,15 +132,65 @@ function onDoModal(dlgInfo){
 // Если посчитать сколько в день приходиться нажимать F5 потом enter, enter, то в итоге родился такой скрипт, который анализирует текущее состояние базы (отличаются конфигурации), при этом у нас включен режим отладки - значит мы в режиме отладки что-то подправили и теперь пытаемся перезапустить предприяте.
 DebugModeHelper = stdlib.Class.extend({
 
+    settingsRootPath : 'sillenceDebugModeHelper',
+    defaultSettings : {
+            use: false
+    },
+
     construct : function () {    
         DebugModeHelper._instance = this;
+        
+        this.settings = SettingsManagement.CreateManager(this.settingsRootPath, this.defaultSettings);
+        this.loadSettings();
         //events.connect(windows, "onDoModal", this);
-        stdcommands.CDebug.Start.addHandler(this, "onRestartDebug");
+        //stdcommands.CDebug.Start.addHandler(this, "onRestartDebug");
         this.first = false;
     },
- 
+
+    loadSettings:function(){
+        this.settings.LoadSettings();
+        if(!this.settings.current.use)
+            this.settings.current.use = false;
+
+        if (this.settings.current.use==true){
+            stdcommands.CDebug.Start.addHandler(this, "onRestartDebug");
+        } else {
+            try{
+                stdcommands.CDebug.Start.delHandler(this, "onRestartDebug");
+            } catch (e) {}
+             try{
+                events.disconnect(windows, "onDoModal", this, "onDoModalRestart");
+            } catch (e) {}
+
+        }
+
+    },
+
+    changeSettings : function(){
+
+        var values = v8New('СписокЗначений');
+        values.add("on", "Включить перехват");
+        values.add("off", "Выключить перехват");
+
+        var name = "Перехват вопросов о перезапуске, сейчас "+ ((this.settings.use == true) ? " включен": " выключен");
+        var dlg = new SelectValueDialog(name, values);
+         if (dlg.selectValue()) {
+             if (dlg.selectedValue=="on") {
+                this.settings.current.use = true;
+            } else if (dlg.selectedValue == "off") {
+                this.settings.current.use = false;
+            }
+        }
+
+        this.settings.SaveSettings();
+        this.loadSettings();
+    },
+
      //Перехватим событие о старте отладки . 
      onRestartDebug:function(cmd){
+        if (!this.settings.current.use) {
+            return;
+        }
         if(cmd.isBefore)
         {   
             if (stdlib.isConfigsDifferent() && this.isDebugEnabled()){
@@ -189,8 +242,16 @@ function GetDebugModeHelper() {
         new DebugModeHelper();
     return DebugModeHelper._instance;
 }
+
+
 // ### Инициализия класса . 
 //
 //  Для отключения, достаточно только закомментировать данную строкоу.  
 // TODO: добавить включение, выключение данного поведения. 
 var dbg = GetDebugModeHelper();
+
+SelfScript.self['macrosВкл/выкл вопросов при перезапуске во время отладки'] = function(){
+    dbg.changeSettings();
+    return true;
+
+}
