@@ -64,7 +64,9 @@ ExtSyntaxCheck = ScriptForm.extend({
     
     settings : {
         pflSnegopat : {
-            'cathSyntaxCheck': false // Перехватывать комманду синтаксической проверки.
+            'cathSyntaxCheck': false,
+            'maxLength' : 45,
+            'checkLengthFunction': false // Перехватывать комманду синтаксической проверки.
         }
     },
 
@@ -99,8 +101,67 @@ ExtSyntaxCheck = ScriptForm.extend({
         }
         
     },
+
+    analizeModule: function(){
+        logger.debug("analizeModule");
+        var parser = snegopat.parseSources(this.wnd.GetText());
+
+        for(var i = 0, c = parser.lexemCount; i < c; i++)
+        {
+            var lex = parser.lexem(i)
+            if(lex.type==40 )
+            i+= this.analizeFunction(parser,i,lex);
+           } 
+    },
     
-    onSyntaxCheck : function (cmd){
+    analizeFunction: function(parser,start,startlex){
+
+        line = 0;
+        name = parser.lexem(start+1).text;
+        lastline = startlex.line;
+        var i,c, wnd = GetTextWindow();
+        for(i = start, c = parser.lexemCount; i< c; i++){
+            var lex = parser.lexem(i);
+            var maxLines = this.form.maxLength;
+            if(lex.type==42){
+                if(line > maxLines) {
+                var param = {};
+                param['wnd'] = wnd;
+                param['line'] = startlex.line;
+                message("Функция "+name+" большая. Лишних "+(line - maxLines)+" строк ",mExc1, this.onClick_Message, param);
+                }
+            break;
+            }
+            if (lex.type == 1) // коменты не считаются кодом.
+                continue;
+            line+= (lastline==lex.line) ? 0:1; // смениться после прочтения перевода строки. а это может только при честном переводе или если прочли многострочную строку
+            lastline =lex.line;
+        }
+        return (i - start);
+    }, 
+
+    onClick_Message: function(param){
+
+        if (!param['wnd']) {
+            return 
+        }
+        if (!param['wnd'].IsActive()) {
+            return 
+        }
+        param['wnd'].SetCaretPos(param['line']+1, 1);
+        view = param['wnd'].GetView();
+        if (!view){
+            
+        } else {
+            logger.debug('view activate ');
+            view.activate();
+        }
+        
+        param = null
+
+    },
+
+    onSyntaxCheck: function (cmd){
         logger.debug('onSyntaxCheck ')
         if (cmd.isBefore){
             this.wnd = new TextWindow();
@@ -154,6 +215,9 @@ ExtSyntaxCheck = ScriptForm.extend({
                 }
             }
             this.errors = {};
+            if (this.form.checkLengthFunction){
+                this.analizeModule();
+            }
         } else {
             logger.debug('onSyntaxCheck connect')
             events.connect(Designer, "onMessage", this);

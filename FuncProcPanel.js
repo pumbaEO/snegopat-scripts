@@ -38,6 +38,12 @@ SelfScript.self['macrosОткрыть окно'] = function() {
 
 }
 
+SelfScript.self['macrosTest'] = function() {
+    var f = GetFuncProcPanel();
+    f.moveFuncDown();
+
+}
+
 function getPredefinedHotkeys(predef)
 {
     predef.setVersion(3)
@@ -1300,6 +1306,88 @@ FuncProcPanel.prototype.FuncProcOnSelection = function(Элемент, Выбр�
     this.needHide = true; 
 }
 
+FuncProcPanel.prototype.moveFunc = function(func, forward){
+
+ 
+    // Переведем фокус в окно текстового редактора.
+    this.activateEditor();
+
+    function getMethod(methods, name) {
+        var filter_struct = v8New("Структура");
+        
+        filter_struct.Insert("Method", name);
+        var МассивСтрок = methods.Rows.FindRows(filter_struct);
+        if (МассивСтрок.Count()<=0) {
+            logger.error("Такой процедуры не существует!");
+            return;
+        }
+
+        return МассивСтрок.Get(0)._method;
+
+    }
+
+    var curRowMethod = getMethod(this.methods, func.Method);
+    if(!curRowMethod)
+        return;
+
+    if (!this.targetWindow)
+        return;
+ 
+    if (!this.targetWindow.IsActive())
+    {
+        //DoMessageBox("Окно, для которого показывался список, было закрыто!\nОкно с результатами стало не актуально и будет закрыто.");
+        logger.error("Окно, для которого показывался список, было закрыто!\nОкно с результатами стало не актуально и будет закрыто.");
+        //this.Close();
+        return;
+    }
+
+
+     this.moveRowCursor(forward);
+
+    var newRow = this.form.Controls.FunctionList.CurrentRow;
+    var newRowMethod = getMethod(this.methods, newRow.Method);
+
+    if (!newRowMethod)
+        return;
+
+    var newLine = 0;
+    if(forward){
+        newLine = newRowMethod.EndLine + 1;
+        newLine = newLine > this.targetWindow.LinesCount() ? this.targetWindow.LinesCount() : newLine;
+    } else {
+        newLine = newRowMethod.StartLine;
+    }
+
+    curText = this.targetWindow.Range(curRowMethod.StartLine,0,curRowMethod.EndLine).GetText();
+    //this.targetWindow.Range(curRow.LineNo,,curRow.Method.EndLine).SetT
+
+    this.targetWindow.InsertLine(newLine, curText);
+
+    var clear = this.targetWindow.Range(curRowMethod.StartLine,0,curRowMethod.EndLine);
+    clear.SetText("");
+
+    this.GetList();
+
+}
+
+FuncProcPanel.prototype.moveFuncUp = function(){
+
+}
+
+FuncProcPanel.prototype.moveFuncDown = function(){
+
+    var row;     
+    var curRow = this.form.Controls.FunctionList.CurrentRow;
+    
+    if (!curRow)
+    {
+        return
+    }
+
+    this.moveFunc(curRow, false);
+
+}
+
 FuncProcPanel.prototype.onIdle = function(){
     this.updateList();
     if(this.needHide)
@@ -1325,7 +1413,7 @@ FuncProcPanel.prototype.updateList = function()
 }
 
 FuncProcPanel.prototype.moveRowCursor = function (forward) {
-var curRow = this.form.Controls.FunctionList.ТекущаяСтрока
+    var curRow = this.form.Controls.FunctionList.ТекущаяСтрока
     if (!this.results.Rows.Count())
         return;
      
