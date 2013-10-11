@@ -351,7 +351,7 @@ SessionManager = ScriptForm.extend({
             }    
         }
         if (!sessionRow.Rows.Count()){
-            sessionsHistory.Rows.Delete(sessionRow);
+            //sessionsHistory.Rows.Delete(sessionRow);
         }
         
         //this.form.SessionsHistory = ValueToStringInternal(this.SessionTree);
