@@ -167,7 +167,7 @@ function onMessageCfgStore(param) {
         var curDate = new Date();
         try {
             if ((curDate - isCfgMessageStrat) > 60000){
-                TrayMessage("Хранилище", "Операция законченна. Дождались!", 20);
+                TrayMessage("Хранилище", "Операция закончена. Дождались!", 20);
             }
          } catch(e){}
     }
@@ -235,7 +235,7 @@ TrayCompareWatcher.prototype.onTimer = function (timerID) {
     var mathes = r.match(re);
     if (mathes && mathes.length) {
         var caption = ''+windows.caption;
-        TrayMessage(caption, 'Сравнение завершенно для ~n '+ mathes[2])
+        TrayMessage(caption, 'Сравнение завершено для ~n '+ mathes[2])
         this.stop()
     }
     this.countTimer++;
@@ -288,7 +288,7 @@ CompareUdate.prototype.onTimer = function (timerID) {
     var mathes = r.match(re);
     if (mathes && mathes.length) {
         var caption = ''+windows.caption;
-        TrayMessage(caption, 'Сравнение завершенно для ~n '+ mathes[2])
+        TrayMessage(caption, 'Сравнение завершено для ~n '+ mathes[2])
         this.stop()
         try {
             events.disconnect(windows, "onDoModal", this, "onMessageBox");
