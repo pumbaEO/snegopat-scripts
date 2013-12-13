@@ -1,0 +1,48 @@
+
+заменить в файле \Snegopat\SciColorerV8.ini
+
+секцию [Styles] на этот текст:
+
+[Styles]
+KeyWord=Courier New;1395922;3549952;0;0;10;0;
+Number=Courier New;35254;3549952;0;0;10;0;
+String=Courier New;10265676;3549952;0;0;10;0;
+Date=Courier New;39301;3549952;0;0;10;0;
+Identifier=Courier New;13863717;3549952;0;0;10;0;
+Operator=Courier New;3354580;3549952;0;0;10;0;
+Comment=Courier New;10592659;3549952;0;0;10;0;
+BackGround=Courier New;16777215;3549952;0;0;10;0;
+LineNumbers=Courier New;5921370;14215660;0;0;8;0;
+UserKeyWords=Courier New;32768;3549952;0;0;10;0;
+SelText=Courier;65535;0;0;0;10;0;
+FoldMarkers=Courier;8421504;16777215;0;0;10;0;
+Indent=Courier;12632256;15793151;0;0;10;0;
+Bookmark=Courier;64;128;0;0;10;0;
+CurrentLine=Courier;16711680;14215660;0;0;10;0;
+FoldMargin=Courier;16777215;14215660;0;0;10;0;
+Caret=Courier;0;0;0;0;10;0;
+Brace=Courier New;128;3549952;1;0;10;0;
+LimitLine=Courier;0;8421504;0;0;10;0;
+Unknown=Courier New;0;3549952;0;0;10;0;
+Bracket=Courier New;1395922;3549952;0;0;10;1;
+ModifiedLine=Courier;0;8454143;0;0;10;0;
+ModifiedLine2=Courier;0;65280;0;0;10;0;
+LineNumbersRO=Courier New;5921370;14215660;0;0;8;0;
+GlobalMethods=Courier New;8388608;3549952;0;0;10;0;
+HotSpot=Courier New;16711680;16777215;0;0;10;1;
+UserKeyWords1=Courier New;32768;3549952;0;0;10;0;
+UserKeyWords2=Courier New;32768;3549952;0;0;10;0;
+UserKeyWords3=Courier New;32768;3549952;0;0;10;0;
+SelWordHighLight=Courier New;13863717;16763594;0;0;10;0;
+MDObjAttributes=Courier New;16744448;3549952;0;0;10;0;
+MethHeaderBG=Courier New;1395922;3549952;0;0;10;0;
+SearchResultsWnd=MS Sans Serif;7124735;16777215;0;0;8;0;
+Preprocessor=Courier;8664533;3549952;0;0;10;0;
+QKeywords=Courier New;16711680;14803425;0;0;10;0;
+QFunctions=Courier New;128;14803425;0;0;10;0;
+QNumbers=Courier New;16711935;14803425;0;0;10;0;
+QParams=Courier New;8421376;14803425;0;0;10;0;
+QStrings=Courier New;255;14803425;0;0;10;0;
+QIdentifiers=Courier New;0;14803425;0;0;10;0;
+QBrackets=Courier New;128;14803425;0;0;10;1;
+
