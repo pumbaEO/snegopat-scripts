@@ -52,6 +52,66 @@ function поменятьРежимЗапуска()
     return былРежимЗапуска
 }
 
+// Дополнение 28.01.2014 Slider
+function StartDebugAs( userName )
+{
+	путьПрофиляПользователя	= "Launch/UserNew"
+	путьСпособАвторизации	= "Launch/AuthenticationTypeNew"
+    var пользователь		= profileRoot.getValue(путьПрофиляПользователя);
+	var авторизация			= profileRoot.getValue(путьСпособАвторизации);	
+	
+    profileRoot.setValue(путьПрофиляПользователя, userName );	
+	profileRoot.setValue(путьСпособАвторизации, 1);		
+	
+	if( stdcommands.CDebug.Start.getState().enabled )
+	{	
+		stdcommands.CDebug.Restart.send();
+	}
+	
+	// возвращаем настройки назад как было
+	profileRoot.setValue(путьПрофиляПользователя, пользователь );	
+	profileRoot.setValue(путьСпособАвторизации, авторизация );	
+}
+
+
+SelfScript.Self['macrosЗапуск отладки от имени (выбор при запуске)'] = function () {
+	
+	StartDebugAs( "" );	
+}
+
+
+SelfScript.Self['macrosЗапуск отладки от имени (по списку)'] = function () {
+		
+	путьДоСпискаПользователей		= "Launch/MRULaunchUserList"	
+	var списокЗначенийПользователей	= profileRoot.getValue( путьДоСпискаПользователей );
+	массив							= списокЗначенийПользователей.ВыгрузитьЗначения();
+	
+	быстрыйНаборКоличество		= списокЗначенийПользователей.Количество();			
+	if ( быстрыйНаборКоличество > 0 )
+	{
+		var ListMode = v8New("ValueList");
+		for ( i = 0; i < быстрыйНаборКоличество; i++ )
+		{	
+			пользователь = списокЗначенийПользователей.Получить( i );
+			ListMode.add( i, пользователь );	   
+		}
+		первыйВСписке	= списокЗначенийПользователей.Получить(0);
+		choice			= ListMode.ChooseItem("Выберите пользователя", первыйВСписке );
+		if ( choice != undefined )
+		{						
+			имяВыбранногоПользователя = choice.Представление;			
+			StartDebugAs( имяВыбранногоПользователя );
+		}
+	}	
+}
+
+SelfScript.Self['macrosЗапуск отладки от имени Администратор'] = function () {
+		
+	StartDebugAs("Администратор");
+}
+//ДополнениеКонец
+
+
 SelfScript.Self['macrosНастроить режимы запуска'] = function () {
 
     var текущийРежимЗапуска = profileRoot.getValue(путьПрофиля);
@@ -82,7 +142,7 @@ SelfScript.Self['macrosНастроить режимы запуска'] = functi
         режимЗапуска2 = choice.value;
     }
     
-    //Сохраним режимы запуска 
+    //Сохраним режимы запусёка 
     profileRoot.setValue(pflRunEnterpriseStartModeAlternative, режимЗапуска2);
     
 }
