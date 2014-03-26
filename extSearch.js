@@ -185,6 +185,10 @@ SelfScript.self['macrosОткрыть окно поиска'] = function() {
     GetExtSearch().show();
 }
 
+SelfScript.self['macrosОткрыть окно глобального поиска'] = function() {
+    GetExtSearchGlobal().show();
+}
+
 SelfScript.self['macrosЗакрыть окно поиска'] = function() {
     var es = GetExtSearch();
     if (es.isOpen()) {
