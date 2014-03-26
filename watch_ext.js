@@ -203,7 +203,7 @@ function onDebugEvent(eventID, eventParam)
     if(eventID == "{5B5F928D-DF2D-4804-B2D0-B453163A2C4C}")
     {
         //Message("eventParam " + eventParam);
-        if(eventParam == 37 || eventParam == 24 )    // Остановились в точке останова
+        if(eventParam == 37 || eventParam == 24 || eventParam == 30 )    // Остановились в точке останова
         {
             //Message("SCRIPT Остановились в точке останова")
             needTestModified = true
