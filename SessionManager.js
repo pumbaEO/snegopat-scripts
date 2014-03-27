@@ -279,7 +279,8 @@ SessionManager = ScriptForm.extend({
             return
         }
         try {
-            if (activeView.mdObj) {
+            
+            if (activeView.mdObj && activeView.position().state == vsMDI) {
                 activeView.sendCommand("{c9d3c390-1eb4-11d5-bf52-0050bae2bc79}", 7);
             }
         } catch (e) {}
