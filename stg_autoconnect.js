@@ -34,12 +34,21 @@ function cnnString()
         return НСтр(СтрокаСоединенияИнформационнойБазы(), "Srvr") + ":" + НСтр(СтрокаСоединенияИнформационнойБазы(), "Ref")
 }
 
+var count = 0;
 
 // Обработчик показа модальных окон.
 function onDoModal(dlgInfo)
 {
     if(dlgInfo.caption == "Соединение с хранилищем конфигурации")
     {
+    	count++;
+
+    	if (count > 16) {
+		prevConnectSuccessed = true;
+                events.connect(Designer, "onIdle", SelfScript.self);
+                count = 0;
+        }
+                      
         if(dlgInfo.stage == beforeDoModal)
         {
             var data = profileRoot.getValue(pflData)
@@ -96,6 +105,7 @@ function onDoModal(dlgInfo)
                 profileRoot.setValue(pflCurrentBasePath, currentBasePath)
             }
         }
+        
     }
     else if(dlgInfo.stage == openModalWnd && (dlgInfo.caption == "Захват объектов в хранилище конфигурации" ||
         dlgInfo.caption == "Помещение объектов в хранилище конфигурации"))

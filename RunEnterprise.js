@@ -142,7 +142,7 @@ SelfScript.Self['macrosНастроить режимы запуска'] = functi
         режимЗапуска2 = choice.value;
     }
     
-    //Сохраним режимы запуска 
+    //Сохраним режимы запусёка 
     profileRoot.setValue(pflRunEnterpriseStartModeAlternative, режимЗапуска2);
     
 }

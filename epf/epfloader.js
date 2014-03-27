@@ -87,5 +87,5 @@ EpfLoader = new (stdlib.Class.extend({
 SelfScript.Self['macrosПерезагрузить все 1С-скрипты'] = function () {
     EpfLoader.unloadAllEpf();
     EpfLoader.loadAllEpf();
-}
+};
 

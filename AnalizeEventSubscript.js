@@ -42,7 +42,7 @@ function ТаблицаПодписок()
         return null
     }
     else if(choice.Count() == 1)
-        choice = choice.Get(0)
+        choice = choice.Get(0);
     else
         choice = choice.ChooseItem("Выберите конфигурацию для отчета")
     if(!choice)

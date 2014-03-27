@@ -45,7 +45,7 @@ TextChangesWatcher = stdlib.Class.extend({
     
     // Остановить отслеживание изменения текста
     stop: function() {
-        killTimer(this.timerID)
+        killTimer(this.timerID);
     },
     
     // Обработчик события таймера
