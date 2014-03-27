@@ -127,11 +127,6 @@ function hookCfgStorWindow(dlgInfo){
             }catch(e){
                  Message("Ошибка : " + e.description)
             }
-            try{
-                
-            } catch(e){
-                
-            }
        }
 }
 
