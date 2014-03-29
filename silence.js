@@ -9,10 +9,14 @@ $addin stdcommands
 // Пока реализовано "в-лоб", в дальнейшем надо сделать список из "регэксп + результат",
 // и гуи по настройке, какие подавлять, какие нет.
 
-// Подключение библиотеки log4js, для удобвного логгирования различных событий. 
+// Подключение библиотеки log4js, для удобного логгирования различных событий. 
 stdlib.require('log4js.js', SelfScript);
 stdlib.require('SettingsManagement.js', SelfScript);
 stdlib.require("SelectValueDialog.js", SelfScript);
+stdlib.require('ScriptForm.js', SelfScript);
+stdlib.require('TextWindow.js', SelfScript);
+
+stdlib.require('SyntaxAnalysis.js', SelfScript);
 
 var logger = Log4js.getLogger(SelfScript.uniqueName);
 var appender = new Log4js.BrowserConsoleAppender();
@@ -20,6 +24,8 @@ var appender = new Log4js.BrowserConsoleAppender();
 appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
 logger.addAppender(appender);
 logger.setLevel(Log4js.Level.ERROR);
+
+global.connectGlobals(SelfScript);
 
 // # Подпишемся на событие при выводе предупреждения/вопроса
 // ## подписки на события показа окон: 
@@ -32,6 +38,7 @@ if (profileRoot.getValue("ModuleTextEditor/CheckAutomatically")){
 }
 
 var notify = true;
+RE_PROC              = new RegExp('^\\s*((?:procedure)|(?:function)|(?:процедура)|(?:функция))\\s+([\\wА-яёЁ\\d]+)\\s*\\(', 'i');
 // # onMessageBox
 //  Функция - обработчик
 // ## Параметры
@@ -77,6 +84,7 @@ function onMessageBox(param)
 // фраза "При проверке модуля обнаружены ошибки!" тогда подавляем данно сообщение с выводом в трее неблокируюещего 
 // сообщения о наличии ошибок. 
 function onDoModal(dlgInfo){
+
     if(dlgInfo.stage == openModalWnd)
     {
         if (dlgInfo.Caption == "Конфигуратор"){
@@ -90,7 +98,7 @@ function onDoModal(dlgInfo){
                 var ctr = dlgInfo.form.getControl(c);
                 
                 //Определим текстовое значение, если не заполненно, значит это не наш случай. 
-                var text = ctr.value;
+                var text = "" + ctr.value;
                 if (!text){
                     continue;
                 }
@@ -124,6 +132,350 @@ function onDoModal(dlgInfo){
        }
     }
 }
+
+ProcedurCreateHelper = ScriptForm.extend({
+
+    settingsRootPath : SelfScript.uniqueName,
+    
+    settings : {
+        pflSnegopat : {
+            'use'      : true, // Использовать... 
+            'defaultContext': 0, //0 - на клиенте, 1 - на сервере без контекста, 2 - на сервере.' : false, // Учитывать регистр при поиске.
+            'useAltenate'   : false, // Использовать алтернативный вариант. 
+            'position'      : "afterProcedure", // Позиция создания "afterProcedure" - после созданной процедуры, "atLastContext" - после после последнего контекстного вызова.  "beforeProcedure"
+            'time'          : 3 //Время в секундах для показа формы. 
+        }
+    },
+
+    construct : function () {  
+        this._super("scripts\\ProcedurCreateHelper.ssf");                
+        this.form.КлючСохраненияПоложенияОкна = "ProcedurCreateHelper.dialog"
+        this.loadSettings();
+        this.timerId = null;
+        this.textwindow = null;
+        this.timerFormId = 0;
+        this.count = 0;
+        this.firstRefresh = true;
+        ProcedurCreateHelper._instance = this;
+    }, 
+
+    loadSettings : function(){
+        this._super();
+
+        if (this.form.use || this.form.useAltenate){
+            events.connect(windows, "onDoModal", this, "onDoModalAtClient");
+        } else {
+            try{
+                events.disconnect(windows, "onDoModal", this, "onDoModalAtClient");    
+            } catch(e){};
+        }
+    }, 
+
+    Form_OnClose : function () {
+        this.saveSettings();
+    },
+
+    Form_BeforeClose : function(Cancel){
+
+    },
+
+    Form_OnOpen : function() {
+        this.firstRefresh = true;
+        valueList = v8New("ValueList");
+        valueList.add("afterProcedure", "После процедуры");
+        valueList.add("beforeProcedure", "Перед процедурой");
+        valueList.add("atLastContext", "После процедур контекста");
+        this.form.Controls.PositionCreate.СписокВыбора = valueList;
+
+        var valueItem = this.form.Controls.PositionCreate.СписокВыбора.FindByValue(this.form.position);
+        if(!valueItem){
+            this.form.position = "afterProcedure";
+        }
+        
+        this.form.Controls.PositionCreate.Значение = this.form.position;
+        
+        this.form.Controls.defaultContext.Значение = this.form.defaultContext;
+        
+        if (this.count == 27){
+            this.form.Controls.ServerNoContext.ButtonBackColor = v8New("Цвет", 0, 130, 209);
+            this.form.Controls.Server.ButtonBackColor = v8New("Цвет", 255, 209, 0);
+        }
+
+        this.form.CurrentControl = this.form.Controls.clear;
+    },
+
+    PositionCreate_OnChange:function(el){
+        this.form.position = el.value;
+    },
+
+    Form_ObjectActivationProcessing:function(ActiveObject, Source){
+        if (this.timerFormId > 0){
+            killTimer(this.timerFormId);
+            this.timerFormId = 0;
+        }
+    },
+
+    Form_RefreshDisplay:function(){
+
+        if (this.firstRefresh){
+            this.firstRefresh = false;
+            return;
+        }
+
+        if (this.timerFormId > 0){
+            killTimer(this.timerFormId);
+            this.timerFormId = 0;
+        }  
+    },
+
+    onDoModalAtClient : function(dlgInfo){
+
+         if(dlgInfo.stage == afterInitial) //beforeDoModal afterInitial
+        {
+            if (dlgInfo.Caption == "Конфигуратор"){
+                if (dlgInfo.form.controlsCount != 7){
+                    return;
+                }
+                var crt = dlgInfo.form.getControl(1);
+                if (crt.name == "OnlyClient"){
+
+                    if(!this.form.useAltenate){
+                        crt.value = this.form.defaultContext;
+                    } else {
+                        //TODO: добавить проверку "Сервер" и "Сервер без контекста"
+                        dlgInfo.form.sendEvent(dlgInfo.form.getControl(6).id, 0);
+                        this.timerId = createTimer(500, this, 'onTimer');
+                    }
+                }
+
+           }
+        }
+    }, 
+
+    onTimer : function(timerId){
+
+        var activeView = windows.getActiveView();
+        if (!activeView){
+            return;
+        }
+        
+        var wnd = GetTextWindow();    
+        if (wnd){
+            this.lastActiveTextWindow = wnd;
+            killTimer(this.timerId);
+            this.timerId = 0;
+        } else if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive()){
+            this.lastActiveTextWindow = null;
+        }
+
+        this.analiseTextAndView(this.lastActiveTextWindow);
+
+
+    }, 
+
+    analiseTextAndView:function(textWindow){
+        if (!textWindow){
+            this.close();
+            return;
+        }
+
+        var canCreate = false;
+
+        curPos = (textWindow.GetCaretPos().beginRow) - 1;
+        curPos = curPos == 0?1:curPos;
+        this.beginRow = textWindow.GetCaretPos().beginRow;
+
+        var str = textWindow.GetLine(curPos);
+        Matches = RE_PROC.exec(str);
+        if( Matches != null )
+        {
+            this.form.Controls.НадписьНазвание.Заголовок = Matches[2];
+            this.selectedText = textWindow.GetSelectedText();
+            canCreate = true;
+            if (this.isOpen() && this.form.Panel.Pages.CurrentPage == this.form.Panel.Pages.Settings){ //Если открыто окно с настройками, тогда не показываем варианты создания. 
+                canCreate = false;
+            } 
+
+       }
+
+        if (canCreate){
+            this.show();
+            pch.form.Panel.CurrentPage = pch.form.Panel.Pages.Find("Job");
+            this.timerFormId = createTimer(this.form.time*1000, this, 'onTimerToClose');
+            var view = textWindow.GetView();
+            if (view){
+                view.activate();
+            }
+        } else {
+            this.close();
+        }
+    },
+
+    onTimerToClose:function(timerId){
+        killTimer(this.timerFormId);
+        this.timerFormId = 0;
+        if (this.form.CurrentControl !=this.form.Controls.clear){
+            return;
+        }
+        this.close();
+    }, 
+
+    getPositionForAddLines : function(wnd, context, localCnt){
+        //Message(""+context);
+        maxPosition = 0;
+        maxProcedure = "";
+        if (localCnt == undefined){
+
+            cnt = SyntaxAnalysis.AnalyseTextDocument(wnd);
+            //currentMethod = cnt.getActiveLineMethod();
+        } else {
+            cnt = localCnt;
+        }
+
+        
+        vtModules = cnt.getMethodsTable();
+        for (var i = 0; i<vtModules.Count(); i++) {
+            var thisRow = vtModules.Get(i);
+            curContext = thisRow.Context;
+            curContext = curContext.replace("НаСервереБезКонтекста", "atServerNoContext", "ig");
+            curContext = curContext.replace("НаСервере", "atServer", "ig");
+            if (curContext.length == 0){
+                curContext = "atServer"
+            }
+            
+
+            if (curContext.indexOf(context) ==-1){
+                //Message("Пропустим "+curContext + " "+context + " позиция "+curContext.indexOf(context));
+                continue;
+            }
+
+            //Message("name "+thisRow.Name + "context " + thisRow.Context + " " +thisRow.StartLine+" " + thisRow.EndLine + " " + thisRow._method.EndLine);
+
+            maxPosition = (maxPosition > thisRow._method.EndLine+2) ? maxPosition : thisRow._method.EndLine+2;
+
+        }
+
+        return maxPosition;
+
+    },
+
+    createFunction : function(context, position){
+
+        this.count++; 
+        if (this.lastActiveTextWindow && !this.lastActiveTextWindow.IsActive()){
+            this.lastActiveTextWindow = null;
+            Messga("Не возможно создать процедуру, окно уже закрыто");
+            return;
+        } else {
+            view = this.lastActiveTextWindow.GetView();
+            if (view){
+                view.activate();
+            }
+        }
+
+        var activeView = windows.getActiveView();
+        if (!activeView){
+            Messga("Нет активных окон.");
+            return;
+        }
+        
+        var wnd = GetTextWindow();    
+        if (!wnd){
+            Message("Нет активного текстового окна.") ;
+            return;
+        }
+
+        if (wnd.GetHwnd() != this.lastActiveTextWindow.GetHwnd()){
+            Message("Нет активное текстовое окно не совпадает с сохраненным") ; //FIXME: добавить проверку метаданных. 
+            return;   
+        }
+
+        //Определим новое название процедуры. 
+        var newName = this.form.Controls.НадписьНазвание.Заголовок + ((context == 'atServer') ? 'НаСервере':'НаСервереБезКонтекста');
+        logger.debug("new name :"+newName);
+
+        var newProcedure = '\n'+((context == 'atServer') ? '&НаСервере':'&НаСервереБезКонтекста') + '\n' + 'Процедура'+ ' '+ newName + '()\n    \nКонецПроцедуры';
+
+        //Первое определим положение курсора, если все в той же процедуре и выделенный текст, тогда будем заменять новым названием.
+        // если курсор выделяет какой либо текст, значит надо заменить, его. 
+
+        isSelection = false;
+        lineToInsertName = 0;
+        selection = null;
+        lineToInsertProcedure = 0;
+
+
+        selection = wnd.GetSelection();
+        selectedText = wnd.GetSelectedText();
+        if (selectedText == this.selectedText && wnd.GetCaretPos().beginRow == this.beginRow){
+            isSelection = true;
+            lineToInsertName = wnd.GetCaretPos().beginRow
+            if (position == "afterProcedure"){
+                lineToInsertProcedure = this.beginRow + 2;
+            } else if(position == "beforeProcedure"){
+                lineToInsertProcedure = this.beginRow - 2;
+            } else {
+                //Вот тут 
+                lineToInsertProcedure = this.getPositionForAddLines(wnd, context)
+            }
+        } else {
+            //Найдем по названию метода последнюю строку, добавим туда вызов. 
+            cnt = SyntaxAnalysis.AnalyseTextDocument(wnd);
+            currentMethod = cnt.getActiveLineMethod();
+
+            method = cnt.getMethodByName(this.form.Controls.НадписьНазвание.Заголовок)
+
+            if(!method){
+                Message("Не обнаружили метод... ");
+                return;
+            }
+
+            if (currentMethod.Name == method.Name){
+                lineToInsertName = wnd.GetCaretPos().beginRow;
+            } else {
+                lineToInsertName = method.EndLine - 1; 
+            }
+
+            if (position == "afterProcedure"){
+                lineToInsertProcedure = method.StartLine - 2;
+            } else if(position == "beforeProcedure"){
+                lineToInsertProcedure = this.EndLine + 1;
+            } else {
+                //Вот тут 
+                lineToInsertProcedure = this.getPositionForAddLines(wnd, context, cnt)
+            }
+        }
+
+        lineToInsertProcedure = lineToInsertProcedure==0?1:lineToInsertProcedure;
+        lineToInsertName = lineToInsertName==0?1:lineToInsertName;
+
+        //Определим позицию куда вставлять новый текст процедуры. 
+
+        if (isSelection){
+            wnd.SetSelectedText(newName + "()");
+        } else {
+            wnd.InsertLine(lineToInsertName, newName+"()");
+        }
+
+        wnd.InsertLine(lineToInsertProcedure, newProcedure);
+        //Теперь расчитаем позицию для установки курсора. 
+        wnd.SetCaretPos(lineToInsertProcedure + 3, 4);
+
+        
+    },
+
+    ServerNoContext_Click:function(btn){
+        this.createFunction("atServerNoContext", this.form.Controls.PositionCreate.Value);
+        this.close();
+    }, 
+
+    Server_Click:function(btn){
+        this.createFunction("atServer", this.form.Controls.PositionCreate.Value);
+        this.close();
+    }
+
+})
+
 
 // # DebugSilence
 // 
@@ -244,14 +596,29 @@ function GetDebugModeHelper() {
 }
 
 
+function GetProcedurCreateHelper() {
+    if (!ProcedurCreateHelper._instance)
+        new ProcedurCreateHelper();
+    return ProcedurCreateHelper._instance;
+}
+
+
 // ### Инициализия класса . 
 //
 //  Для отключения, достаточно только закомментировать данную строкоу.  
 // TODO: добавить включение, выключение данного поведения. 
 var dbg = GetDebugModeHelper();
+var pch = GetProcedurCreateHelper();
 
 SelfScript.self['macrosВкл/выкл вопросов при перезапуске во время отладки'] = function(){
     dbg.changeSettings();
     return true;
 
+}
+
+
+SelfScript.self['macrosНастройка создания обработчиков '] = function() {
+
+    pch.show();
+    pch.form.Panel.CurrentPage = pch.form.Panel.Pages.Find("Settings");
 }
