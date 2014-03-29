@@ -201,7 +201,7 @@ ProcedurCreateHelper = ScriptForm.extend({
             this.form.Controls.Server.ButtonBackColor = v8New("Цвет", 255, 209, 0);
         }
 
-        this.form.CurrentControl = this.form.Controls.clear;
+        //this.form.CurrentControl = this.form.Controls.clear;
     },
 
     PositionCreate_OnChange:function(el){
@@ -314,7 +314,8 @@ ProcedurCreateHelper = ScriptForm.extend({
     onTimerToClose:function(timerId){
         killTimer(this.timerFormId);
         this.timerFormId = 0;
-        if (this.form.CurrentControl !=this.form.Controls.clear){
+        
+        if (this.form.CurrentControl.Name != "ServerNoContext"){
             return;
         }
         this.close();
