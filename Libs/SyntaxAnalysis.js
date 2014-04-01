@@ -83,13 +83,25 @@ SyntaxAnalysis.AnalyseComments = function(sourceCode){
      
      return result
 }
-SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
+SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable, textWindow) {
     
     var Meth;
     var stStart = 0, stInProc = 1, stInModule = 2, stInVarsDef;
     var state = stStart, PrevState;
     var Match;
     var Context = "";
+
+    var rootObject = metadata.current.rootObject;
+
+    if(textWindow == undefined){
+
+    } else {
+        if (textWindow.mdCont){
+            rootObject = textWindow.mdCont.rootObject;
+        }
+    }
+
+    var cacheMetadata = [];
     
     var moduleContext = SyntaxAnalysis.Create1CModuleContextDescription(initValueTable);
         
@@ -235,7 +247,38 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
                 {
                     while( (Matches = SyntaxAnalysis.RE_CALL.exec(str)) != null )
                     {
-                        if( Matches[1].indexOf('.') >= 0 ) continue;
+                        if( Matches[1].indexOf('.') >= 0 ){
+
+                            addToCalls = false;
+                            callArray =  Matches[1].split(".");
+
+                            mdObject = rootObject;
+
+                            if (callArray.length > 2){
+                                //Это по документам, справочникам и т.д. идем.
+                                //metadataName = Matches[1].slice(0, Matches[1].indexOf('.'));
+                                try{
+                                    mdObject = rootObject.childObject(callArray[0], callArray[1]);
+                                    addToCalls = true;
+                                } catch(e){}
+                            } else if(callArray.length > 1 && callArray[0].length > 0) {
+                                //Тут по общим модулям пройдемся. 
+                                try{
+                                    mdObject = rootObject.childObject("ОбщиеМодули", callArray[0]);
+                                    addToCalls = true;
+                                } catch(e){}
+                            } 
+
+                            //if(walkMetadata(rootObject, metadataName, cacheMetadata)){
+                            if(addToCalls){
+                                if(Meth.Calls.indexOf(Matches[1]) >= 0) continue;
+                                Meth.Calls.push(Matches[1]);
+
+                            }
+
+                            //Сделаем поиск по общим модулям или под документам, вдруг там у нас статический вызов. 
+                            //var mdRef = metadata.current.rootObject.childObject("Справочники", "Номенклатура")
+                        }
                         if( Meth.Calls.indexOf(Matches[1]) >= 0) continue;
                         Meth.Calls.push(Matches[1]);
                     }
@@ -271,7 +314,7 @@ SyntaxAnalysis.AnalyseModule = function (sourceCode, initValueTable) {
 
 function _1CModule(textWindow) {
     this.textWindow = textWindow;
-    this.context = SyntaxAnalysis.AnalyseModule(this.textWindow.GetText(), true);
+    this.context = SyntaxAnalysis.AnalyseModule(this.textWindow.GetText(), true, this.textWindow);
 }
 
 /* Возвращает исходный код метода по названию метода. */

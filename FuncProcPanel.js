@@ -25,7 +25,7 @@ appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION
 logger.addAppender(appender);
 logger.setLevel(Log4js.Level.ERROR);
 
-
+//СтруктураМетодаOnRowOutput
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Макросы
 ////
@@ -77,7 +77,8 @@ function FuncProcPanel() {
     this.isForm = false; //Признак формы и необходимости строить дерево.
     this.defaultSettings = {
         'TreeView'      : false , // Группировать результаты поиска по контекстам.
-        'FuncProcViewRecursive' : false //Показывать вызовы процедур.
+        'FuncProcViewRecursive' : true, //Показывать вызовы процедур.
+        'index': 0
     };
         
     this.settings = SettingsManagement.CreateManager(SelfScript.uniqueName, this.defaultSettings);
@@ -106,6 +107,10 @@ function FuncProcPanel() {
 
     this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = stdlib.v8hotkey(13,8)
     this.cache = v8New("Map");
+    
+    this.index = 0;
+    this.maxShows = 5;
+    this.numberRow = 0;
 
 }
 FuncProcPanel.prototype.InvisiblePanelSelectAndHide = function(Button) {
@@ -120,6 +125,9 @@ FuncProcPanel.prototype.FunctionListMethodПриИзменении = function(Э
 }
 
 FuncProcPanel.prototype.Show = function () {
+    this.index = this.index + 1;
+    this.numberRow = 0;
+
 
     this.form.Open();
 }
@@ -237,34 +245,34 @@ FuncProcPanel.prototype.GetList = function () {
                 }
             }
          }
-        if (this.form.FuncProcViewRecursive) {
-            for (var z=0; z<thisRow._method.Calls.length; z++) {
-                if (cnt.context.getMethodByName(thisRow._method.Calls[z])!=undefined) {
-                    if (Calls[thisRow._method.Calls[z]]==undefined) {
-                        Calls[thisRow._method.Calls[z]] = new Array();
-                        Calls[thisRow._method.Calls[z]].push(thisRow.Name);
-                    } else {
-                        Calls[thisRow._method.Calls[z]].push(thisRow.Name);
-                    }
-                }
-           }
-       }
+        //if (this.form.FuncProcViewRecursive && !this.form.CallsView) {
+        //    for (var z=0; z<thisRow._method.Calls.length; z++) {
+        //        if (cnt.context.getMethodByName(thisRow._method.Calls[z])!=undefined) {
+        //            if (Calls[thisRow._method.Calls[z]]==undefined) {
+        //                Calls[thisRow._method.Calls[z]] = new Array();
+        //                Calls[thisRow._method.Calls[z]].push(thisRow.Name);
+        //            } else {
+        //                Calls[thisRow._method.Calls[z]].push(thisRow.Name);
+        //            }
+        //        }
+        //   }
+       //}
         contextCache.Insert(newRow.Context , "1"); 
     }
     //FIXME: добавить настройку сортировки по алфавиту/порядку объявления...
     this.methods.Rows.Sort("Контрол, Context, Method"); //Сортировка по умолчанию по порядку.
-    if (this.form.FuncProcViewRecursive) {
-        //Добавим локальные вызовы функций процедур. 
-        for (var i = 0; i<this.methods.Rows.Count(); i++) {
-            var thisRow = this.methods.Rows.Get(i);
-            if (Calls[thisRow.Method]!=undefined){
-                for (var y=0; y<Calls[thisRow.Method].length; y++){
-                    thisRow.Контрол = (thisRow.Контрол.length<1)? Calls[thisRow.Method][y]: thisRow.Контрол+";"+Calls[thisRow.Method][y]
-                    thisRow.КонтролТип = 2;
-                }
-            }
-        }
-    }
+    //if (this.form.FuncProcViewRecursive) {
+    //    //Добавим локальные вызовы функций процедур. 
+    //    for (var i = 0; i<this.methods.Rows.Count(); i++) {
+    //        var thisRow = this.methods.Rows.Get(i);
+    //        if (Calls[thisRow.Method]!=undefined){
+    //            for (var y=0; y<Calls[thisRow.Method].length; y++){
+    //                thisRow.Контрол = (thisRow.Контрол.length<1)? Calls[thisRow.Method][y]: thisRow.Контрол+";"+Calls[thisRow.Method][y]
+    //                thisRow.КонтролТип = 2;
+    //            }
+    //        }
+    //    }
+    //}
     
     this.form.TreeView = (this.isForm && (contextCache.Count()>1))
     //проанализруем управляемую форму...
@@ -1213,6 +1221,9 @@ FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
     this.form.Controls.FunctionList.Columns.Контрол.Visible = (this.isForm || this.form.FuncProcViewRecursive);
     this.form.Controls.CmdBar.Кнопки['TreeView'].Check = this.form.TreeView;
     this.form.Controls.CmdBar.Кнопки['ВыводитьВызовы'].Check = this.form.FuncProcViewRecursive;
+    //this.form.Controls.cmdBarCalls.Visible = this.form.FuncProcViewRecursive;
+    this.form.Controls.СтруктураМетода.Visible = this.form.FuncProcViewRecursive;
+
     
 }
 
@@ -1502,11 +1513,285 @@ FuncProcPanel.prototype.ТекстФильтраОкончаниеВводаТе
     //    this.goToLine(curRow)
     
 }
+FuncProcPanel.prototype.СтруктураМетодаПриВыводеСтроки = function(Элемент, ОформлениеСтроки, ДанныеСтроки){
+    var cell = ОформлениеСтроки.val.Cells.Имя;
+    
+    var index = ДанныеСтроки.val.Индекс;
+
+    try{
+        cell.ИндексКартинки = index;
+        cell.ОтображатьКартинку = true;    
+    } catch(e){}
+
+    if (this.numberRow>3){
+        var rowNumber = ДанныеСтроки.val.НомерСтроки;
+        
+        if(rowNumber == 2 || rowNumber == 1){
+            ОформлениеСтроки.val.ЦветФона = v8New("Цвет", 0, 130, 209);
+        } 
+        if (rowNumber==4 || rowNumber==3){
+            ОформлениеСтроки.val.ЦветФона = v8New("Цвет", 255, 209, 0);
+        }
+
+    }
+    
+}
+
+FuncProcPanel.prototype.СтруктураМетодаВыбор = function(Элемент, ВыбраннаяСтрока, Колонка, СтандартнаяОбработка){
+    СтандартнаяОбработка.val = false;
+    this.goToFunction(ВыбраннаяСтрока.val);
+    
+}
+
+FuncProcPanel.prototype.getMethod = function(methods, name) {
+    var filter_struct = v8New("Структура");
+    
+    filter_struct.Insert("Method", name);
+    var МассивСтрок = methods.Rows.FindRows(filter_struct);
+    if (МассивСтрок.Count()<=0) {
+        //logger.error("Такой процедуры не существует!");
+        return;
+    }
+
+    return МассивСтрок.Get(0)._method;
+}
+
+FuncProcPanel.prototype.walkMethods = function(row, method, req){
+
+    
+    req++;
+    if (req > 5)
+        return;
+    
+    var curRowMethod = this.getMethod(this.methods, method);
+    if(!curRowMethod){
+       return;
+    }
+
+    if(curRowMethod.Calls.length>0){
+        //var newRow = row.Rows.Add();
+        for(var i=0; i<curRowMethod.Calls.length; i++){
+            callMethod = this.getMethod(this.methods, curRowMethod.Calls[i]);
+            if (curRowMethod.Calls[i].indexOf(".")>=0 || callMethod!=null){
+                var newParamRow = row.Rows.Add();
+
+                if(this.index > this.maxShows && this.numberRow<=4){
+                    this.numberRow = this.numberRow+1;
+                    newParamRow.НомерСтроки = this.numberRow;
+                }
+
+                newParamRow.Имя = curRowMethod.Calls[i];
+                newParamRow.Индекс = 0;
+                if (callMethod!=null){
+                    newParamRow.Индекс = (callMethod.isProc)?0:1;
+                }
+                if (this.getMethod(this.methods, curRowMethod.Calls[i])){
+                    this.walkMethods(newParamRow, newParamRow.Имя, req)
+                }
+            }
+        }
+
+    }
+
+}
+
+FuncProcPanel.prototype.goToFunction = function(row){
+    
+    nameMethod = row.Имя;
+    var callArray = [];
+    
+    if (nameMethod.indexOf(".")>=0){
+
+
+        function getMdObj(rootObject, callArray){
+            
+            found = false;
+            mdObject = null;
+            if (callArray.length > 2){
+                
+                //Это по документам, справочникам и т.д. идем.
+                //metadataName = Matches[1].slice(0, Matches[1].indexOf('.'));
+                try{
+                    mdObject = rootObject.childObject(callArray[0], callArray[1]);
+                    found = true;
+                } catch(e){
+                    
+                }
+            } else if(callArray.length > 1 ) {
+                //Тут по общим модулям пройдемся. 
+                try{
+                    mdObject = rootObject.childObject("ОбщиеМодули", callArray[0]);
+                    found = true;
+                } catch(e){
+                    
+                }
+            } 
+            //Message(""+found + ""+mdObject.name);
+            if (found){
+                return mdObject;
+            }
+
+            return;
+        }
+
+        var firstRootObject = metadata.current.rootObject;
+        var secondRootObject = null;
+        if (this.targetWindow.mdCont){
+            secondRootObject = this.targetWindow.mdCont.rootObject;
+            if (secondRootObject.id = firstRootObject.id){
+                secondRootObject = null;
+            }
+        }
+
+        callArray = nameMethod.toString().split(".");
+
+        var mdObject = null;
+        if (secondRootObject){
+            //Message("secondRootObject"+secondRootObject.name);
+            mdObject = getMdObj(secondRootObject, callArray);
+        }
+
+        if(!mdObject && firstRootObject){
+            mdObject = getMdObj(firstRootObject, callArray);   
+        }
+
+        var propsModules = [
+        {propName: "Модуль",            title: "Открыть модуль",        hotkey: 13, modif: 0},
+        {propName: "МодульМенеджера",   title: "Модуль менеджера",      hotkey: 13, modif: 4},
+        {propName: "МодульНабораЗаписей",      title: "Открыть модуль",        hotkey: 13, modif: 0},
+        
+        {propName: "МодульОбъекта",     title: "Модуль объекта",        hotkey: 13, modif: 0},
+        {propName: "Форма",             title: "Открыть модуль",        hotkey: 13, modif: 0}
+        
+        ]
+
+
+
+        if (mdObject){
+
+            var mdc = mdObject.mdclass
+            for(var i = 0, c = mdc.propertiesCount; i < c; i++)
+            {
+                var mdPropName = mdc.propertyAt(i).name(1);
+                for(var k in propsModules)
+                {
+                    if(propsModules[k].propName == mdPropName)
+                    {
+                        var text = mdObject.getModuleText(mdPropName);
+                        parseModule = SyntaxAnalysis.AnalyseModule(text, true);
+                        var method = parseModule._methodsByName[callArray[callArray.length-1]];
+                        if (method){
+
+                            (new TextWindowsWatcherGoToLine(method.StartLine)).startWatch();
+                            mdObject.openModule(mdPropName);
+                            return;
+
+                        }
+                    }
+                }
+            }
+        } else {
+            Message("Не найден объект метаданных для "+nameMethod.toString());
+        }
+
+
+    } else {
+        var method = this.getMethod(this.methods, nameMethod);
+        if(method!=undefined){
+            if (!this.targetWindow){
+                Message("Не найденно целевое окно. ");
+                return;
+            }
+         
+            if (!this.targetWindow.IsActive())
+            {
+                Message("Окно, для которого показывался список, было закрыто!\nОкно с результатами стало не актуально и будет закрыто.");
+                this.Close();
+                return;
+            }
+         
+            // Переведем фокус в окно текстового редактора.
+            this.activateEditor();
+            var textline = this.targetWindow.GetLine(method.StartLine+1)
+            // Установим выделение на найденное совпадение со строкой поиска.
+            this.targetWindow.SetCaretPos(method.StartLine+2, 1);
+            this.targetWindow.SetSelection(method.StartLine+1, 1, method.StartLine+1, textline.length-1);
+        }
+    }
+}
+
 FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = function(Элемент){
 
-    var Кнопка =this.form.Controls.InvisiblePanel.Кнопки.AddSubscriptionAtServer;
-    
+    function getMethod(methods, name) {
+        var filter_struct = v8New("Структура");
+        
+        filter_struct.Insert("Method", name);
+        var МассивСтрок = methods.Rows.FindRows(filter_struct);
+        if (МассивСтрок.Count()<=0) {
+            //logger.error("Такой процедуры не существует!");
+            return ;
+        }
+        return МассивСтрок.Get(0)._method;
+    }
+
+    var Кнопка = this.form.Controls.InvisiblePanel.Кнопки.AddSubscriptionAtServer;
     Кнопка.Доступность = this.isForm;
+    //Заполним дерево вызовов колонки. 
+    if (this.form.Controls.СтруктураМетода.visible){
+        //Message("1")
+        this.form.СтруктураМетода.Rows.Clear();
+         var curRow = this.form.Controls.FunctionList.CurrentRow;
+         var curRowMethod = getMethod(this.methods, curRow.Method);
+         if(!curRowMethod){
+            return;
+         }
+         if (curRowMethod.Params.length>0){
+            var newRow = this.form.СтруктураМетода.Rows.Add();
+            newRow.Имя = "Параметры";
+            newRow.Индекс = 3
+
+            for(var i=0; i<curRowMethod.Params.length; i++){
+                var newParamRow = newRow.Rows.Add();
+                newParamRow.Имя = curRowMethod.Params[i];
+                newParamRow.Индекс = 4;
+            }
+         }
+
+
+         if(curRowMethod.Calls.length>0){
+            var newRow = this.form.СтруктураМетода.Rows.Add();
+            newRow.Имя = "Вызывает";
+            newRow.Индекс = 7
+
+            for(var i=0; i<curRowMethod.Calls.length; i++){
+                
+                callMethod = getMethod(this.methods, curRowMethod.Calls[i]);
+                if (curRowMethod.Calls[i].indexOf(".")>=0 || callMethod!=null){
+                    var newParamRow = newRow.Rows.Add();
+                    
+                    if(this.index > this.maxShows && this.numberRow<=4){
+                        this.numberRow = this.numberRow + 1;
+                        newParamRow.НомерСтроки = this.numberRow;
+                    }
+
+                    newParamRow.Имя = curRowMethod.Calls[i];
+                    newParamRow.Индекс = 0;
+                    if (callMethod!=null){
+                        newParamRow.Индекс = (callMethod.isProc)?1:0;
+                    }
+                    if (getMethod(this.methods, curRowMethod.Calls[i])){
+                        this.walkMethods(newParamRow, newParamRow.Имя, 1)
+                    }
+                }
+            }  
+
+            this.form.Controls.СтруктураМетода.Expand(newRow, true);
+            if(this.index > this.maxShows && this.numberRow>3){
+                this.index = 0;
+            }
+
+        }
+    }
 }
 
 FuncProcPanel.prototype.CmdBarВыводитьВызовы = function(Button) {
@@ -1571,3 +1856,60 @@ RowTypes = {
 
 events.connect(Designer, "beforeExitApp", GetFuncProcPanel());
 ////}
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ TextWindowsWatcherGoToLine - отслеживает активизацию текстовых окон и запоминает последнее и переходим по строке.
+////
+
+TextWindowsWatcherGoToLine = stdlib.Class.extend({
+
+    construct : function(LineNo) {
+        this.timerId = 0;
+        this.lastActiveTextWindow = null;
+        this.Line = LineNo;
+        this.startWatch();
+    },
+
+    getActiveTextWindow : function () {
+        if (this.lastActiveTextWindow && this.lastActiveTextWindow.IsActive())
+            return this.lastActiveTextWindow;
+        return null;
+    },
+
+    startWatch : function () {
+        if (this.timerId)
+            this.stopWatch();
+        this.timerId = createTimer(1*300, this, 'onTimer');
+    },
+
+    stopWatch : function () {
+        if (!this.timerId)
+            return;
+        killTimer(this.timerId);
+        this.timerId = 0;
+    },
+    
+    goToLine : function() {
+        if (!this.Line)
+            return
+        
+        wnd = this.getActiveTextWindow()
+        if (wnd){
+            var LineNo = this.Line;
+            var textline = wnd.GetLine(LineNo+1);
+            wnd.SetCaretPos(LineNo+2, 1);
+            wnd.SetSelection(LineNo+1, 1, LineNo+1, textline.length-1);
+        }
+    },
+
+    onTimer : function (timerId) {
+        var wnd = GetTextWindow();    
+        if (wnd){
+            this.lastActiveTextWindow = wnd;
+            this.goToLine()
+        }
+        this.stopWatch();
+    }
+    
+}); 
+//} end of TextWindowsWatcherGoToLine class
