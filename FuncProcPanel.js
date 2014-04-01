@@ -107,9 +107,10 @@ function FuncProcPanel() {
 
     this.form.Controls.InvisiblePanel.Кнопки.SelectAndHide.СочетаниеКлавиш = stdlib.v8hotkey(13,8)
     this.cache = v8New("Map");
+    this.cnt = null;
     
     this.index = 0;
-    this.maxShows = 5;
+    this.maxShows = 300;
     this.numberRow = 0;
 
 }
@@ -212,6 +213,7 @@ FuncProcPanel.prototype.GetList = function () {
         return
 
     cnt = SyntaxAnalysis.AnalyseTextDocument(this.targetWindow);
+    this.cnt = cnt;
     currentMethod = cnt.getActiveLineMethod();
     vtModules = cnt.getMethodsTable();
     for (var i = 0; i<vtModules.Count(); i++) {
@@ -1231,6 +1233,68 @@ FuncProcPanel.prototype.CmdBarActivate = function(Button){
     this.goToLine(this.form.Controls.FunctionList.CurrentRow);
 }
 
+FuncProcPanel.prototype.CmdBarДействиеВывестиВызовы = function(Button){
+    var curRow = this.form.Controls.FunctionList.CurrentRow;
+    this.form.Controls.CmdBar.Кнопки['ДействиеВывестиВызовы'].Check = !this.form.Controls.CmdBar.Кнопки['ДействиеВывестиВызовы'].Check;
+    if (this.form.Controls.CmdBar.Кнопки['ДействиеВывестиВызовы'].Check && this.form.Controls.СтруктураМетода.visible){
+        this.showCallers(curRow);
+    }
+}
+
+FuncProcPanel.prototype.showCallers = function(curRow){
+
+    if(!curRow){
+        return;
+    }
+    else {
+
+        callers = {};
+        for (var i = 0; i<this.methods.Rows.Count(); i++) {
+            var thisRow = this.methods.Rows.Get(i);
+            if (thisRow.Method == curRow.Method) continue;
+
+            
+            curMethod = thisRow._method; 
+            if (curMethod.Calls.length > 0){
+                for (var j=0; j<curMethod.Calls.length; j++){
+
+                    caller = curMethod.Calls[j];
+                    //Message(""+caller);
+
+                    if(caller.indexOf(curRow.Method)>=0){
+                        
+                        callers[curMethod.Name] = 1;        
+                    }
+                    //if(!callers.indexOf(caller) >= 0) continue;
+                }
+            }
+        }
+
+        //if (callers.length>0){
+            needCreate = true;
+            for (var i = 0; i<this.form.СтруктураМетода.Rows.Count(); i++) {
+                var newRow = this.methods.Rows.Get(i);
+                if (newRow.Имя == "Вызывают"){
+                    needCreate = false;
+                    newRow.Rows.Clear();
+                    break;
+                }
+            }
+
+            if (needCreate){
+                var newRow = this.form.СтруктураМетода.Rows.Add();
+            }
+            newRow.Имя = "Вызывают";
+            newRow.Индекс = 6;
+
+            for(var k in callers){
+                var newParamRow = newRow.Rows.Add();
+                newParamRow.Имя = k;
+                newParamRow.Индекс = 10;
+               }
+            }  
+}
+
 FuncProcPanel.prototype.CmdBarReloadFunc = function(Button){
 
     var wnd = this.targetWindow.textWindow; //вручную выбрали обновление, значит сделаем долгий анализ формы. 
@@ -1353,7 +1417,7 @@ FuncProcPanel.prototype.moveFunc = function(func, forward){
     }
 
 
-     this.moveRowCursor(forward);
+    this.moveRowCursor(forward);
 
     var newRow = this.form.Controls.FunctionList.CurrentRow;
     var newRowMethod = getMethod(this.methods, newRow.Method);
@@ -1558,7 +1622,6 @@ FuncProcPanel.prototype.getMethod = function(methods, name) {
 
 FuncProcPanel.prototype.walkMethods = function(row, method, req){
 
-    
     req++;
     if (req > 5)
         return;
@@ -1575,7 +1638,7 @@ FuncProcPanel.prototype.walkMethods = function(row, method, req){
             if (curRowMethod.Calls[i].indexOf(".")>=0 || callMethod!=null){
                 var newParamRow = row.Rows.Add();
 
-                if(this.index > this.maxShows && this.numberRow<=4){
+                if(this.index > this.maxShows && this.numberRow<=4 && this.form.index==0){
                     this.numberRow = this.numberRow+1;
                     newParamRow.НомерСтроки = this.numberRow;
                 }
@@ -1599,7 +1662,8 @@ FuncProcPanel.prototype.goToFunction = function(row){
     
     nameMethod = row.Имя;
     var callArray = [];
-    
+    findByName = false;
+
     if (nameMethod.indexOf(".")>=0){
 
 
@@ -1691,7 +1755,10 @@ FuncProcPanel.prototype.goToFunction = function(row){
                 }
             }
         } else {
-            Message("Не найден объект метаданных для "+nameMethod.toString());
+            //Спозицонируемся куда просят. 
+            findByName = true;
+
+            //Message("Не найден объект метаданных для "+nameMethod.toString());
         }
 
 
@@ -1716,7 +1783,39 @@ FuncProcPanel.prototype.goToFunction = function(row){
             // Установим выделение на найденное совпадение со строкой поиска.
             this.targetWindow.SetCaretPos(method.StartLine+2, 1);
             this.targetWindow.SetSelection(method.StartLine+1, 1, method.StartLine+1, textline.length-1);
+
+            return;
+        } else {
+            findByName = true;
         }
+    }
+
+    if (findByName){
+        var curRow = this.form.Controls.FunctionList.CurrentRow;
+        var curRowMethod = this.getMethod(this.methods, curRow.Method);
+        if(!curRowMethod){
+           return;
+        }
+
+        if(!this.targetWindow || !this.targetWindow.IsActive())
+            return;
+
+        var lines = StringUtils.toLines(this.targetWindow.GetText());
+        for(var lineIx=curRowMethod.StartLine; lineIx < lines.length; lineIx++)
+        {
+            var line = lines[lineIx];
+            if (line.indexOf(nameMethod)>=0){
+                
+                // Переведем фокус в окно текстового редактора.
+                this.activateEditor();
+                this.targetWindow.SetCaretPos(lineIx, line.indexOf(nameMethod));
+                this.targetWindow.SetSelection(lineIx, line.indexOf(nameMethod), lineIx, nameMethod.length);
+                break;
+            }
+        }
+            
+
+
     }
 }
 
@@ -1738,7 +1837,7 @@ FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = f
     Кнопка.Доступность = this.isForm;
     //Заполним дерево вызовов колонки. 
     if (this.form.Controls.СтруктураМетода.visible){
-        //Message("1")
+
         this.form.СтруктураМетода.Rows.Clear();
          var curRow = this.form.Controls.FunctionList.CurrentRow;
          var curRowMethod = getMethod(this.methods, curRow.Method);
@@ -1769,7 +1868,7 @@ FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = f
                 if (curRowMethod.Calls[i].indexOf(".")>=0 || callMethod!=null){
                     var newParamRow = newRow.Rows.Add();
                     
-                    if(this.index > this.maxShows && this.numberRow<=4){
+                    if(this.index > this.maxShows && this.numberRow<=4 && this.form.index==0){
                         this.numberRow = this.numberRow + 1;
                         newParamRow.НомерСтроки = this.numberRow;
                     }
@@ -1788,10 +1887,17 @@ FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = f
             this.form.Controls.СтруктураМетода.Expand(newRow, true);
             if(this.index > this.maxShows && this.numberRow>3){
                 this.index = 0;
+                this.form.index = 1;
             }
 
         }
+
+        if (this.form.Controls.CmdBar.Кнопки['ДействиеВывестиВызовы'].Check){
+            this.showCallers(curRow);
+        }
+
     }
+
 }
 
 FuncProcPanel.prototype.CmdBarВыводитьВызовы = function(Button) {
