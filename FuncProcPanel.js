@@ -1661,6 +1661,7 @@ FuncProcPanel.prototype.walkMethods = function(row, method, req){
 FuncProcPanel.prototype.goToFunction = function(row){
     
     nameMethod = row.Имя;
+    
     var callArray = [];
     findByName = false;
 
@@ -1791,8 +1792,22 @@ FuncProcPanel.prototype.goToFunction = function(row){
     }
 
     if (findByName){
+
         var curRow = this.form.Controls.FunctionList.CurrentRow;
-        var curRowMethod = this.getMethod(this.methods, curRow.Method);
+
+        curRowMethodName = "";
+        if (row.Родитель.Имя == "Параметры" || row.Родитель.Имя == "Вызывает"){
+            curRowMethodName = curRow.Method;
+        } else if(row.Родитель.Имя == "Вызывают"){
+            curRowMethodName = nameMethod;
+            nameMethod = curRow.Method;
+        } else{
+            curRowMethodName = row.Родитель.Имя;
+            nameMethod = row.Имя;
+        }
+
+        
+        var curRowMethod = this.getMethod(this.methods, curRowMethodName);
         if(!curRowMethod){
            return;
         }
@@ -1808,8 +1823,8 @@ FuncProcPanel.prototype.goToFunction = function(row){
                 
                 // Переведем фокус в окно текстового редактора.
                 this.activateEditor();
-                this.targetWindow.SetCaretPos(lineIx, line.indexOf(nameMethod));
-                this.targetWindow.SetSelection(lineIx, line.indexOf(nameMethod), lineIx, nameMethod.length);
+                this.targetWindow.SetCaretPos(lineIx+1, line.indexOf(nameMethod));
+                //this.targetWindow.SetSelection(lineIx+1, line.indexOf(nameMethod), lineIx+1, nameMethod.length);
                 break;
             }
         }
