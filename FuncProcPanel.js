@@ -1225,6 +1225,14 @@ FuncProcPanel.prototype.viewFunctionList = function(newFilter) {
     this.form.Controls.CmdBar.Кнопки['ВыводитьВызовы'].Check = this.form.FuncProcViewRecursive;
     //this.form.Controls.cmdBarCalls.Visible = this.form.FuncProcViewRecursive;
     this.form.Controls.СтруктураМетода.Visible = this.form.FuncProcViewRecursive;
+	this.form.Controls.Разделитель1.Visible = this.form.FuncProcViewRecursive;
+	if(this.form.FuncProcViewRecursive) {
+    this.form.Controls.FunctionList.УстановитьПривязку(ГраницаЭлементаУправления.Низ,this.form.Controls.Разделитель1,ГраницаЭлементаУправления.Низ);
+	this.form.Controls.FunctionList.Высота =this.form.Controls.Разделитель1.Верх-61;}
+		else{
+    this.form.Controls.FunctionList.УстановитьПривязку(ГраницаЭлементаУправления.Низ,this.form.Панель,ГраницаЭлементаУправления.Низ);
+	this.form.Controls.FunctionList.Высота =this.form.Высота-61;
+}
 
     
 }
