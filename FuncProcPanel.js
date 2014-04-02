@@ -1248,51 +1248,54 @@ FuncProcPanel.prototype.showCallers = function(curRow){
     }
     else {
 
-        callers = {};
-        for (var i = 0; i<this.methods.Rows.Count(); i++) {
-            var thisRow = this.methods.Rows.Get(i);
-            if (thisRow.Method == curRow.Method) continue;
+    callers = {};
+    for (var i = 0; i<this.methods.Rows.Count(); i++) {
+        var thisRow = this.methods.Rows.Get(i);
+        if (thisRow.Method == curRow.Method) continue;
 
-            
-            curMethod = thisRow._method; 
-            if (curMethod.Calls.length > 0){
-                for (var j=0; j<curMethod.Calls.length; j++){
+        
+        curMethod = thisRow._method; 
+        if (curMethod.Calls.length > 0){
+            for (var j=0; j<curMethod.Calls.length; j++){
 
-                    caller = curMethod.Calls[j];
-                    //Message(""+caller);
+                caller = curMethod.Calls[j];
+                //Message(""+caller);
 
-                    if(caller.indexOf(curRow.Method)>=0){
-                        
-                        callers[curMethod.Name] = 1;        
-                    }
-                    //if(!callers.indexOf(caller) >= 0) continue;
+                if(caller.indexOf(curRow.Method)>=0){
+                    
+                    callers[curMethod.Name] = 1;        
                 }
+                //if(!callers.indexOf(caller) >= 0) continue;
             }
         }
+    }
 
-        //if (callers.length>0){
-            needCreate = true;
-            for (var i = 0; i<this.form.СтруктураМетода.Rows.Count(); i++) {
-                var newRow = this.methods.Rows.Get(i);
-                if (newRow.Имя == "Вызывают"){
-                    needCreate = false;
-                    newRow.Rows.Clear();
-                    break;
-                }
-            }
+    needCreate = true;
+    for (var i = 0; i<this.form.СтруктураМетода.Rows.Count(); i++) {
+        var newRow = this.methods.Rows.Get(i);
+        if (newRow.Имя == "Используют в"){
+            needCreate = false;
+            newRow.Rows.Clear();
+            break;
+        }
+    }
 
-            if (needCreate){
-                var newRow = this.form.СтруктураМетода.Rows.Add();
-            }
-            newRow.Имя = "Вызывают";
-            newRow.Индекс = 6;
+    if (needCreate){
+        var newRow = this.form.СтруктураМетода.Rows.Add();
+    }
+    newRow.Имя = "Используют в";
+    newRow.Индекс = 6;
 
-            for(var k in callers){
-                var newParamRow = newRow.Rows.Add();
-                newParamRow.Имя = k;
-                newParamRow.Индекс = 10;
-               }
-            }  
+    for(var k in callers){
+        var newParamRow = newRow.Rows.Add();
+        newParamRow.Имя = k;
+        newParamRow.Индекс = 10;
+       }
+    }
+    if (newRow.Rows.Count()>0){
+        this.form.Controls.СтруктураМетода.Expand(newRow, false);    
+    }
+    
 }
 
 FuncProcPanel.prototype.CmdBarReloadFunc = function(Button){
@@ -1798,7 +1801,7 @@ FuncProcPanel.prototype.goToFunction = function(row){
         curRowMethodName = "";
         if (row.Родитель.Имя == "Параметры" || row.Родитель.Имя == "Вызывает"){
             curRowMethodName = curRow.Method;
-        } else if(row.Родитель.Имя == "Вызывают"){
+        } else if(row.Родитель.Имя == "Используют в"){
             curRowMethodName = nameMethod;
             nameMethod = curRow.Method;
         } else{
@@ -1899,7 +1902,7 @@ FuncProcPanel.prototype.FunctionListПриАктивизацииСтроки = f
                 }
             }  
 
-            this.form.Controls.СтруктураМетода.Expand(newRow, true);
+            this.form.Controls.СтруктураМетода.Expand(newRow, false);
             if(this.index > this.maxShows && this.numberRow>3){
                 this.index = 0;
                 this.form.index = 1;
