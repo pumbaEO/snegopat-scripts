@@ -24,6 +24,12 @@ SelfScript.self['macrosНастройка'] = function() {
     return true;
 }
 
+SelfScript.self['macrosСравнитьТекущуюПроцедуру'] = function(){
+    var sm = GetCompareWatcher();
+    sm.compareProcedure();
+    return true;   
+}
+
 CompareWatcher = stdlib.Class.extend({
 
 	modalForm: null,
@@ -104,55 +110,73 @@ CompareWatcher = stdlib.Class.extend({
 
 	},
 
-	compareCurrentRow:function(){
+    compareProcedure:function(){
+        if(!this.modalForm || !this.compareForm){
+            logger.error("Не найденна модальная форма попроцедурного сравнения")
+            return;
+        }
+
+        try{
+            grid = this.modalForm.getControl("Grid").extInterface;
+            if(grid.currentRow.getCellAppearance(0).text.length == 0)
+                return;
+        } catch (e){
+            return;
+        }
+
+        currentProcedure = currentProcRow.getCellAppearance(0).text;
+        //Определим текущий модуль, полный путь. 
+
+
+
+    },
+
+    getFullPath:function(parent, indent, fullPath){
+
+        if (parent.parent == null)
+            return fullPath;
+        
+        skips = {
+            "Свойства":true,
+            "Общие":true 
+        }
+        
+        propsName = {
+            "Модуль менеджера":"МодульМенеджера",
+            "Модуль объекта":"МодульОбъекта",
+            "Модуль набора записей":"МодульНабораЗаписей",
+            "Модуль менеджера значения":"МодульМенеджераЗначения",
+            "Общие модули":"ОбщиеМодули"
+        }
+
+        var name = parent.getCellAppearance(0).text;
+        if (skips[name]){
+
+        } else {
+            if(propsName[name])
+                name = propsName[name];
+            
+            fullPath = name + (fullPath.length ? "." : "")+fullPath;
+        }
+        if(parent.parent!=null){
+            return this.getFullPath(parent.parent, "", fullPath);
+        }
+        return fullPath;
+    },
+
+    compareObject:function(){
+        if(!this.compareForm){
+            logger.error("Не найденна форма сравнения")
+            return;
+        }      
+    },
+
+	compare:function(currentProcName){
 		if(!this.modalForm || !this.compareForm)
 			return;
 
-		try{
-			grid = this.modalForm.getControl("Grid").extInterface;
-			if(grid.currentRow.getCellAppearance(0).text.length == 0)
-				return;
-		} catch (e){
-			return;
-		}
-		currentProcedure = grid.currentRow.getCellAppearance(0).text;
-		//Определим текущий модуль, полный путь. 
-
-		function forAllRows(parent, indent, fullPath)
-        {
-
-        	if (parent.parent == null)
-        		return fullPath;
-            
-            skips = {
-                "Свойства":true,
-                "Общие":true 
-            }
-            
-            propsName = {
-                "Модуль менеджера":"МодульМенеджера",
-                "Модуль объекта":"МодульОбъекта",
-                "Модуль набора записей":"МодульНабораЗаписей",
-                "Модуль менеджера значения":"МодульМенеджераЗначения",
-                "Общие модули":"ОбщиеМодули"
-            }
-
-        	var name = parent.getCellAppearance(0).text;
-        	if (skips[name]){
-
-        	} else {
-                if(propsName[name])
-                    name = propsName[name];
-                
-        		fullPath = name + (fullPath.length ? "." : "")+fullPath;
-        	}
-        	if(parent.parent!=null){
-        		return forAllRows(parent.parent, "", fullPath);
-        	}
-        	return fullPath;
-        }
-
-        fullPath = forAllRows(this.compareForm.activeControl.extInterface.currentRow, '', '');
+		
+        fullPath = this.getFullPath(this.compareForm.activeControl.extInterface.currentRow, '', '');
         CreateDirectory(this.tempPath + "\\"+fullPath);
 
         Message(this.tempPath + "\\"+fullPath);
@@ -165,58 +189,60 @@ CompareWatcher = stdlib.Class.extend({
         {
             var container = metadata.getContainer(i)
             containers[container.identifier]=container;
-            //choice.Add(container, container.identifier)
-            //Message(container.identifier);
         }
 
         function getMdObj(rootObject, callArray){
             
-		            found = false;
-		            mdObject = null;
-		            if (callArray.length > 3){
-		                
-		                //Это по документам, справочникам и т.д. идем.
-		                //metadataName = Matches[1].slice(0, Matches[1].indexOf('.'));
-		                try{
-		                    mdObject1 = rootObject.childObject(callArray[0], callArray[1]);
-		                    if (mdObject1){
-		                    	mdObject = 	mdObject1.childObject(callArray[2], callArray[3]);
-		                    	if (mdObject){
-		                    		found = true;
-		                    		return new MdObject(mdObject, callArray[4]);		
-		                    	}
+            found = false;
+            mdObject = null;
+            if (callArray.length > 3){
+                
+                //Это по документам, справочникам и т.д. идем.
+                //metadataName = Matches[1].slice(0, Matches[1].indexOf('.'));
+                try{
+                    mdObject1 = rootObject.childObject(callArray[0], callArray[1]);
+                    if (mdObject1){
+                    	mdObject = 	mdObject1.childObject(callArray[2], callArray[3]);
+                    	if (mdObject){
+                    		found = true;
+                    		return new MdObject(mdObject, callArray[4]);		
+                    	}
 
-		                    }
-                 
-		                } catch(e){
-		                    
-		                }
-		            } else if(callArray.length > 1 ) {
-		                //Тут по общим модулям пройдемся. 
-		                try{
-		                    mdObject1 = rootObject.childObject(callArray[0], callArray[1]);
-		                    if (mdObject1){
-		                    	found = true;
-		                    	return new MdObject(mdObject1, callArray[3]);
-		                    }
-		                } catch(e){
-		                    
-		                }
-		            } 
-		            return;
+                    }
+         
+                } catch(e){
+                    
+                }
+            } else if(callArray.length > 1 ) {
+                //Тут по общим модулям пройдемся. 
+                try{
+                    mdObject1 = rootObject.childObject(callArray[0], callArray[1]);
+                    if (mdObject1){
+                    	found = true;
+                    	return new MdObject(mdObject1, callArray[3]);
+                    }
+                } catch(e){
+                    
+                }
+            } 
+            return;
         }
 
         diff = new diffObject()
         var mathes = this.title.match(this.re);
 		if (mathes && mathes.length) {
 			if(containers[mathes[2]]){ //left
+
 				diff.addA(getMdObj(containers[mathes[2]], fullPath.split(".")));
 			}
-			if(containers[mathes[3]]){ //left
+			if(containers[mathes[3]]){ //right
 				diff.addB(getMdObj(containers[mathes[3]], fullPath.split(".")));
 			}
 		}
 
+        //Новая конфигурация поставщика
+        // Старая конфигурация поставщика
+        //Заголовок Обновлени Основная конфигурация - Новая конфигурация поставщика. 
 
         //Теперь самое сложное. Надо перебрать открытые метаданные и найти необходимый нам модуль... 
         // Зачем так сложно, почему не используем октрое окно и текст? Потому-что у нас может быть двухстороннее сравнение. 
