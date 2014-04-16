@@ -382,20 +382,40 @@ CompareWatcher = stdlib.Class.extend({
         var mathes = this.title.match(this.re);
 		if (mathes && mathes.length) {
             logger.debug(mathes);
-			if(containers[mathes[3]]){ //left
-
-                var mdObject = getMdObj(containers[mathes[3]].rootObject, fullPath.split(".")); 
-				diff.addA(mdObject);
-			}
-			if(containers[mathes[4]]){ //right
-                var mdObject = getMdObj(containers[mathes[4]].rootObject, fullPath.split(".")); 
-				diff.addB(mdObject);
-			}
-
+			
             if (containers["Старая конфигурация поставщика"]){ //other
                 var mdObject = getMdObj(containers["Старая конфигурация поставщика"].rootObject, fullPath.split("."));
-                diff.addC(mdObject)
+                diff.addA(mdObject);
+
+                if(containers[mathes[3]]){ //left
+
+                    var mdObject = getMdObj(containers[mathes[3]].rootObject, fullPath.split(".")); 
+                    diff.addB(mdObject);
+                }
+                if(containers[mathes[4]]){ //right
+                    var mdObject = getMdObj(containers[mathes[4]].rootObject, fullPath.split(".")); 
+                    diff.addC(mdObject);
+                }
+
+
+
+            } else {
+
+                if(containers[mathes[3]]){ //left
+
+                    var mdObject = getMdObj(containers[mathes[3]].rootObject, fullPath.split(".")); 
+                    diff.addA(mdObject);
+                }
+                if(containers[mathes[4]]){ //right
+                    var mdObject = getMdObj(containers[mathes[4]].rootObject, fullPath.split(".")); 
+                    diff.addB(mdObject);
+                }
+
             }
+
+            
+
+            
 
 
 		} else {
