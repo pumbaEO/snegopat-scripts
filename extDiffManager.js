@@ -11,7 +11,7 @@ stdlib.require('ScriptForm.js', SelfScript);
 stdlib.require('log4js.js', SelfScript);
 stdlib.require('SyntaxAnalysis.js', SelfScript);
 
-//debugger;
+
 var logger = Log4js.getLogger(SelfScript.uniqueName);
 var appender = new Log4js.BrowserConsoleAppender();
 appender.setLayout(new Log4js.PatternLayout(Log4js.PatternLayout.TTCC_CONVERSION_PATTERN));
@@ -23,7 +23,20 @@ logger.onclear = new Log4js.CustomEvent();
 logger.setAppenders(appenders);
 logger.setLevel(Log4js.Level.ERROR);
 
-//logger.error(logger.appenders.length);
+
+////////////////////////////////////////////////////////////////////////////////////////
+////{ Cкрипт extDiffManager (extDiffManager.js) для проекта "Снегопат"
+////
+//// Описание: Добавляем в процесс объединения стороние инструменты. 
+//// позволяет сравнивать модули объектов, формы с помощью kdiff , объединять 
+//// результат сравнения и подгружать обратно в базу изменные. 
+////
+////
+//// Автор: Сосна Евгений <shenja@sosna.zp.ua>
+////
+//// Зробленно в Україні.
+////}
+////////////////////////////////////////////////////////////////////////////////////////
 
 SelfScript.self['macrosНастройка'] = function() {
     var sm = GetCompareWatcher();
@@ -37,17 +50,27 @@ SelfScript.self['macrosОбъединитьТекущуюПроцедуру'] = 
     return true;   
 }
 
+SelfScript.self['macrosОбъединитТекущийОбъект'] = function(){
+    var sm = GetCompareWatcher();
+    sm.mergeObject();
+    return true;   
+}
+
 SelfScript.self['macrosСравнитьТекущийОбъект'] = function(){
     var sm = GetCompareWatcher();
     sm.compareObject();
     return true;   
 }
 
-CompareWatcher = stdlib.Class.extend({
 
-	//modalForm: null,
-	//compareForm: null,
-	//re : new RegExp(/(Сравнение, объединение|Сравнение|Обновление)(\\s(.*)\\s-\\s(.*))/),
+SelfScript.self['macrosЗагрузитьРезультатыСравнения'] = function(){
+    var sm = GetCompareWatcher();
+    sm.applyPath();
+    return true;   
+}
+
+
+CompareWatcher = stdlib.Class.extend({
 
 	construct:function(){
 
@@ -60,6 +83,8 @@ CompareWatcher = stdlib.Class.extend({
 		stdcommands.CfgStore.MergeCfgStoreWithFile.addHandler(this, "onCompare");
     	stdcommands.CfgStore.MergeConfigWithCfgStore.addHandler(this, "onCompare");
 
+        this.mergesObj = [];
+
     	CompareWatcher._instance = this;
 	},
 
@@ -68,6 +93,7 @@ CompareWatcher = stdlib.Class.extend({
 	    {
 	        logger.debug("TrayCompareWatcher is not before start")
 	        this.tempPath = TempFilesDir();
+            this.mergesObj = [];
 	        events.connect(windows, "onDoModal", this);
 	    }  else {
 	        //Message("Удалить лишние файлы.");
@@ -80,49 +106,55 @@ CompareWatcher = stdlib.Class.extend({
 
 	onDoModal :function(dlgInfo)
 	{
-	    if(openModalWnd == dlgInfo.stage && dlgInfo.form){
-            logger.debug(dlgInfo.caption);
-	    	this.modalForm = dlgInfo.form;
-	    	es = this;
+        try{
+            if(openModalWnd == dlgInfo.stage && dlgInfo.form){
+                
+                logger.debug(dlgInfo.caption);
+                this.modalForm = dlgInfo.form;
+                es = this;
 
-	    	function foundCompareWindows(childs)
-			{
-			    // При посылке команды окно стает активным, чтобы не нарушить порядок окон, переберем их
-			    // в обратном порядке
+                function foundCompareWindows(childs)
+                {
+                    // При посылке команды окно стает активным, чтобы не нарушить порядок окон, переберем их
+                    // в обратном порядке
 
-			    for(var i = childs.count; i-- ; )
-			    {
-			        var view = childs.item(i)
-			        if(view.isContainer != vctNo)
-			            foundCompareWindows(view.enumChilds())
-			        else
-			        {
-			            // Возможно, это окно формы, но не открыто на вкладке модуля
+                    for(var i = childs.count; i-- ; )
+                    {
+                        var view = childs.item(i)
+                        if(view.isContainer != vctNo)
+                            foundCompareWindows(view.enumChilds())
+                        else
+                        {
+                            // Возможно, это окно формы, но не открыто на вкладке модуля
 
-			            var r = view.title;
-                        logger.debug("find "+r+"re "+es.re);
-					    
-					    var mathes = r.match(es.re);
-					    if (mathes && mathes.length) {
-					    	es.title = r
-					        var caption = ''+windows.caption;
-					        if (view.getInternalForm()){
-                                logger.debug("found "+r);
-					        	es.compareForm = view.getInternalForm();
-					        	return;
-					        }
-					        	
-					        
-					    }
-			            //if(view.mdObj && view.mdProp && view.mdObj.isPropModule(view.mdProp.id))
-			            //    view.mdObj.openModule(view.mdProp.id)  // переключим на вкладку модуля
-			        }
-			    }
-			}
+                            var r = view.title;
+                            logger.debug("find "+r+"re "+es.re);
+                            
+                            var mathes = r.match(es.re);
+                            if (mathes && mathes.length) {
+                                es.title = r
+                                var caption = ''+windows.caption;
+                                if (view.getInternalForm()){
+                                    logger.debug("found "+r);
+                                    es.compareForm = view.getInternalForm();
+                                    return;
+                                }
+                                    
+                                
+                            }
+                            //if(view.mdObj && view.mdProp && view.mdObj.isPropModule(view.mdProp.id))
+                            //    view.mdObj.openModule(view.mdProp.id)  // переключим на вкладку модуля
+                        }
+                    }
+                }
 
-	    	//Найдем окно сравнени объектов конфигурации. 
-	    	foundCompareWindows(windows.mdiView.enumChilds());
-	    }
+                //Найдем окно сравнени объектов конфигурации. 
+                foundCompareWindows(windows.mdiView.enumChilds());
+            }    
+        } catch(e){
+            logger.error(e.description);
+        }
+	    
 	},
 
     foundCompareWindows:function(childs){
@@ -157,6 +189,44 @@ CompareWatcher = stdlib.Class.extend({
                         //    view.mdObj.openModule(view.mdProp.id)  // переключим на вкладку модуля
                     }
                 }
+    },
+
+    applyPath:function(){
+
+        for(var i = 0; i<=this.mergesObj.length; i++){
+            var mdObj = this.mergesObj[i];
+            if(!mdObj)
+                continue;
+
+            if (true){
+                if(!mdObj.isProcedure){ //Тут просто, это модуль, поэтому можем сразу весь и заливать. 
+                    if(mdObj.newText.length>0){
+                        mdObj.obj.setModuleText(mdObj.prop, mdObj.newText);
+                    }
+                } else {
+                    //Тут сложнее. Нам надо получить полностью текст модуля и подменить его, по процедурно. 
+                    sourceText = mdObj.getText();
+
+                    context = SyntaxAnalysis.AnalyseModule(sourceText, true);
+                    var method = context.getMethodByName(mdObj.procedureName);
+                    if (!method) {
+                        logger.error("Для метода "+mdObj.procedureName+ " в исходном модуле, не нашли процедуры "+mdObj.getTitle());
+                        continue;
+                    }
+
+                    Lines = sourceText.split("\n");
+                    beforeLines = Lines.slice(0, method.StartLine);
+                    afterLines = Lines.slice(method.EndLine+1);
+                    //debugger;
+                    newLines = mdObj.newText;
+                    newText = beforeLines.join("\n")+"\n" + mdObj.newText+"\n"+ afterLines.join("\n");
+
+                    
+                    mdObj.obj.setModuleText(mdObj.prop, newText);
+                }
+            }
+        }
+
     },
 
     compareProcedure:function(){
@@ -230,6 +300,21 @@ CompareWatcher = stdlib.Class.extend({
         diff = this.getDiff();
         this.diff(diff);
     },
+
+    mergeObject:function(){
+        //Найдем окно сравнени объектов конфигурации. 
+        this.foundCompareWindows(windows.mdiView.enumChilds());
+
+        if(!this.compareForm){
+            logger.error("Не найденна форма сравнения")
+            return;
+        }     
+
+        diff = this.getDiff();
+        this.merge(diff);
+    },
+
+
 
 	getDiff:function(currentProcedure){
 		if(!this.compareForm)
@@ -335,7 +420,8 @@ CompareWatcher = stdlib.Class.extend({
 	}, 
 
     merge:function(diff, procedureName){
-        diff.mergeObjects(diff.fullPath, procedureName);
+        
+        this.mergesObj.push(diff.mergeObjects(diff.fullPath, procedureName));
     },
 
     diff:function(diff){
@@ -477,8 +563,13 @@ TextDocObject = stdlib.Class.extend({
 });
 
 diffObject = stdlib.Class.extend({
-    construct: function (bla) {
-        this.kdiffpath = "C:\\KDiff3\\kdiff3.exe";
+    construct: function (mergeToolPath) {
+        if(!mergeToolPath){
+            this.kdiffpath = "C:\\KDiff3\\kdiff3.exe";    
+        } else {
+            this.kdiffpath = mergeToolPath;
+        }
+        
         this.A = null;
         this.B = null;
         this.C = null;
@@ -497,7 +588,7 @@ diffObject = stdlib.Class.extend({
         this.C = obj;
     }, 
 
-    diffObjects: function(){
+    diffObjects: function(isModalMode){
         //debugger;
         if (!this.A || !this.B) {
             Message("Не заполенны А или В");
@@ -527,7 +618,7 @@ diffObject = stdlib.Class.extend({
             if (!pathB) return
 
             if (this.C) {
-                pathC = +this.C.saveTextToTempFile();
+                pathC = this.C.saveTextToTempFile();
                 if (!pathC) return    
 
                 pathC = ' '+pathC;
@@ -538,7 +629,7 @@ diffObject = stdlib.Class.extend({
 
             var cmd = this.kdiffpath +' "'+pathA+'" "'+ pathB +'" '+ pathC;
             //Message(""+cmd);
-            ЗапуститьПриложение(cmd, "", true);
+            ЗапуститьПриложение(cmd, "", false);
 
         }
 
@@ -562,7 +653,7 @@ diffObject = stdlib.Class.extend({
         //pathB = pathB +" --L2 mine-"+catalogPath
 
         if (this.C) {
-            pathC = +this.C.saveTextToTempFile(null,procedureName);
+            pathC = this.C.saveTextToTempFile(null,procedureName);
             if (!pathC) return    
 
             pathC = ' '+pathC;
@@ -570,20 +661,49 @@ diffObject = stdlib.Class.extend({
             pathC = ''
         }
             //--L1 alias1               Visible name replacement for input file 1 (base).
-  //--L2 alias2               Visible name replacement for input file 2.
-  //--L3 alias3 
+            //--L2 alias2               Visible name replacement for input file 2.
+            //--L3 alias3 
+
+            
+            if (procedureName==undefined){
+                resultPath = this.tempPath + catalogPath+'\\'+this.A.prop+'.txt';    
+            } else {
+                resultPath = this.tempPath +catalogPath+'\\'+procedureName+'.txt';
+            }
 
             if (procedureName==undefined){
-                var cmd = this.kdiffpath +' "'+pathA+'" "'+ pathB +'" '+ pathC + ' -o '+ '"'+this.tempPath + catalogPath+'\\'+this.A.prop+'.txt"' ;
+                var cmd = this.kdiffpath +' "'+pathA+'" "'+ pathB +'" '+ pathC + ' -o '+ '"'+resultPath+'"' ;
             } else {
-                var cmd = this.kdiffpath +' "'+pathA+'" "'+ pathB +'" '+ pathC + ' -o '+ '"'+this.tempPath +catalogPath+'\\'+procedureName+'.txt"';
+                var cmd = this.kdiffpath +' "'+pathA+'" "'+ pathB +'" '+ pathC + ' -o '+ '"'+resultPath+'"';
             }
                 
             //Message(""+cmd);
             ЗапуститьПриложение(cmd, "", true);
 
+            if(!this.C){
+                mdObj = this.A;
+            } else {
+                mdObj = this.B;
+            }
 
+            if(procedureName == undefined){ 
+                mdObj.isProcedure = false;
+            } else {
+                mdObj.isProcedure = true;
+                mdObj.procedureName = procedureName;
+            }
 
+            //debugger;
+
+            textDoc = v8New("textDocument");
+            try{
+                textDoc.read(resultPath);
+                mdObj.newText = textDoc.GetText();
+            } catch(e){
+                mdObj.newText = "";
+            }
+
+            return mdObj;
     },
 
     clearCache: function () {
